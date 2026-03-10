@@ -87,7 +87,8 @@ class PdfController extends Controller
     {
         $companyIds = Company::where('user_id', $request->user()->id)->pluck('id');
 
-        abort_if(!$companyIds->contains($empleado->company_id), 403);
+        $esPropioAdmin = $empleado->id === $request->user()->id;
+        abort_if(!$esPropioAdmin && !$companyIds->contains($empleado->company_id), 403);
 
         $mes  = (int) $request->query('mes',  now()->month);
         $anio = (int) $request->query('anio', now()->year);
@@ -96,6 +97,9 @@ class PdfController extends Controller
         abort_if($anio < 2000 || $anio > 2100, 422);
 
         $empleado->load(['company', 'workCenter']);
+
+        $empresa = $empleado->company ?? Company::where('user_id', $request->user()->id)->first();
+        $centro  = $empleado->workCenter ?? $empresa?->workCenters()->first();
 
         $fichajes = Fichaje::where('user_id', $empleado->id)
             ->whereMonth('fecha', $mes)
@@ -111,32 +115,35 @@ class PdfController extends Controller
         $filas = $fichajes->map(function ($f) use ($diasSemana) {
             $totalPausasSeg = $f->pausas->sum('duracion_pausa');
 
+            $jornadaSeg = ($f->inicio_jornada && $f->fin_jornada)
+                ? Carbon::parse($f->fin_jornada)->diffInSeconds(Carbon::parse($f->inicio_jornada))
+                : null;
+
             return [
-                'fecha'        => Carbon::parse($f->fecha)->format('d/m/Y'),
-                'dia_semana'   => $diasSemana[Carbon::parse($f->fecha)->dayOfWeekIso - 1],
-                'entrada'      => $f->inicio_jornada ? Carbon::parse($f->inicio_jornada)->format('H:i') : '—',
-                'salida'       => $f->fin_jornada    ? Carbon::parse($f->fin_jornada)->format('H:i')    : '—',
-                'pausas'       => $this->formatSeconds($totalPausasSeg),
-                'horas'        => $f->duracion_jornada !== null ? $this->formatSeconds($f->duracion_jornada) : '—',
-                'estado'       => ucfirst($f->estado),
-                'estado_clase' => strtolower($f->estado),
+                'fecha'     => Carbon::parse($f->fecha)->format('d/m/Y'),
+                'dia_semana'=> $diasSemana[Carbon::parse($f->fecha)->dayOfWeekIso - 1],
+                'entrada'   => $f->inicio_jornada ? Carbon::parse($f->inicio_jornada)->format('H:i') : '—',
+                'salida'    => $f->fin_jornada    ? Carbon::parse($f->fin_jornada)->format('H:i')    : '—',
+                'presencia' => $f->duracion_jornada !== null ? $this->formatSeconds($f->duracion_jornada) : '—',
+                'jornada'   => $jornadaSeg !== null ? $this->formatSeconds($jornadaSeg) : '—',
             ];
         })->toArray();
 
         $totalSegundos = $fichajes->sum('duracion_jornada');
-        $totalHoras    = $this->formatSeconds($totalSegundos);
+        $totalHoras    = $this->formatSecondsLong($totalSegundos);
         $mesNombre     = $meses[$mes];
 
         $pdf = Pdf::loadView('pdf.jornada', [
             'empleado'   => $empleado,
-            'empresa'    => $empleado->company,
-            'centro'     => $empleado->workCenter,
+            'empresa'    => $empresa,
+            'centro'     => $centro,
             'filas'      => $filas,
             'totalHoras' => $totalHoras,
             'mes'        => $mes,
             'anio'       => $anio,
             'mesNombre'  => $mesNombre,
             'generadoEn' => now()->format('d/m/Y H:i'),
+            'esAdmin'    => $empleado->role === 'admin',
         ])->setPaper('A4', 'portrait');
 
         $filename = sprintf(
@@ -152,9 +159,17 @@ class PdfController extends Controller
 
     private function formatSeconds(int $seconds): string
     {
+        $seconds = abs($seconds);
         $h = intdiv($seconds, 3600);
         $m = intdiv($seconds % 3600, 60);
-        $s = $seconds % 60;
-        return sprintf('%02d:%02d:%02d', $h, $m, $s);
+        return sprintf('%02d:%02d', $h, $m);
+    }
+
+    private function formatSecondsLong(int $seconds): string
+    {
+        $seconds = abs($seconds);
+        $h = intdiv($seconds, 3600);
+        $m = intdiv($seconds % 3600, 60);
+        return $m > 0 ? "{$h}h {$m}min" : "{$h}h";
     }
 }

@@ -15,14 +15,14 @@
         .header-left  { width: 68%; vertical-align: top; padding-right: 12px; }
         .header-right { width: 32%; vertical-align: top; text-align: right; }
 
-        .label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+        .label    { font-size: 7pt; color: #555; text-transform: uppercase; letter-spacing: 0.4px; }
         .value-lg { font-size: 12pt; font-weight: bold; }
-        .value     { font-size: 9pt; font-weight: bold; }
-        .subvalue  { font-size: 8pt; color: #444; }
+        .value    { font-size: 9pt; font-weight: bold; }
+        .subvalue { font-size: 8pt; color: #333; }
 
         /* Separadores */
-        .divider       { border: none; border-top: 1.5px solid #1e3a5f; margin: 7px 0; }
-        .divider-light { border: none; border-top: 1px solid #ddd; margin: 6px 0; }
+        .divider       { border: none; border-top: 1.5px solid #000; margin: 7px 0; }
+        .divider-light { border: none; border-top: 1px solid #ccc; margin: 6px 0; }
 
         /* Título central */
         .titulo {
@@ -31,29 +31,29 @@
             font-weight: bold;
             letter-spacing: 1.5px;
             text-transform: uppercase;
-            color: #1e3a5f;
+            color: #000;
             margin: 7px 0;
         }
 
         /* Tabla principal */
         .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .data-table th {
-            background-color: #1e3a5f;
+            background-color: #000;
             color: #ffffff;
             font-size: 7.5pt;
             font-weight: bold;
             padding: 5px 4px;
             text-align: center;
-            border: 1px solid #1e3a5f;
+            border: 1px solid #000;
         }
         .data-table td {
             font-size: 8pt;
             padding: 4px 4px;
-            border: 1px solid #ddd;
+            border: 1px solid #ccc;
             text-align: center;
             vertical-align: middle;
         }
-        .data-table tbody tr:nth-child(even) td { background-color: #f4f6f9; }
+        .data-table tbody tr:nth-child(even) td { background-color: #f2f2f2; }
         .data-table tbody tr:nth-child(odd)  td { background-color: #ffffff; }
 
         .td-left { text-align: left; }
@@ -61,22 +61,17 @@
 
         /* Fila total */
         .row-total td {
-            background-color: #1e3a5f !important;
+            background-color: #000 !important;
             color: #ffffff;
             font-weight: bold;
             font-size: 8.5pt;
-            border: 1px solid #1e3a5f;
+            border: 1px solid #000;
         }
-
-        /* Estados */
-        .estado-finalizada { color: #166534; }
-        .estado-activa     { color: #b45309; }
-        .estado-pausa      { color: #9a3412; }
 
         /* Sin registros */
         .empty-row td {
             text-align: center;
-            color: #888;
+            color: #555;
             padding: 16px 4px;
             font-style: italic;
         }
@@ -87,7 +82,7 @@
         .firma-cell  { width: 50%; vertical-align: top; padding: 0 10px; }
         .firma-cell:first-child { padding-left: 0; }
         .firma-cell:last-child  { padding-right: 0; }
-        .firma-label { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; color: #1e3a5f; letter-spacing: 0.5px; }
+        .firma-label { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; color: #000; letter-spacing: 0.5px; }
         .firma-line  { border: none; border-bottom: 1px solid #333; margin-top: 30px; margin-bottom: 5px; }
         .firma-name  { font-size: 8pt; font-weight: bold; }
         .firma-sub   { font-size: 7.5pt; color: #555; margin-top: 2px; }
@@ -96,9 +91,9 @@
         .footer {
             margin-top: 18px;
             font-size: 7pt;
-            color: #aaa;
+            color: #555;
             text-align: center;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #ccc;
             padding-top: 5px;
         }
     </style>
@@ -137,7 +132,7 @@
             <div class="value">{{ $empleado->name }} {{ $empleado->apellido }}</div>
             <div class="subvalue">
                 DNI/NIE: {{ $empleado->dni }}
-                @if($empleado->nss)&nbsp;&nbsp;|&nbsp;&nbsp;NSS: {{ $empleado->nss }}@endif
+                @if(!$esAdmin && $empleado->nss)&nbsp;&nbsp;|&nbsp;&nbsp;NSS: {{ $empleado->nss }}@endif
             </div>
         </td>
         <td class="header-right">
@@ -157,36 +152,35 @@
 <table class="data-table">
     <thead>
         <tr>
-            <th style="width:12%">Fecha</th>
-            <th style="width:10%">Día</th>
-            <th style="width:11%">Entrada</th>
-            <th style="width:11%">Salida</th>
-            <th style="width:14%">Pausas</th>
-            <th style="width:18%">Horas trabajadas</th>
-            <th style="width:24%">Estado</th>
+            <th style="width:14%">Fecha</th>
+            <th style="width:12%">Entrada</th>
+            <th style="width:12%">Salida</th>
+            <th style="width:16%">Presencia</th>
+            <th style="width:16%">Jornada</th>
+            <th style="width:30%">Observaciones</th>
         </tr>
     </thead>
     <tbody>
         @forelse($filas as $fila)
         <tr>
             <td class="td-bold">{{ $fila['fecha'] }}</td>
-            <td>{{ $fila['dia_semana'] }}</td>
             <td class="td-bold">{{ $fila['entrada'] }}</td>
             <td class="td-bold">{{ $fila['salida'] }}</td>
-            <td>{{ $fila['pausas'] }}</td>
-            <td class="td-bold">{{ $fila['horas'] }}</td>
-            <td class="estado-{{ $fila['estado_clase'] }}">{{ $fila['estado'] }}</td>
+            <td>{{ $fila['presencia'] }}</td>
+            <td class="td-bold">{{ $fila['jornada'] }}</td>
+            <td></td>
         </tr>
         @empty
         <tr class="empty-row">
-            <td colspan="7">Sin registros para este período</td>
+            <td colspan="6">Sin registros para este período</td>
         </tr>
         @endforelse
 
         @if(count($filas) > 0)
         <tr class="row-total">
-            <td colspan="5" style="text-align: right; padding-right: 8px;">TOTAL DEL MES</td>
+            <td colspan="3" style="text-align: right; padding-right: 8px;">TOTAL DEL MES</td>
             <td>{{ $totalHoras }}</td>
+            <td></td>
             <td></td>
         </tr>
         @endif

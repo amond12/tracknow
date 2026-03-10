@@ -9,7 +9,7 @@
 
 @theme {
     --font-sans:
-        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Inter', 'Instrument Sans', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
@@ -87,14 +87,14 @@
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --sidebar: #f9fafb;
+    --sidebar-foreground: #374151;
+    --sidebar-primary: #2563eb;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f3f4f6;
+    --sidebar-accent-foreground: #111827;
+    --sidebar-border: #e5e7eb;
+    --sidebar-ring: #93c5fd;
 }
 
 .dark {
@@ -139,5 +139,39 @@
 
     body {
         @apply bg-background text-foreground;
+        font-family: 'Inter', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
     }
+}
+
+/* ── Sidebar: corporate SaaS style ─────────────────────────────────── */
+
+/* Active nav item: white card + blue left bar */
+[data-sidebar="menu-button"][data-active="true"] {
+    background-color: #ffffff !important;
+    box-shadow: inset 3px 0 0 #2563eb, 0 1px 3px 0 rgb(0 0 0 / 0.06) !important;
+    color: #2563eb !important;
+    font-weight: 600 !important;
+}
+
+/* Icon wrapper inside active item */
+[data-sidebar="menu-button"][data-active="true"] > svg {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border-radius: 5px;
+    padding: 2px;
+    box-sizing: content-box;
+}
+
+/* Group labels: uppercase micro-text */
+[data-sidebar="group-label"] {
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #9ca3af !important;
+}
+
+/* Subtle right border on the sidebar panel */
+[data-slot="sidebar"][data-side="left"] {
+    border-right: 1px solid #e5e7eb;
 }
