@@ -1,0 +1,446 @@
+import { Head, router } from '@inertiajs/react';
+import { Building2, Calendar, FileDown, Filter, Search, Users, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import AppLayout from '@/layouts/app-layout';
+import { dashboard } from '@/routes';
+import type { BreadcrumbItem, Company, User, WorkCenter } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Dashboard', href: dashboard() },
+    { title: 'Configuración', href: '/pdfs' },
+    { title: 'Generación de PDFs', href: '/pdfs' },
+];
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
+
+const MESES = [
+    { value: '1',  label: 'Enero' },
+    { value: '2',  label: 'Febrero' },
+    { value: '3',  label: 'Marzo' },
+    { value: '4',  label: 'Abril' },
+    { value: '5',  label: 'Mayo' },
+    { value: '6',  label: 'Junio' },
+    { value: '7',  label: 'Julio' },
+    { value: '8',  label: 'Agosto' },
+    { value: '9',  label: 'Septiembre' },
+    { value: '10', label: 'Octubre' },
+    { value: '11', label: 'Noviembre' },
+    { value: '12', label: 'Diciembre' },
+];
+
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - i);
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+
+interface ResumenEmpleado {
+    id: number;
+    nombre: string;
+    apellido: string;
+    dni: string;
+    total_segundos: number;
+    total_dias: number;
+    tiene_fichajes: boolean;
+}
+
+interface Props {
+    companies: Pick<Company, 'id' | 'nombre'>[];
+    workCenters: (Pick<WorkCenter, 'id' | 'nombre'> & { company_id: number })[];
+    employees: (Pick<User, 'id' | 'name' | 'apellido' | 'remoto'> & { company_id: number; work_center_id: number })[];
+    resumen: ResumenEmpleado[];
+    filters: {
+        empresa_id?: string;
+        centro_id?: string;
+        empleado_id?: string;
+        mes?: string;
+        anio?: string;
+    };
+    mes: number;
+    anio: number;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatSeconds(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
+export default function PdfsIndex({ companies, workCenters, employees, resumen, filters, mes, anio }: Props) {
+    const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
+    const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
+    const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
+
+    const initialEmpleado = filters.empleado_id
+        ? employees.find((e) => e.id === Number(filters.empleado_id))
+        : null;
+    const [empleadoSearch, setEmpleadoSearch] = useState(
+        initialEmpleado ? `${initialEmpleado.name} ${initialEmpleado.apellido}` : '',
+    );
+    const [showEmpleadoDropdown, setShowEmpleadoDropdown] = useState(false);
+    const empleadoRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (empleadoRef.current && !empleadoRef.current.contains(e.target as Node)) {
+                setShowEmpleadoDropdown(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const [mesSeleccionado, setMesSeleccionado] = useState(String(mes));
+    const [anioSeleccionado, setAnioSeleccionado] = useState(String(anio));
+
+    const availableWorkCenters = empresaId === 'all'
+        ? workCenters
+        : workCenters.filter((wc) => wc.company_id === Number(empresaId));
+
+    const availableEmployees = empresaId === 'all'
+        ? employees
+        : employees.filter((e) => e.company_id === Number(empresaId));
+
+    const normalizedSearch = empleadoSearch.trim().toLocaleLowerCase('es-ES');
+    const filteredEmployees = normalizedSearch.length === 0
+        ? availableEmployees
+        : availableEmployees.filter((e) =>
+            `${e.name} ${e.apellido}`.toLocaleLowerCase('es-ES').includes(normalizedSearch),
+        );
+
+    function handleEmpresaChange(value: string) {
+        setEmpresaId(value);
+        setCentroId('all');
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+    }
+
+    function handleEmpleadoSearchChange(value: string) {
+        setEmpleadoSearch(value);
+        setEmpleadoId('all');
+    }
+
+    function handleFilter() {
+        const params: Record<string, string> = {
+            mes: mesSeleccionado,
+            anio: anioSeleccionado,
+        };
+        if (empresaId !== 'all') params.empresa_id = empresaId;
+        if (centroId !== 'all')  params.centro_id  = centroId;
+        if (empleadoId !== 'all') params.empleado_id = empleadoId;
+        router.get('/pdfs', params, { preserveState: true });
+    }
+
+    function handleReset() {
+        setEmpresaId('all');
+        setCentroId('all');
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+        setMesSeleccionado(String(new Date().getMonth() + 1));
+        setAnioSeleccionado(String(new Date().getFullYear()));
+        router.get('/pdfs', {}, { preserveState: false });
+    }
+
+    function pdfUrl(id: number): string {
+        return `/pdfs/${id}/download?mes=${mesSeleccionado}&anio=${anioSeleccionado}`;
+    }
+
+    const mesLabel = MESES.find((m) => m.value === mesSeleccionado)?.label ?? '';
+    const hasActiveFilters = empresaId !== 'all' || centroId !== 'all' || empleadoId !== 'all';
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Generación de PDFs" />
+
+            <div className="flex flex-col gap-6 p-6">
+                {/* Header */}
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">Generación de PDFs</h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Descarga el registro de jornada mensual de cada empleado para su firma — conforme al RDL 8/2019
+                    </p>
+                </div>
+
+                {/* Filtros */}
+                <div className="rounded-xl border bg-card shadow-sm">
+                    <div className="flex items-center gap-2 border-b px-4 py-3">
+                        <Filter className="h-4 w-4 text-muted-foreground" />
+                        <h2 className="text-sm font-semibold">Filtros</h2>
+                        {hasActiveFilters && (
+                            <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                Activos
+                            </span>
+                        )}
+                    </div>
+                    <div className="p-4">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                            {/* Empresa */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="empresa_filter" className="flex items-center gap-1.5 text-xs font-medium">
+                                    <Building2 className="h-3 w-3 text-muted-foreground" />
+                                    Empresa
+                                </Label>
+                                <Select value={empresaId} onValueChange={handleEmpresaChange}>
+                                    <SelectTrigger id="empresa_filter" className="h-9">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todas las empresas</SelectItem>
+                                        {companies.map((c) => (
+                                            <SelectItem key={c.id} value={String(c.id)}>
+                                                {c.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Centro */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="centro_filter" className="text-xs font-medium">Centro de trabajo</Label>
+                                <Select
+                                    value={centroId}
+                                    onValueChange={setCentroId}
+                                    disabled={availableWorkCenters.length === 0}
+                                >
+                                    <SelectTrigger id="centro_filter" className="h-9">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Todos los centros</SelectItem>
+                                        {availableWorkCenters.map((wc) => (
+                                            <SelectItem key={wc.id} value={String(wc.id)}>
+                                                {wc.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Empleado — combobox con dropdown flotante */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="empleado_filter" className="flex items-center gap-1.5 text-xs font-medium">
+                                    <Users className="h-3 w-3 text-muted-foreground" />
+                                    Empleado
+                                </Label>
+                                <div className="relative" ref={empleadoRef}>
+                                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        id="empleado_filter"
+                                        type="text"
+                                        value={empleadoSearch}
+                                        onChange={(e) => handleEmpleadoSearchChange(e.target.value)}
+                                        placeholder={empleadoId === 'all' ? 'Todos los empleados' : 'Buscar empleado...'}
+                                        disabled={availableEmployees.length === 0}
+                                        className="h-9 pl-8"
+                                        onFocus={() => setShowEmpleadoDropdown(true)}
+                                    />
+                                    {showEmpleadoDropdown && (
+                                        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
+                                            <div className="max-h-44 overflow-y-auto">
+                                                <button
+                                                    type="button"
+                                                    className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
+                                                        empleadoId === 'all' ? 'bg-muted font-medium' : ''
+                                                    }`}
+                                                    onClick={() => {
+                                                        setEmpleadoId('all');
+                                                        setEmpleadoSearch('');
+                                                        setShowEmpleadoDropdown(false);
+                                                    }}
+                                                >
+                                                    Todos los empleados
+                                                </button>
+                                                {availableEmployees.length === 0 && (
+                                                    <p className="px-3 py-2 text-sm text-muted-foreground">No hay empleados disponibles</p>
+                                                )}
+                                                {availableEmployees.length > 0 && filteredEmployees.length === 0 && (
+                                                    <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</p>
+                                                )}
+                                                {filteredEmployees.map((employee) => {
+                                                    const employeeId = String(employee.id);
+                                                    return (
+                                                        <button
+                                                            key={employee.id}
+                                                            type="button"
+                                                            className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
+                                                                empleadoId === employeeId ? 'bg-muted font-medium' : ''
+                                                            }`}
+                                                            onClick={() => {
+                                                                setEmpleadoId(employeeId);
+                                                                setEmpleadoSearch(`${employee.name} ${employee.apellido}`);
+                                                                setShowEmpleadoDropdown(false);
+                                                            }}
+                                                        >
+                                                            {employee.name} {employee.apellido}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Mes */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="mes_filter" className="flex items-center gap-1.5 text-xs font-medium">
+                                    <Calendar className="h-3 w-3 text-muted-foreground" />
+                                    Mes
+                                </Label>
+                                <Select value={mesSeleccionado} onValueChange={setMesSeleccionado}>
+                                    <SelectTrigger id="mes_filter" className="h-9">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {MESES.map((m) => (
+                                            <SelectItem key={m.value} value={m.value}>
+                                                {m.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Año */}
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="anio_filter" className="text-xs font-medium">Año</Label>
+                                <Select value={anioSeleccionado} onValueChange={setAnioSeleccionado}>
+                                    <SelectTrigger id="anio_filter" className="h-9">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {YEARS.map((y) => (
+                                            <SelectItem key={y} value={String(y)}>
+                                                {y}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center gap-2">
+                            <Button size="sm" onClick={handleFilter} className="gap-2">
+                                <Search className="h-3.5 w-3.5" />
+                                Filtrar
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleReset} className="gap-2">
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tabla de empleados */}
+                <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                    <div className="flex items-center border-b px-4 py-3">
+                        <h2 className="text-sm font-semibold">
+                            {resumen.length > 0
+                                ? `${resumen.length} empleado${resumen.length !== 1 ? 's' : ''} — ${mesLabel} ${anioSeleccionado}`
+                                : 'Empleados'}
+                        </h2>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b bg-muted/30">
+                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Empleado</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">DNI</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Días registrados</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total horas</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">PDF</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {resumen.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-4 py-16 text-center">
+                                            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                                <FileDown className="h-8 w-8 opacity-30" />
+                                                <p className="text-sm font-medium">No hay empleados</p>
+                                                <p className="text-xs">Ajusta los filtros para ver resultados</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    resumen.map((row) => (
+                                        <tr
+                                            key={row.id}
+                                            className={`transition-colors ${row.tiene_fichajes ? 'hover:bg-muted/40' : 'opacity-60 hover:bg-muted/20'}`}
+                                        >
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                                                        {[row.nombre, row.apellido]
+                                                            .filter(Boolean)
+                                                            .map((s) => s[0])
+                                                            .join('')
+                                                            .toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-medium">
+                                                            {row.nombre} {row.apellido}
+                                                        </span>
+                                                        {!row.tiene_fichajes && (
+                                                            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                                                                sin registros
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-sm text-muted-foreground">
+                                                {row.dni || '—'}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {row.tiene_fichajes ? (
+                                                    <span className="font-medium">{row.total_dias}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">0</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-sm">
+                                                {row.tiene_fichajes ? (
+                                                    <span className="font-medium">{formatSeconds(row.total_segundos)}</span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">00:00:00</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <a
+                                                    href={pdfUrl(row.id)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                                                >
+                                                    <FileDown className="h-3.5 w-3.5" />
+                                                    Descargar PDF
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </AppLayout>
+    );
+}

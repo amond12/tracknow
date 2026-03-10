@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"role\\\\|permission\\\\|Role\\\\|Permission\")",
+      "Bash(php artisan make:migration add_role_to_users_table --table=users)",
+      "Bash(php artisan migrate)",
+      "Bash(xargs grep -l \"RedirectIfAuthenticated\\\\|redirect.*login\\\\|authenticated\")",
+      "Bash(php artisan make:migration create_companies_table)",
+      "Bash(php artisan make:migration create_work_centers_table)",
+      "Bash(php artisan make:migration create_employees_table)",
+      "Bash(php artisan db:statement \"DROP TABLE IF EXISTS employees\")",
+      "Bash(php artisan tinker --execute=\"DB::statement\\(''DROP TABLE IF EXISTS employees''\\);\")",
+      "Bash(php artisan make:migration add_rol_to_employees_table --table=employees)",
+      "Bash(npm install leaflet react-leaflet @types/leaflet)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(php artisan route:list --path=fichar)",
+      "Bash(npx tsc --noEmit --project tsconfig.json)",
+      "Bash(composer require barryvdh/laravel-dompdf --no-interaction)",
+      "Bash(composer show barryvdh/laravel-dompdf)",
+      "Bash(php artisan route:list --path=configuracion/pdfs)",
+      "Bash(php artisan config:clear)",
+      "Bash(php -l app/Http/Controllers/Configuracion/PdfController.php)",
+      "Bash(xargs grep -l \"Fortify\\\\|register\")",
+      "Bash(php artisan make:migration add_dni_to_users_table --table=users)",
+      "Bash(php artisan make:migration merge_employees_into_users)",
+      "Bash(php artisan route:list --path=configuracion)",
+      "Bash(php artisan route:list)",
+      "Bash(ls -lhS /c/Users/amond/Desktop/tracknow/database/migrations/*.php)"
+    ]
+  }
+}
