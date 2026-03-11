@@ -6,6 +6,7 @@ use App\Http\Controllers\Configuracion\EmpresaController;
 use App\Http\Controllers\Configuracion\FichajeController;
 use App\Http\Controllers\Configuracion\HorasExtraController;
 use App\Http\Controllers\Configuracion\PdfController;
+use App\Http\Controllers\Configuracion\CalendarioController;
 use App\Http\Middleware\BlockEmployeeAccess;
 use Illuminate\Support\Facades\Route;
 
@@ -40,4 +41,10 @@ Route::middleware(['auth', 'verified', BlockEmployeeAccess::class])->group(funct
     Route::get('pdfs/{empleado}/download', [PdfController::class, 'download'])->name('pdfs.download');
 
     Route::get('horas-extra', [HorasExtraController::class, 'index'])->name('horas-extra.index');
+
+    Route::get('calendario', [CalendarioController::class, 'index'])->name('calendario.index');
+    Route::get('calendario/{empleado}/pdf', [CalendarioController::class, 'downloadPdf'])->name('calendario.downloadPdf');
+    Route::post('calendario/rango', [CalendarioController::class, 'storeRango'])->name('calendario.storeRango');
+    Route::post('calendario', [CalendarioController::class, 'store'])->name('calendario.store');
+    Route::delete('calendario/{vacacion}', [CalendarioController::class, 'destroy'])->name('calendario.destroy');
 });

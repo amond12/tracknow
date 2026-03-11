@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Building2, ClipboardList, Clock, FileText, LayoutGrid, MapPin, Settings2, TrendingUp, Users } from 'lucide-react';
+import { Building2, CalendarDays, ClipboardList, Clock, FileText, LayoutGrid, MapPin, Settings2, TrendingUp, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavCollapsible } from '@/components/nav-collapsible';
 import { NavMain } from '@/components/nav-main';
@@ -43,6 +43,11 @@ const mainNavItems: NavItem[] = [
         title: 'Horas Extra',
         href: '/horas-extra',
         icon: TrendingUp,
+    },
+    {
+        title: 'Calendario',
+        href: '/calendario',
+        icon: CalendarDays,
     },
 ];
 

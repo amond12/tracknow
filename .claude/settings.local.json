@@ -26,7 +26,13 @@
       "Bash(php artisan route:list --path=configuracion)",
       "Bash(php artisan route:list)",
       "Bash(ls -lhS /c/Users/amond/Desktop/tracknow/database/migrations/*.php)",
-      "Bash(find /c/Users/amond/Desktop/tracknow-master -name routes*.php -type f)"
+      "Bash(find /c/Users/amond/Desktop/tracknow-master -name routes*.php -type f)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -r \"observaciones\\\\|observacion\" /c/Users/amond/Desktop/tracknow-master --include=*.tsx --include=*.ts --include=*.php)",
+      "Bash(find /c/Users/amond/Desktop/tracknow-master -type f \\\\\\(-name *.php -o -name *.tsx -o -name *.ts \\\\\\) -path */app/* -o -path */resources/*)",
+      "Bash(xargs ls:*)",
+      "Bash(php artisan:*)",
+      "Bash(ls -la \"c:\\\\Users\\\\amond\\\\Desktop\\\\tracknow-master\\\\resources\\\\views\\\\pdf 2>/dev/null || find /c/Users/amond/Desktop/tracknow-master/resources/views/pdf\" -type f)"
     ]
   }
 }

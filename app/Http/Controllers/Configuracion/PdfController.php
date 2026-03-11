@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Fichaje;
 use App\Models\ResumenDiario;
 use App\Models\User;
+use App\Models\Vacacion;
 use App\Models\WorkCenter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -119,26 +120,85 @@ class PdfController extends Controller
         $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-        $filas = $fichajes->map(function ($f) use ($diasSemana, $resumenPorFecha) {
-            $totalPausasSeg = $f->pausas->sum('duracion_pausa');
+        $eventos = Vacacion::where('user_id', $empleado->id)
+            ->whereMonth('fecha', $mes)
+            ->whereYear('fecha', $anio)
+            ->get(['fecha', 'tipo', 'motivo', 'dia_completo', 'hora_inicio', 'hora_fin']);
+
+        $eventosPorFecha = $eventos->keyBy(fn ($e) => Carbon::parse($e->fecha)->toDateString());
+
+        $fechasConFichaje = $fichajes->pluck('fecha')
+            ->map(fn ($f) => Carbon::parse($f)->toDateString())
+            ->toArray();
+
+        $filas = $fichajes->map(function ($f) use ($diasSemana, $resumenPorFecha, $eventosPorFecha) {
             $fecha = Carbon::parse($f->fecha);
-            $resumenDia = $resumenPorFecha->get($fecha->toDateString());
+            $dateStr = $fecha->toDateString();
+            $resumenDia = $resumenPorFecha->get($dateStr);
             $horasExtraSeg = $resumenDia?->horas_extra ?? 0;
 
             $jornadaSeg = ($f->inicio_jornada && $f->fin_jornada)
                 ? Carbon::parse($f->fin_jornada)->diffInSeconds(Carbon::parse($f->inicio_jornada))
                 : null;
 
+            // Observación: ausencias parciales en días con fichaje
+            $obs = '';
+            $evento = $eventosPorFecha->get($dateStr);
+            if ($evento && $evento->tipo === 'ausencia') {
+                if (!$evento->dia_completo && $evento->hora_inicio && $evento->hora_fin) {
+                    $obs = 'AUSENCIA ' . substr($evento->hora_inicio, 0, 5) . '-' . substr($evento->hora_fin, 0, 5);
+                    if ($evento->motivo) $obs .= ': ' . $evento->motivo;
+                } else {
+                    $obs = 'AUSENCIA' . ($evento->motivo ? ': ' . $evento->motivo : '');
+                }
+            }
+
             return [
-                'fecha'      => $fecha->format('d/m/Y'),
-                'dia_semana' => $diasSemana[$fecha->dayOfWeekIso - 1],
-                'entrada'   => $f->inicio_jornada ? Carbon::parse($f->inicio_jornada)->format('H:i') : '—',
-                'salida'    => $f->fin_jornada    ? Carbon::parse($f->fin_jornada)->format('H:i')    : '—',
-                'presencia' => $f->duracion_jornada !== null ? $this->formatSeconds($f->duracion_jornada) : '—',
-                'jornada'   => $jornadaSeg !== null ? $this->formatSeconds($jornadaSeg) : '—',
-                'horas_extra' => $horasExtraSeg > 0 ? ('+' . $this->formatSeconds($horasExtraSeg)) : '',
+                'fecha'        => $fecha->format('d/m/Y'),
+                'dia_semana'   => $diasSemana[$fecha->dayOfWeekIso - 1],
+                'entrada'      => $f->inicio_jornada ? Carbon::parse($f->inicio_jornada)->format('H:i') : '—',
+                'salida'       => $f->fin_jornada    ? Carbon::parse($f->fin_jornada)->format('H:i')    : '—',
+                'presencia'    => $f->duracion_jornada !== null ? $this->formatSeconds($f->duracion_jornada) : '—',
+                'jornada'      => $jornadaSeg !== null ? $this->formatSeconds($jornadaSeg) : '—',
+                'horas_extra'  => $horasExtraSeg > 0 ? ('+' . $this->formatSeconds($horasExtraSeg)) : '',
+                'observaciones' => $obs,
             ];
         })->toArray();
+
+        // Filas sin fichaje: vacaciones, ausencias y festivos
+        foreach ($eventosPorFecha as $fechaStr => $evento) {
+            if (!in_array($fechaStr, $fechasConFichaje)) {
+                $fecha = Carbon::parse($fechaStr);
+
+                if ($evento->tipo === 'vacacion') {
+                    $obs = 'VACACIONES';
+                } elseif ($evento->tipo === 'ausencia') {
+                    if (!$evento->dia_completo && $evento->hora_inicio && $evento->hora_fin) {
+                        $obs = 'AUSENCIA ' . substr($evento->hora_inicio, 0, 5) . '-' . substr($evento->hora_fin, 0, 5);
+                        if ($evento->motivo) $obs .= ': ' . $evento->motivo;
+                    } else {
+                        $obs = 'AUSENCIA' . ($evento->motivo ? ': ' . $evento->motivo : '');
+                    }
+                } else {
+                    $obs = 'FESTIVO' . ($evento->motivo ? ': ' . $evento->motivo : '');
+                }
+
+                $filas[] = [
+                    'fecha'        => $fecha->format('d/m/Y'),
+                    'dia_semana'   => $diasSemana[$fecha->dayOfWeekIso - 1],
+                    'entrada'      => '—',
+                    'salida'       => '—',
+                    'presencia'    => '—',
+                    'jornada'      => '—',
+                    'horas_extra'  => '',
+                    'observaciones' => $obs,
+                ];
+            }
+        }
+
+        usort($filas, function ($a, $b) {
+            return strtotime(str_replace('/', '-', $a['fecha'])) <=> strtotime(str_replace('/', '-', $b['fecha']));
+        });
 
         $totalSegundos = $fichajes->sum('duracion_jornada');
         $totalHoras    = $this->formatSecondsLong($totalSegundos);

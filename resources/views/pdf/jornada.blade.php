@@ -256,7 +256,10 @@
             <td>{{ $fila['presencia'] }}</td>
             <td class="td-bold">{{ $fila['jornada'] }}</td>
             <td class="td-bold">{{ $fila['horas_extra'] }}</td>
-            <td></td>
+            <td class="{{ $fila['observaciones'] === 'VACACIONES' ? 'td-bold' : '' }}"
+                style="{{ $fila['observaciones'] === 'VACACIONES' ? 'color:#1a7a6a; letter-spacing:0.5px;' : '' }}">
+                {{ $fila['observaciones'] }}
+            </td>
         </tr>
         @empty
         <tr class="empty-row">
