@@ -25,7 +25,8 @@
       "Bash(php artisan make:migration merge_employees_into_users)",
       "Bash(php artisan route:list --path=configuracion)",
       "Bash(php artisan route:list)",
-      "Bash(ls -lhS /c/Users/amond/Desktop/tracknow/database/migrations/*.php)"
+      "Bash(ls -lhS /c/Users/amond/Desktop/tracknow/database/migrations/*.php)",
+      "Bash(find /c/Users/amond/Desktop/tracknow-master -name routes*.php -type f)"
     ]
   }
 }

@@ -965,6 +965,16 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                                                 onSuccess={reload}
                                             />
                                         </div>
+                                        {(pausa.lat_inicio != null && pausa.lng_inicio != null) || (pausa.lat_fin != null && pausa.lng_fin != null) ? (
+                                            <div className="mt-3 flex flex-wrap gap-3">
+                                                {pausa.lat_inicio != null && pausa.lng_inicio != null && (
+                                                    <MapLink lat={pausa.lat_inicio} lng={pausa.lng_inicio} label="Ubicación inicio pausa" />
+                                                )}
+                                                {pausa.lat_fin != null && pausa.lng_fin != null && (
+                                                    <MapLink lat={pausa.lat_fin} lng={pausa.lng_fin} label="Ubicación fin pausa" />
+                                                )}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 );
                             })}

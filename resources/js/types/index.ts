@@ -82,3 +82,13 @@ export type Fichaje = {
     created_at: string;
     updated_at: string;
 };
+
+export type ResumenDiario = {
+    id: number;
+    user_id: number;
+    fecha: string;
+    horas_trabajadas: number;
+    horas_extra: number;
+    created_at: string;
+    updated_at: string;
+};

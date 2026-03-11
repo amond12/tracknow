@@ -6,6 +6,7 @@ use App\Models\Fichaje;
 use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
+use App\Services\HorasExtraService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -237,6 +238,9 @@ class FicharController extends Controller
             'lng_fin' => $employee->remoto ? $request->lng : null,
             'ip_fin' => $request->ip(),
         ]);
+
+        $fichaje->refresh()->load('pausas');
+        app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
 
         return back();
     }

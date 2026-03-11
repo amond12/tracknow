@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Building2, ClipboardList, Clock, FileText, LayoutGrid, MapPin, Settings2, Users } from 'lucide-react';
+import { Building2, ClipboardList, Clock, FileText, LayoutGrid, MapPin, Settings2, TrendingUp, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavCollapsible } from '@/components/nav-collapsible';
 import { NavMain } from '@/components/nav-main';
@@ -39,6 +39,11 @@ const mainNavItems: NavItem[] = [
         href: '/pdfs',
         icon: FileText,
     },
+    {
+        title: 'Horas Extra',
+        href: '/horas-extra',
+        icon: TrendingUp,
+    },
 ];
 
 const configNavItems: Omit<NavItem, 'children'>[] = [
@@ -64,7 +69,7 @@ export function AppSidebar() {
     const isEmployee = ['empleado', 'encargado'].includes(auth.user.role);
     const homeHref = isEmployee ? '/fichar' : DASHBOARD_URL;
     const visibleMainNavItems = isEmployee
-        ? mainNavItems.filter((item) => item.href !== DASHBOARD_URL && item.href !== '/fichajes' && item.href !== '/pdfs')
+        ? mainNavItems.filter((item) => item.href !== DASHBOARD_URL && item.href !== '/fichajes' && item.href !== '/pdfs' && item.href !== '/horas-extra')
         : mainNavItems;
 
     return (

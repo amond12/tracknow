@@ -10,6 +10,13 @@ export type User = {
     company_id?: number | null;
     work_center_id?: number | null;
     remoto?: boolean;
+    horario_lunes?: number | null;
+    horario_martes?: number | null;
+    horario_miercoles?: number | null;
+    horario_jueves?: number | null;
+    horario_viernes?: number | null;
+    horario_sabado?: number | null;
+    horario_domingo?: number | null;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;

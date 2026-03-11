@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Configuracion;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Fichaje;
+use App\Models\ResumenDiario;
 use App\Models\User;
 use App\Models\WorkCenter;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -108,24 +109,34 @@ class PdfController extends Controller
             ->orderBy('fecha')
             ->get();
 
+        $resumenPorFecha = ResumenDiario::where('user_id', $empleado->id)
+            ->whereMonth('fecha', $mes)
+            ->whereYear('fecha', $anio)
+            ->get()
+            ->keyBy(fn ($r) => $r->fecha->toDateString());
+
         $diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
         $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-        $filas = $fichajes->map(function ($f) use ($diasSemana) {
+        $filas = $fichajes->map(function ($f) use ($diasSemana, $resumenPorFecha) {
             $totalPausasSeg = $f->pausas->sum('duracion_pausa');
+            $fecha = Carbon::parse($f->fecha);
+            $resumenDia = $resumenPorFecha->get($fecha->toDateString());
+            $horasExtraSeg = $resumenDia?->horas_extra ?? 0;
 
             $jornadaSeg = ($f->inicio_jornada && $f->fin_jornada)
                 ? Carbon::parse($f->fin_jornada)->diffInSeconds(Carbon::parse($f->inicio_jornada))
                 : null;
 
             return [
-                'fecha'     => Carbon::parse($f->fecha)->format('d/m/Y'),
-                'dia_semana'=> $diasSemana[Carbon::parse($f->fecha)->dayOfWeekIso - 1],
+                'fecha'      => $fecha->format('d/m/Y'),
+                'dia_semana' => $diasSemana[$fecha->dayOfWeekIso - 1],
                 'entrada'   => $f->inicio_jornada ? Carbon::parse($f->inicio_jornada)->format('H:i') : '—',
                 'salida'    => $f->fin_jornada    ? Carbon::parse($f->fin_jornada)->format('H:i')    : '—',
                 'presencia' => $f->duracion_jornada !== null ? $this->formatSeconds($f->duracion_jornada) : '—',
                 'jornada'   => $jornadaSeg !== null ? $this->formatSeconds($jornadaSeg) : '—',
+                'horas_extra' => $horasExtraSeg > 0 ? ('+' . $this->formatSeconds($horasExtraSeg)) : '',
             ];
         })->toArray();
 

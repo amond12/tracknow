@@ -9,6 +9,8 @@ use App\Models\Fichaje;
 use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
+use App\Services\HorasExtraService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -115,6 +117,10 @@ class FichajeController extends Controller
             $fichaje->update(['duracion_jornada' => $duracion]);
         }
 
+        if ($fichaje->estado === 'finalizada') {
+            app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
+        }
+
         return back();
     }
 
@@ -161,6 +167,10 @@ class FichajeController extends Controller
             $totalPausas = $fichaje->pausas->sum('duracion_pausa');
             $duracion = max(0, (int) $fichaje->fin_jornada->diffInSeconds($fichaje->inicio_jornada, true) - $totalPausas);
             $fichaje->update(['duracion_jornada' => $duracion]);
+        }
+
+        if ($fichaje->estado === 'finalizada') {
+            app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
         }
 
         return back();
@@ -225,6 +235,10 @@ class FichajeController extends Controller
             $fichaje->update(['duracion_jornada' => $duracion]);
         }
 
+        if ($fichaje->estado === 'finalizada') {
+            app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
+        }
+
         return back();
     }
 
@@ -283,6 +297,9 @@ class FichajeController extends Controller
             'valor_nuevo'    => $ahora->toJSON(),
             'motivo'         => $validated['motivo'],
         ]);
+
+        $fichaje->refresh()->load('pausas');
+        app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
 
         return back();
     }
@@ -361,6 +378,8 @@ class FichajeController extends Controller
         if ($finJornada) {
             $duracionJornada = max(0, (int) $finJornada->diffInSeconds($inicioJornada, true) - $totalPausas);
             $fichaje->update(['duracion_jornada' => $duracionJornada]);
+            $fichaje->refresh()->load('pausas');
+            app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
         }
 
         EdicionFichaje::create([
@@ -417,6 +436,10 @@ class FichajeController extends Controller
             $fichaje->update(['duracion_jornada' => $duracion]);
         }
 
+        if ($fichaje->estado === 'finalizada') {
+            app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
+        }
+
         return back();
     }
 
@@ -438,7 +461,22 @@ class FichajeController extends Controller
             'motivo'         => $validated['motivo'],
         ]);
 
+        // Capturar datos antes de borrar para recalcular tras el soft-delete
+        $userId  = $fichaje->user_id;
+        $dias    = [Carbon::parse($fichaje->inicio_jornada)->startOfDay()];
+        if ($fichaje->fin_jornada && Carbon::parse($fichaje->fin_jornada)->toDateString() !== Carbon::parse($fichaje->inicio_jornada)->toDateString()) {
+            $dias[] = Carbon::parse($fichaje->fin_jornada)->startOfDay();
+        }
+
         $fichaje->delete();
+
+        $empleado = User::find($userId);
+        if ($empleado) {
+            $service = app(HorasExtraService::class);
+            foreach ($dias as $fecha) {
+                $service->recalcularDia($empleado, $fecha);
+            }
+        }
 
         return back();
     }

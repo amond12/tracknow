@@ -32,6 +32,13 @@ class User extends Authenticatable
         'company_id',
         'work_center_id',
         'remoto',
+        'horario_lunes',
+        'horario_martes',
+        'horario_miercoles',
+        'horario_jueves',
+        'horario_viernes',
+        'horario_sabado',
+        'horario_domingo',
     ];
 
     /**
@@ -57,7 +64,14 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
-            'remoto' => 'boolean',
+            'remoto'            => 'boolean',
+            'horario_lunes'     => 'float',
+            'horario_martes'    => 'float',
+            'horario_miercoles' => 'float',
+            'horario_jueves'    => 'float',
+            'horario_viernes'   => 'float',
+            'horario_sabado'    => 'float',
+            'horario_domingo'   => 'float',
         ];
     }
 
@@ -83,5 +97,27 @@ class User extends Authenticatable
     public function fichajes(): HasMany
     {
         return $this->hasMany(Fichaje::class);
+    }
+
+    /** Resúmenes diarios del usuario */
+    public function resumenDiario(): HasMany
+    {
+        return $this->hasMany(ResumenDiario::class);
+    }
+
+    /** Segundos previstos para un día natural dado */
+    public function horarioPrevistoDia(\Carbon\Carbon $fecha): int
+    {
+        $map = [
+            1 => $this->horario_lunes,
+            2 => $this->horario_martes,
+            3 => $this->horario_miercoles,
+            4 => $this->horario_jueves,
+            5 => $this->horario_viernes,
+            6 => $this->horario_sabado,
+            7 => $this->horario_domingo,
+        ];
+
+        return (int) round(($map[$fecha->dayOfWeekIso] ?? 0) * 3600);
     }
 }

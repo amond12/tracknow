@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Building2, IdCard, Pencil, Plus, Shield, Trash2, User, Wifi } from 'lucide-react';
+import { Building2, Clock, IdCard, Pencil, Plus, Shield, Trash2, User, Wifi } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,13 @@ type EmpleadoFormData = {
     remoto: boolean;
     company_id: string;
     work_center_id: string;
+    horario_lunes: string;
+    horario_martes: string;
+    horario_miercoles: string;
+    horario_jueves: string;
+    horario_viernes: string;
+    horario_sabado: string;
+    horario_domingo: string;
 };
 
 const emptyForm: EmpleadoFormData = {
@@ -61,6 +68,13 @@ const emptyForm: EmpleadoFormData = {
     remoto: false,
     company_id: '',
     work_center_id: '',
+    horario_lunes: '8',
+    horario_martes: '8',
+    horario_miercoles: '8',
+    horario_jueves: '8',
+    horario_viernes: '8',
+    horario_sabado: '0',
+    horario_domingo: '0',
 };
 
 function EmpleadoForm({
@@ -313,6 +327,41 @@ function EmpleadoForm({
                 </div>
             </div>
 
+            {/* Sección: Horario semanal */}
+            <div className="overflow-hidden rounded-xl border">
+                <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horario semanal (horas por día)</span>
+                </div>
+                <div className="grid grid-cols-7 gap-2 p-4">
+                    {([
+                        { key: 'horario_lunes',     label: 'Lun' },
+                        { key: 'horario_martes',    label: 'Mar' },
+                        { key: 'horario_miercoles', label: 'Mié' },
+                        { key: 'horario_jueves',    label: 'Jue' },
+                        { key: 'horario_viernes',   label: 'Vie' },
+                        { key: 'horario_sabado',    label: 'Sáb' },
+                        { key: 'horario_domingo',   label: 'Dom' },
+                    ] as { key: keyof EmpleadoFormData; label: string }[]).map(({ key, label }) => (
+                        <div key={key} className="grid gap-1.5">
+                            <Label className="text-center text-xs font-medium">{label}</Label>
+                            <Input
+                                type="number"
+                                min="0"
+                                max="24"
+                                step="0.5"
+                                value={data[key] as string}
+                                onChange={(e) => setData(key, e.target.value)}
+                                className="h-9 text-center"
+                            />
+                        </div>
+                    ))}
+                </div>
+                <p className="px-4 pb-3 text-xs text-muted-foreground">
+                    Usa decimales para medias horas: 7.5 = 7 h 30 min. Introduce 0 para días no laborables.
+                </p>
+            </div>
+
             <DialogFooter className="pt-1">
                 <Button type="button" variant="outline" onClick={onCancel}>
                     Cancelar
@@ -368,6 +417,13 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
             remoto: emp.remoto ?? false,
             company_id: String(emp.company_id ?? ''),
             work_center_id: String(emp.work_center_id ?? ''),
+            horario_lunes:     String(emp.horario_lunes     ?? 8),
+            horario_martes:    String(emp.horario_martes    ?? 8),
+            horario_miercoles: String(emp.horario_miercoles ?? 8),
+            horario_jueves:    String(emp.horario_jueves    ?? 8),
+            horario_viernes:   String(emp.horario_viernes   ?? 8),
+            horario_sabado:    String(emp.horario_sabado    ?? 0),
+            horario_domingo:   String(emp.horario_domingo   ?? 0),
         });
         setEditTarget(emp);
     }
