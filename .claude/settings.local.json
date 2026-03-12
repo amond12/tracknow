@@ -32,7 +32,11 @@
       "Bash(find /c/Users/amond/Desktop/tracknow-master -type f \\\\\\(-name *.php -o -name *.tsx -o -name *.ts \\\\\\) -path */app/* -o -path */resources/*)",
       "Bash(xargs ls:*)",
       "Bash(php artisan:*)",
-      "Bash(ls -la \"c:\\\\Users\\\\amond\\\\Desktop\\\\tracknow-master\\\\resources\\\\views\\\\pdf 2>/dev/null || find /c/Users/amond/Desktop/tracknow-master/resources/views/pdf\" -type f)"
+      "Bash(ls -la \"c:\\\\Users\\\\amond\\\\Desktop\\\\tracknow-master\\\\resources\\\\views\\\\pdf 2>/dev/null || find /c/Users/amond/Desktop/tracknow-master/resources/views/pdf\" -type f)",
+      "Bash(find c:/Users/amond/Desktop/tracknow-master/resources/js -name wayfinder*)",
+      "Bash(find c:/Users/amond/Desktop/tracknow-master/node_modules/@laravel/vite-plugin-wayfinder -name *.ts)",
+      "Bash(grep -rn \"^import.*from ''''@/actions\" c:/Users/amond/Desktop/tracknow-master/resources/js --include=*.tsx 2)",
+      "Bash(/dev/null grep:*)"
     ]
   }
 }

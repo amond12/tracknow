@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { CalendarDays, Download, Search, Trash2, Users, X } from 'lucide-react';
+import { Building2, CalendarDays, Download, Search, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,8 +51,15 @@ interface Evento {
     hora_fin: string | null;
 }
 
+interface Centro {
+    id: number;
+    nombre: string;
+    company_id: number;
+}
+
 interface Props {
     employees: Pick<User, 'id' | 'name' | 'apellido'>[];
+    centros: Centro[];
     anio: number;
     empleadoId: number | null;
     eventos: Evento[];
@@ -540,7 +547,7 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
-export default function CalendarioIndex({ employees, anio, empleadoId, eventos, fichajes }: Props) {
+export default function CalendarioIndex({ employees, centros, anio, empleadoId, eventos, fichajes }: Props) {
     const [anioSeleccionado, setAnioSeleccionado] = useState(String(anio));
     const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<number | null>(empleadoId);
 
@@ -603,6 +610,58 @@ export default function CalendarioIndex({ employees, anio, empleadoId, eventos, 
             return next;
         });
     }
+
+    // ── Centro de trabajo bulk apply ──────────────────────────────────────────
+    const [centroDialogOpen, setCentroDialogOpen] = useState(false);
+    const [centroId, setCentroId] = useState<string>('');
+    const [centroTipo, setCentroTipo] = useState<'vacacion' | 'festivo'>('festivo');
+    const [centroMotivo, setCentroMotivo] = useState('');
+    const [centroDesde, setCentroDesde] = useState('');
+    const [centroHasta, setCentroHasta] = useState('');
+    const [centroSaving, setCentroSaving] = useState(false);
+    const [centroResult, setCentroResult] = useState<string | null>(null);
+    const [centroError, setCentroError] = useState('');
+
+    async function handleStoreCentro() {
+        if (!centroId || !centroDesde || !centroHasta) {
+            setCentroError('Selecciona un centro y el rango de fechas.');
+            return;
+        }
+        setCentroSaving(true);
+        setCentroError('');
+        setCentroResult(null);
+        try {
+            const res = await fetch('/calendario/centro', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken(),
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    centro_id: Number(centroId),
+                    tipo: centroTipo,
+                    motivo: centroMotivo.trim() || null,
+                    fecha_inicio: centroDesde,
+                    fecha_fin: centroHasta,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) { setCentroError(data.message ?? 'Error al aplicar.'); return; }
+            setCentroDesde('');
+            setCentroHasta('');
+            setCentroMotivo('');
+            setCentroDialogOpen(false);
+            setCentroResult(`Aplicado a ${data.total_empleados} empleado(s) durante ${data.total_dias} día(s).`);
+        } catch { setCentroError('Error de conexión.'); }
+        finally { setCentroSaving(false); }
+    }
+
+    useEffect(() => {
+        if (!centroResult) return;
+        const t = setTimeout(() => setCentroResult(null), 3500);
+        return () => clearTimeout(t);
+    }, [centroResult]);
 
     const normalizedSearch = empleadoSearch.trim().toLocaleLowerCase('es-ES');
     const filteredEmployees = normalizedSearch.length === 0
@@ -700,11 +759,17 @@ export default function CalendarioIndex({ employees, anio, empleadoId, eventos, 
                             </div>
                         </div>
 
-                        <div className="mt-4 flex gap-2">
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
                             <Button size="sm" variant="outline" onClick={handleReset} className="gap-2">
                                 <X className="h-3.5 w-3.5" />
                                 Limpiar
                             </Button>
+                            {centros.length > 0 && (
+                                <Button size="sm" variant="outline" onClick={() => { setCentroResult(null); setCentroError(''); setCentroDialogOpen(true); }} className="gap-2">
+                                    <Building2 className="h-3.5 w-3.5" />
+                                    Aplicar a centro de trabajo
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -790,11 +855,106 @@ export default function CalendarioIndex({ employees, anio, empleadoId, eventos, 
                         <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
                             <CalendarDays className="h-10 w-10 opacity-20" />
                             <p className="text-sm font-medium">Selecciona un empleado para ver su calendario</p>
-                            <p className="text-xs">Elige también el año y pulsa "Ver calendario"</p>
+                            <p className="text-xs">Elige también el año para cargar los datos</p>
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* ── Dialog: Aplicar a centro de trabajo ── */}
+            <Dialog open={centroDialogOpen} onOpenChange={(v) => { if (!v) setCentroDialogOpen(false); }}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            Aplicar a centro de trabajo
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-4 pt-1">
+                        {/* Centro */}
+                        <div className="grid gap-1.5">
+                            <Label className="text-xs font-medium">Centro de trabajo</Label>
+                            <Select value={centroId} onValueChange={(v) => { setCentroId(v); setCentroError(''); }}>
+                                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar centro..." /></SelectTrigger>
+                                <SelectContent>
+                                    {centros.map((c) => (
+                                        <SelectItem key={c.id} value={String(c.id)}>{c.nombre}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Tipo */}
+                        <div className="grid gap-1.5">
+                            <Label className="text-xs font-medium">Tipo</Label>
+                            <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setCentroTipo('festivo')}
+                                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${centroTipo === 'festivo' ? 'bg-pink-100 text-pink-800 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Festivo
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCentroTipo('vacacion')}
+                                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${centroTipo === 'vacacion' ? 'bg-blue-100 text-blue-800 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    Vacación
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Motivo (festivo) */}
+                        {centroTipo === 'festivo' && (
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs font-medium">Nombre del festivo (opcional)</Label>
+                                <Input
+                                    value={centroMotivo}
+                                    onChange={(e) => setCentroMotivo(e.target.value)}
+                                    placeholder="Ej: Navidad, Día de la Comunidad..."
+                                    className="h-9"
+                                />
+                            </div>
+                        )}
+
+                        {/* Fechas */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs font-medium">Desde *</Label>
+                                <Input type="date" value={centroDesde} onChange={(e) => setCentroDesde(e.target.value)} className="h-9" />
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs font-medium">Hasta *</Label>
+                                <Input type="date" value={centroHasta} min={centroDesde} onChange={(e) => setCentroHasta(e.target.value)} className="h-9" />
+                            </div>
+                        </div>
+
+                        {centroError && (
+                            <p className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                                {centroError}
+                            </p>
+                        )}
+
+                        <div className="flex justify-end gap-2 pt-1">
+                            <Button variant="outline" size="sm" onClick={() => setCentroDialogOpen(false)}>
+                                Cancelar
+                            </Button>
+                            <Button size="sm" onClick={handleStoreCentro} disabled={centroSaving} className="gap-1.5">
+                                <Building2 className="h-3.5 w-3.5" />
+                                {centroSaving ? 'Aplicando...' : 'Aplicar a todos'}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {centroResult && (
+                <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
+                    {centroResult}
+                </div>
+            )}
 
             {selectedEmpleadoId && (
                 <EventoDialog

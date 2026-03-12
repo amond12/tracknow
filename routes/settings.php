@@ -3,6 +3,7 @@
 use App\Http\Middleware\BlockEmployeeAccess;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\TrabajoController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(BlockEmployeeAccess::class)->group(function () {
         Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+        Route::get('settings/trabajo', [TrabajoController::class, 'edit'])->name('trabajo.edit');
+        Route::patch('settings/trabajo', [TrabajoController::class, 'update'])->name('trabajo.update');
     });
 });
 

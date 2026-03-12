@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
+use App\Models\HorasExtraLog;
+use App\Models\User;
 use App\Models\WorkCenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -81,7 +84,21 @@ class CentroController extends Controller
     {
         abort_if($centro->company->user_id !== $request->user()->id, 403);
 
-        $centro->delete();
+        DB::transaction(function () use ($centro, $request) {
+            $admin = $request->user();
+
+            if ($admin->work_center_id === $centro->id) {
+                $admin->resumenDiario()->delete();
+                HorasExtraLog::where('user_id', $admin->id)->delete();
+                $admin->update(['work_center_id' => null]);
+            }
+
+            User::where('work_center_id', $centro->id)
+                ->whereIn('role', ['empleado', 'encargado'])
+                ->delete();
+
+            $centro->delete();
+        });
 
         return redirect()->back();
     }

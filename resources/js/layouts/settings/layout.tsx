@@ -23,6 +23,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                       href: edit(),
                       icon: null,
                   },
+                  {
+                      title: 'Trabajo',
+                      href: '/settings/trabajo',
+                      icon: null,
+                  },
               ]
             : []),
         {

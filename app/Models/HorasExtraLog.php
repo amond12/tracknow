@@ -5,23 +5,26 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ResumenDiario extends Model
+class HorasExtraLog extends Model
 {
-    protected $table = 'resumen_diario';
+    public $timestamps = false;
+
+    const UPDATED_AT = null;
+
+    protected $table = 'horas_extra_log';
 
     protected $fillable = [
         'user_id',
         'fecha',
         'horas_trabajadas',
         'horas_extra',
-        'origen',
+        'accion',
         'admin_id',
     ];
 
     protected $casts = [
-        'fecha'            => 'date',
-        'horas_trabajadas' => 'integer',
-        'horas_extra'      => 'integer',
+        'fecha'      => 'date',
+        'created_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

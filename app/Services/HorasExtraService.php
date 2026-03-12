@@ -47,13 +47,38 @@ class HorasExtraService
             $totalTrabajado += $this->calcularSegundosEnDia($f, $fecha);
         }
 
+        // No sobreescribir entradas manuales creadas por un administrador
+        $existing = ResumenDiario::where('user_id', $user->id)
+            ->where('fecha', $fecha->toDateString())
+            ->first();
+
+        if ($existing && $existing->origen === 'manual') {
+            return;
+        }
+
         $previsto = $user->horarioPrevistoDia($fecha);
         $extra    = $totalTrabajado - $previsto;
 
         ResumenDiario::updateOrCreate(
             ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-            ['horas_trabajadas' => $totalTrabajado, 'horas_extra' => $extra]
+            ['horas_trabajadas' => $totalTrabajado, 'horas_extra' => $extra, 'origen' => 'auto', 'admin_id' => null]
         );
+    }
+
+    /**
+     * Suma los segundos trabajados por un empleado en un día natural
+     * consultando sus fichajes finalizados. Devuelve 0 si no hay fichajes.
+     */
+    public function calcularHorasTrabajadas(User $user, Carbon $fecha): int
+    {
+        $fichajes = $this->fichajesQueTocanDia($user->id, $fecha);
+
+        $total = 0;
+        foreach ($fichajes as $fichaje) {
+            $total += $this->calcularSegundosEnDia($fichaje, $fecha);
+        }
+
+        return $total;
     }
 
     /**

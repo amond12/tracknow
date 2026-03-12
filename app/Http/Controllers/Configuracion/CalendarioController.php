@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Fichaje;
 use App\Models\User;
 use App\Models\Vacacion;
+use App\Models\WorkCenter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class CalendarioController extends Controller
                 $q->whereIn('company_id', $companyIds)
                   ->whereIn('role', ['empleado', 'encargado']);
             })
+            ->orWhere('id', $user->id)
             ->orderBy('apellido')
             ->orderBy('name')
             ->get(['id', 'name', 'apellido']);
@@ -62,8 +64,13 @@ class CalendarioController extends Controller
                 ->toArray();
         }
 
+        $centros = WorkCenter::whereIn('company_id', $companyIds)
+            ->orderBy('nombre')
+            ->get(['id', 'company_id', 'nombre']);
+
         return Inertia::render('configuracion/calendario/index', [
             'employees'  => $employees,
+            'centros'    => $centros,
             'anio'       => $anio,
             'empleadoId' => $empleadoId ? (int) $empleadoId : null,
             'eventos'    => $eventos,
@@ -181,6 +188,61 @@ class CalendarioController extends Controller
         $vacacion->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    public function storeCentro(Request $request)
+    {
+        $validated = $request->validate([
+            'centro_id'    => 'required|integer|exists:work_centers,id',
+            'tipo'         => 'required|in:vacacion,festivo',
+            'motivo'       => 'nullable|string|max:500',
+            'fecha_inicio' => 'required|date_format:Y-m-d',
+            'fecha_fin'    => 'required|date_format:Y-m-d|after_or_equal:fecha_inicio',
+        ]);
+
+        $user = $request->user();
+        $companyIds = Company::where('user_id', $user->id)->pluck('id');
+        $centro = WorkCenter::findOrFail($validated['centro_id']);
+        abort_if(!$companyIds->contains($centro->company_id), 403);
+
+        $inicio = Carbon::parse($validated['fecha_inicio']);
+        $fin    = Carbon::parse($validated['fecha_fin']);
+        if ($fin->diffInDays($inicio) > 90) {
+            return response()->json(['message' => 'El rango no puede superar 90 días.'], 422);
+        }
+
+        $empleadoIds = User::where('work_center_id', $validated['centro_id'])
+            ->whereIn('role', ['empleado', 'encargado'])
+            ->pluck('id');
+
+        if ($empleadoIds->isEmpty()) {
+            return response()->json(['message' => 'Este centro no tiene empleados asignados.'], 422);
+        }
+
+        $totalDias = 0;
+        $current = $inicio->copy();
+        while ($current->lte($fin)) {
+            foreach ($empleadoIds as $empId) {
+                Vacacion::updateOrCreate(
+                    ['user_id' => $empId, 'fecha' => $current->toDateString()],
+                    [
+                        'tipo'        => $validated['tipo'],
+                        'motivo'      => $validated['motivo'] ?? null,
+                        'dia_completo' => true,
+                        'hora_inicio' => null,
+                        'hora_fin'    => null,
+                    ]
+                );
+            }
+            $totalDias++;
+            $current->addDay();
+        }
+
+        return response()->json([
+            'success'         => true,
+            'total_empleados' => $empleadoIds->count(),
+            'total_dias'      => $totalDias,
+        ]);
     }
 
     public function downloadPdf(Request $request, User $empleado)

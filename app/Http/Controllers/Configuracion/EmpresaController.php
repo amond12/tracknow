@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\HorasExtraLog;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -60,7 +61,15 @@ class EmpresaController extends Controller
     {
         abort_if($empresa->user_id !== $request->user()->id, 403);
 
-        DB::transaction(function () use ($empresa) {
+        DB::transaction(function () use ($empresa, $request) {
+            $admin = $request->user();
+
+            if ($admin->company_id === $empresa->id) {
+                $admin->resumenDiario()->delete();
+                HorasExtraLog::where('user_id', $admin->id)->delete();
+                $admin->update(['work_center_id' => null]);
+            }
+
             User::where('company_id', $empresa->id)
                 ->whereIn('role', ['empleado', 'encargado'])
                 ->delete();
