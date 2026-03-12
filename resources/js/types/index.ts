@@ -13,6 +13,8 @@ export type Company = {
     cp: string;
     created_at: string;
     updated_at: string;
+    work_centers_count?: number;
+    empleados_count?: number;
 };
 
 export type WorkCenter = {
@@ -30,6 +32,7 @@ export type WorkCenter = {
     ips?: string[] | null;
     created_at: string;
     updated_at: string;
+    users_count?: number;
 };
 
 export type Pausa = {

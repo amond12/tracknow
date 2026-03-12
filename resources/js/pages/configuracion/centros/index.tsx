@@ -204,6 +204,7 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<WorkCenterWithCompany | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<WorkCenterWithCompany | null>(null);
+    const [deleteConfirm, setDeleteConfirm] = useState('');
 
     const createForm = useForm<CentroFormData>(emptyForm);
     const editForm = useForm<CentroFormData>(emptyForm);
@@ -244,9 +245,12 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
     }
 
     function handleDelete() {
-        if (!deleteTarget) return;
+        if (!deleteTarget || deleteConfirm !== 'ELIMINAR') return;
         router.delete(`/configuracion/centros/${deleteTarget.id}`, {
-            onSuccess: () => setDeleteTarget(null),
+            onSuccess: () => {
+                setDeleteTarget(null);
+                setDeleteConfirm('');
+            },
         });
     }
 
@@ -370,20 +374,49 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
             </Dialog>
 
             {/* Dialog: Confirmar eliminación */}
-            <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+            <Dialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteTarget(null);
+                        setDeleteConfirm('');
+                    }
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Eliminar centro de trabajo</DialogTitle>
                     </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        ¿Estás seguro de que quieres eliminar{' '}
-                        <strong>{deleteTarget?.nombre}</strong>? Esta acción no se puede deshacer.
-                    </p>
+                    <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+                        Antes de continuar, te recomendamos exportar los datos de este centro.
+                        Una vez eliminado no podremos recuperarlos.
+                    </div>
+                    <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 space-y-1">
+                        <p className="font-medium">Se eliminará permanentemente:</p>
+                        <ul className="list-disc list-inside space-y-0.5">
+                            <li>El centro <strong>{deleteTarget?.nombre}</strong></li>
+                            {(deleteTarget?.users_count ?? 0) > 0 && (
+                                <li>{deleteTarget?.users_count} empleado{deleteTarget?.users_count !== 1 ? 's' : ''}</li>
+                            )}
+                        </ul>
+                    </div>
+                    <div className="space-y-1">
+                        <Label htmlFor="delete-confirm">
+                            Escribe <strong>ELIMINAR</strong> para confirmar
+                        </Label>
+                        <Input
+                            id="delete-confirm"
+                            value={deleteConfirm}
+                            onChange={(e) => setDeleteConfirm(e.target.value)}
+                            placeholder="ELIMINAR"
+                            autoComplete="off"
+                        />
+                    </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                        <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteConfirm(''); }}>
                             Cancelar
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete}>
+                        <Button variant="destructive" onClick={handleDelete} disabled={deleteConfirm !== 'ELIMINAR'}>
                             Eliminar
                         </Button>
                     </DialogFooter>

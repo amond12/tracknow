@@ -16,7 +16,10 @@ class EmpresaController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companies = $request->user()->companies()->orderBy('nombre')->get();
+        $companies = $request->user()->companies()
+            ->withCount(['workCenters', 'empleados'])
+            ->orderBy('nombre')
+            ->get();
 
         return Inertia::render('configuracion/empresas/index', [
             'companies' => $companies,

@@ -28,7 +28,7 @@ Route::middleware(['auth', 'verified', BlockEmployeeAccess::class])->prefix('con
 });
 
 Route::middleware(['auth', 'verified', BlockEmployeeAccess::class])->group(function () {
-    Route::get('fichajes', [FichajeController::class, 'index'])->name('fichajes.index');
+    Route::get('fichajes', [FichajeController::class, 'index'])->middleware('throttle:config-filters')->name('fichajes.index');
     Route::post('fichajes', [FichajeController::class, 'store'])->name('fichajes.store');
     Route::put('fichajes/{fichaje}/jornada', [FichajeController::class, 'updateJornada'])->name('fichajes.updateJornada');
     Route::post('fichajes/{fichaje}/pausas', [FichajeController::class, 'storePausa'])->name('fichajes.storePausa');
@@ -37,10 +37,10 @@ Route::middleware(['auth', 'verified', BlockEmployeeAccess::class])->group(funct
     Route::post('fichajes/{fichaje}/finalizar', [FichajeController::class, 'finalizarAdmin'])->name('fichajes.finalizarAdmin');
     Route::delete('fichajes/{fichaje}', [FichajeController::class, 'destroy'])->name('fichajes.destroy');
 
-    Route::get('pdfs', [PdfController::class, 'index'])->name('pdfs.index');
+    Route::get('pdfs', [PdfController::class, 'index'])->middleware('throttle:config-filters')->name('pdfs.index');
     Route::get('pdfs/{empleado}/download', [PdfController::class, 'download'])->name('pdfs.download');
 
-    Route::get('horas-extra', [HorasExtraController::class, 'index'])->name('horas-extra.index');
+    Route::get('horas-extra', [HorasExtraController::class, 'index'])->middleware('throttle:config-filters')->name('horas-extra.index');
     Route::post('horas-extra', [HorasExtraController::class, 'store'])->name('horas-extra.store');
     Route::delete('horas-extra/{resumenDiario}', [HorasExtraController::class, 'destroy'])->name('horas-extra.destroy');
 

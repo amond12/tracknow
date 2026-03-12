@@ -2,14 +2,14 @@ import { Head, router } from '@inertiajs/react';
 import { Building2, Calendar, Filter, Plus, Search, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -105,6 +105,7 @@ export default function HorasExtraIndex({ companies, workCenters, employees, reg
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
+    const skipAutoFilterRef = useRef(true);
 
     const initialEmpleado = filters.empleado_id
         ? employees.find((e) => e.id === Number(filters.empleado_id))
@@ -155,14 +156,6 @@ export default function HorasExtraIndex({ companies, workCenters, employees, reg
         setEmpleadoId('all');
     }
 
-    function handleFilter() {
-        const params: Record<string, string> = { mes: mesSeleccionado, anio: anioSeleccionado };
-        if (empresaId !== 'all') params.empresa_id = empresaId;
-        if (centroId !== 'all')  params.centro_id  = centroId;
-        if (empleadoId !== 'all') params.empleado_id = empleadoId;
-        router.get('/horas-extra', params, { preserveState: true });
-    }
-
     function handleReset() {
         setEmpresaId('all');
         setCentroId('all');
@@ -170,8 +163,25 @@ export default function HorasExtraIndex({ companies, workCenters, employees, reg
         setEmpleadoSearch('');
         setMesSeleccionado(String(new Date().getMonth() + 1));
         setAnioSeleccionado(String(new Date().getFullYear()));
-        router.get('/horas-extra', {}, { preserveState: false });
     }
+
+    useEffect(() => {
+        if (skipAutoFilterRef.current) {
+            skipAutoFilterRef.current = false;
+            return;
+        }
+
+        const params: Record<string, string> = { mes: mesSeleccionado, anio: anioSeleccionado };
+        if (empresaId !== 'all') params.empresa_id = empresaId;
+        if (centroId !== 'all')  params.centro_id  = centroId;
+        if (empleadoId !== 'all') params.empleado_id = empleadoId;
+
+        router.get('/horas-extra', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    }, [empresaId, centroId, empleadoId, mesSeleccionado, anioSeleccionado]);
 
     const hasActiveFilters = empresaId !== 'all' || centroId !== 'all' || empleadoId !== 'all';
     const mesLabel = MESES.find((m) => m.value === mesSeleccionado)?.label ?? '';
@@ -369,14 +379,11 @@ export default function HorasExtraIndex({ companies, workCenters, employees, reg
                         </div>
 
                         <div className="mt-4 flex items-center gap-2">
-                            <Button size="sm" onClick={handleFilter} className="gap-2">
-                                <Search className="h-3.5 w-3.5" />
-                                Filtrar
-                            </Button>
                             <Button size="sm" variant="outline" onClick={handleReset} className="gap-2">
                                 <X className="h-3.5 w-3.5" />
                                 Limpiar
                             </Button>
+                            <span className="text-xs text-muted-foreground">Los filtros se aplican automáticamente.</span>
                         </div>
                     </div>
                 </div>

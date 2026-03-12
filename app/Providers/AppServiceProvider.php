@@ -3,8 +3,11 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\URL;
@@ -25,9 +28,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureRateLimiting();
+
         if (config('app.env') === 'production') {
-        URL::forceScheme('https');
-    }
+            URL::forceScheme('https');
+        }
     }
 
     /**
@@ -50,5 +55,25 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    /**
+     * Configure custom application rate limiters.
+     */
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('config-filters', function (Request $request): array {
+            $userPart = $request->user()?->id ? 'user:'.$request->user()->id : 'guest';
+            $ipPart = $request->ip() ?? 'no-ip';
+            $routePart = $request->route()?->getName() ?? $request->path();
+            $key = "{$userPart}|{$ipPart}|{$routePart}";
+
+            return [
+                // Burst limit (e.g. bots toggling filters aggressively).
+                Limit::perSecond(20, 10)->by("burst:{$key}"),
+                // Sustained rate limit.
+                Limit::perMinute(120)->by("minute:{$key}"),
+            ];
+        });
     }
 }

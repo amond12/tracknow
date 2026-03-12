@@ -84,6 +84,7 @@ export default function PdfsIndex({ companies, workCenters, employees, resumen, 
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
+    const skipAutoFilterRef = useRef(true);
 
     const initialEmpleado = filters.empleado_id
         ? employees.find((e) => e.id === Number(filters.empleado_id))
@@ -134,17 +135,6 @@ export default function PdfsIndex({ companies, workCenters, employees, resumen, 
         setEmpleadoId('all');
     }
 
-    function handleFilter() {
-        const params: Record<string, string> = {
-            mes: mesSeleccionado,
-            anio: anioSeleccionado,
-        };
-        if (empresaId !== 'all') params.empresa_id = empresaId;
-        if (centroId !== 'all')  params.centro_id  = centroId;
-        if (empleadoId !== 'all') params.empleado_id = empleadoId;
-        router.get('/pdfs', params, { preserveState: true });
-    }
-
     function handleReset() {
         setEmpresaId('all');
         setCentroId('all');
@@ -152,8 +142,28 @@ export default function PdfsIndex({ companies, workCenters, employees, resumen, 
         setEmpleadoSearch('');
         setMesSeleccionado(String(new Date().getMonth() + 1));
         setAnioSeleccionado(String(new Date().getFullYear()));
-        router.get('/pdfs', {}, { preserveState: false });
     }
+
+    useEffect(() => {
+        if (skipAutoFilterRef.current) {
+            skipAutoFilterRef.current = false;
+            return;
+        }
+
+        const params: Record<string, string> = {
+            mes: mesSeleccionado,
+            anio: anioSeleccionado,
+        };
+        if (empresaId !== 'all') params.empresa_id = empresaId;
+        if (centroId !== 'all')  params.centro_id  = centroId;
+        if (empleadoId !== 'all') params.empleado_id = empleadoId;
+
+        router.get('/pdfs', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
+    }, [empresaId, centroId, empleadoId, mesSeleccionado, anioSeleccionado]);
 
     function pdfUrl(id: number): string {
         return `/pdfs/${id}/download?mes=${mesSeleccionado}&anio=${anioSeleccionado}`;
@@ -335,14 +345,11 @@ export default function PdfsIndex({ companies, workCenters, employees, resumen, 
                         </div>
 
                         <div className="mt-4 flex items-center gap-2">
-                            <Button size="sm" onClick={handleFilter} className="gap-2">
-                                <Search className="h-3.5 w-3.5" />
-                                Filtrar
-                            </Button>
                             <Button size="sm" variant="outline" onClick={handleReset} className="gap-2">
                                 <X className="h-3.5 w-3.5" />
                                 Limpiar
                             </Button>
+                            <span className="text-xs text-muted-foreground">Los filtros se aplican automáticamente.</span>
                         </div>
                     </div>
                 </div>

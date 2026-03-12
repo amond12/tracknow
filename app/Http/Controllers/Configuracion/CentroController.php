@@ -20,6 +20,7 @@ class CentroController extends Controller
 
         $workCenters = WorkCenter::whereHas('company', fn ($q) => $q->where('user_id', $user->id))
             ->with('company:id,nombre')
+            ->withCount('users')
             ->orderBy('nombre')
             ->get();
 
