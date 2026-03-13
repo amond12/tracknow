@@ -75,6 +75,7 @@ class FicharController extends Controller
         $request->validate([
             'lat' => 'nullable|numeric',
             'lng' => 'nullable|numeric',
+            'accuracy' => 'nullable|numeric|min:0|max:1000',
             'ip_publica' => 'nullable|string|max:45',
         ]);
 
@@ -112,6 +113,7 @@ class FicharController extends Controller
         $request->validate([
             'lat' => 'nullable|numeric',
             'lng' => 'nullable|numeric',
+            'accuracy' => 'nullable|numeric|min:0|max:1000',
             'ip_publica' => 'nullable|string|max:45',
         ]);
 
@@ -187,6 +189,7 @@ class FicharController extends Controller
         $request->validate([
             'lat' => 'nullable|numeric',
             'lng' => 'nullable|numeric',
+            'accuracy' => 'nullable|numeric|min:0|max:1000',
             'ip_publica' => 'nullable|string|max:45',
         ]);
 
@@ -321,34 +324,44 @@ class FicharController extends Controller
 
         // Verificar por IP (servidor + IP pública detectada por el cliente)
         $ips = $workCenter->ips ?? [];
+        $distancia = null;
+        $radio = $workCenter->radio ?? 100;
+        $accuracy = $request->filled('accuracy') ? (float) $request->input('accuracy') : null;
         $ipsAComprobar = array_filter(array_unique([
             $request->ip(),
             $request->input('ip_publica'),
         ]));
         foreach ($ipsAComprobar as $ip) {
-            if (in_array($ip, $ips)) {
+            if (in_array($ip, $ips, true)) {
                 return null;
             }
         }
 
         // Verificar por geolocalización
-        if ($request->filled('lat') && $request->filled('lng') && $workCenter->lat && $workCenter->lng) {
+        if ($request->filled('lat') && $request->filled('lng') && $workCenter->lat !== null && $workCenter->lng !== null) {
             $distancia = $this->haversine(
                 (float) $request->lat,
                 (float) $request->lng,
                 (float) $workCenter->lat,
                 (float) $workCenter->lng
             );
-            $radio = $workCenter->radio ?? 100;
             if ($distancia <= $radio) {
                 return null;
             }
         }
 
         // Mensaje descriptivo para facilitar el diagnóstico
+        $detalleDistancia = '';
+        if ($distancia !== null) {
+            $detalleDistancia = ' Distancia detectada: '.round($distancia).' m. Radio permitido: '.round($radio).' m.';
+            if ($accuracy !== null) {
+                $detalleDistancia .= ' Precisión GPS reportada: ±'.round($accuracy).' m.';
+            }
+        }
+
         $ipServidor = $request->ip();
         $ipPublica = $request->input('ip_publica', '—');
-        return "No estás en el centro de trabajo. IP detectada: {$ipPublica} (servidor: {$ipServidor}). Verifica las IPs registradas en el centro o activa la geolocalización.";
+        return "No estás en el centro de trabajo.{$detalleDistancia} IP detectada: {$ipPublica} (servidor: {$ipServidor}). Verifica las IPs registradas en el centro o activa la geolocalización.";
     }
 
     private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float

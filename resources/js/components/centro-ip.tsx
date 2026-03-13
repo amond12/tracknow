@@ -44,42 +44,43 @@ export function CentroIP({ ipsIniciales, onIPs }: Props) {
 
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-sm text-amber-600 dark:text-amber-400">
+            <p className="text-xs text-amber-600">
                 ⚠️ Asegúrate de estar conectado a la red del centro antes de detectar la IP
             </p>
-            <div>
+            <div className="flex items-center gap-2 flex-wrap">
                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handleDetectarIP}
                     disabled={detecting}
+                    className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 hover:-translate-y-px transition-all"
                 >
                     {detecting ? 'Detectando...' : '🌐 Detectar IP'}
                 </Button>
-            </div>
-            {mensaje && <p className="text-sm text-muted-foreground">{mensaje}</p>}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {ips.length > 0 && (
-                <ul className="flex flex-col gap-1">
-                    {ips.map((ip) => (
-                        <li
-                            key={ip}
-                            className="flex items-center justify-between rounded-md border px-3 py-1.5 text-sm"
-                        >
-                            <span className="font-mono">{ip}</span>
-                            <button
-                                type="button"
-                                onClick={() => handleRemove(ip)}
-                                className="ml-2 text-muted-foreground hover:text-destructive"
-                                aria-label={`Eliminar IP ${ip}`}
+                {ips.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {ips.map((ip) => (
+                            <span
+                                key={ip}
+                                className="inline-flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 font-mono text-xs px-2.5 py-1 rounded-lg"
                             >
-                                ✕
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
+                                {ip}
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemove(ip)}
+                                    className="text-blue-400 hover:text-red-500 transition-colors leading-none"
+                                    aria-label={`Eliminar IP ${ip}`}
+                                >
+                                    ✕
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                )}
+            </div>
+            {mensaje && <p className="text-xs text-muted-foreground">{mensaje}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
     );
 }

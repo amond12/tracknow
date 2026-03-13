@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Building2, Info, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { CentroIP } from '@/components/centro-ip';
 import { CentroLocalizador } from '@/components/centro-localizador';
@@ -67,6 +67,64 @@ const emptyForm: CentroFormData = {
     ips: [],
 };
 
+// ── Tooltip ──────────────────────────────────────────────────────────────────
+function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+    const [visible, setVisible] = useState(false);
+    return (
+        <span className="relative inline-flex items-center">
+            <span
+                onMouseEnter={() => setVisible(true)}
+                onMouseLeave={() => setVisible(false)}
+                className="cursor-help"
+            >
+                {children}
+            </span>
+            {visible && (
+                <span
+                    className="absolute bottom-full left-1/2 z-50 mb-2 w-72 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-left text-xs leading-relaxed text-white shadow-lg sm:w-80"
+                    style={{ pointerEvents: 'none', whiteSpace: 'normal' }}
+                >
+                    {text}
+                    <span
+                        style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            borderWidth: 5,
+                            borderStyle: 'solid',
+                            borderColor: '#111827 transparent transparent transparent',
+                        }}
+                    />
+                </span>
+            )}
+        </span>
+    );
+}
+
+function InfoChip({ text }: { text: string }) {
+    return (
+        <Tooltip text={text}>
+            <span className="inline-flex cursor-help items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground/70 transition-colors hover:bg-violet-50 hover:text-violet-600">
+                <Info className="h-3 w-3" /> ¿Para qué sirve?
+            </span>
+        </Tooltip>
+    );
+}
+
+function SectionDivider({ label }: { label: string }) {
+    return (
+        <div className="my-1 flex items-center gap-2">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                {label}
+            </span>
+            <div className="h-px flex-1 bg-border" />
+        </div>
+    );
+}
+
+// ── CentroForm ────────────────────────────────────────────────────────────────
 function CentroForm({
     data,
     setData,
@@ -79,7 +137,7 @@ function CentroForm({
 }: {
     data: CentroFormData;
     setData: <K extends keyof CentroFormData>(field: K, value: CentroFormData[K]) => void;
-    errors: Partial<CentroFormData>;
+    errors: Partial<Record<keyof CentroFormData, string>>;
     processing: boolean;
     onSubmit: (e: React.FormEvent) => void;
     onCancel: () => void;
@@ -88,8 +146,12 @@ function CentroForm({
 }) {
     return (
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div className="grid gap-2">
-                <Label htmlFor="company_id">Empresa</Label>
+
+            {/* Empresa */}
+            <div className="grid gap-1.5">
+                <Label htmlFor="company_id" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Empresa
+                </Label>
                 <Select
                     value={data.company_id ? String(data.company_id) : ''}
                     onValueChange={(v) => setData('company_id', v)}
@@ -108,85 +170,142 @@ function CentroForm({
                 </Select>
                 <InputError message={errors.company_id} />
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="nombre">Nombre del centro</Label>
+
+            {/* Nombre */}
+            <div className="grid gap-1.5">
+                <Label htmlFor="nombre" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Nombre del centro
+                </Label>
                 <Input
                     id="nombre"
                     value={data.nombre}
                     onChange={(e) => setData('nombre', e.target.value)}
+                    placeholder="Ej: Oficina Madrid Centro"
                     required
                     autoFocus
                 />
                 <InputError message={errors.nombre} />
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="pais">País</Label>
-                <Input
-                    id="pais"
-                    value={data.pais}
-                    onChange={(e) => setData('pais', e.target.value)}
-                    required
-                />
-                <InputError message={errors.pais} />
+
+            {/* País / Provincia */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                    <Label htmlFor="pais" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        País
+                    </Label>
+                    <Input
+                        id="pais"
+                        value={data.pais}
+                        onChange={(e) => setData('pais', e.target.value)}
+                        required
+                    />
+                    <InputError message={errors.pais} />
+                </div>
+                <div className="grid gap-1.5">
+                    <Label htmlFor="provincia" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Provincia
+                    </Label>
+                    <Input
+                        id="provincia"
+                        value={data.provincia}
+                        onChange={(e) => setData('provincia', e.target.value)}
+                        required
+                    />
+                    <InputError message={errors.provincia} />
+                </div>
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="provincia">Provincia / Estado</Label>
-                <Input
-                    id="provincia"
-                    value={data.provincia}
-                    onChange={(e) => setData('provincia', e.target.value)}
-                    required
-                />
-                <InputError message={errors.provincia} />
+
+            {/* Población / CP */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                    <Label htmlFor="poblacion" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Población
+                    </Label>
+                    <Input
+                        id="poblacion"
+                        value={data.poblacion}
+                        onChange={(e) => setData('poblacion', e.target.value)}
+                        required
+                    />
+                    <InputError message={errors.poblacion} />
+                </div>
+                <div className="grid gap-1.5">
+                    <Label htmlFor="cp" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Código postal
+                    </Label>
+                    <Input
+                        id="cp"
+                        value={data.cp}
+                        onChange={(e) => setData('cp', e.target.value)}
+                        required
+                    />
+                    <InputError message={errors.cp} />
+                </div>
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="poblacion">Población</Label>
-                <Input
-                    id="poblacion"
-                    value={data.poblacion}
-                    onChange={(e) => setData('poblacion', e.target.value)}
-                    required
-                />
-                <InputError message={errors.poblacion} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="direccion">Dirección</Label>
+
+            {/* Dirección */}
+            <div className="grid gap-1.5">
+                <Label htmlFor="direccion" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Dirección
+                </Label>
                 <Input
                     id="direccion"
                     value={data.direccion}
                     onChange={(e) => setData('direccion', e.target.value)}
+                    placeholder="Calle Gran Vía 28"
                     required
                 />
                 <InputError message={errors.direccion} />
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="cp">Código postal</Label>
-                <Input
-                    id="cp"
-                    value={data.cp}
-                    onChange={(e) => setData('cp', e.target.value)}
-                    required
-                />
-                <InputError message={errors.cp} />
-            </div>
-            <div className="grid gap-2">
-                <Label>Localización en el mapa</Label>
+
+            <SectionDivider label="Control de presencia" />
+
+            {/* Card: Localización */}
+            <div className="rounded-xl border bg-muted/20 p-4">
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
+                    📍 Localización en el mapa
+                    <InfoChip text="Fija la ubicación exacta del centro en el mapa. Se usa para verificar que los fichajes se realizan dentro del área permitida." />
+                </div>
+                <p className="mb-3 text-xs text-muted-foreground">
+                    Marca el punto exacto del centro para validar fichajes por proximidad.
+                </p>
                 <CentroLocalizador
-                    direccion={[data.direccion, data.poblacion, data.provincia, data.cp, data.pais].filter(Boolean).join(', ')}
+                    direccion={data.direccion}
+                    poblacion={data.poblacion}
+                    provincia={data.provincia}
+                    cp={data.cp}
+                    pais={data.pais}
+                    initialLat={data.lat ? Number(data.lat) : null}
+                    initialLng={data.lng ? Number(data.lng) : null}
+                    initialRadio={data.radio ? Number(data.radio) : 100}
                     onCoordenadas={(lat, lng, radio) => {
                         setData('lat', String(lat));
                         setData('lng', String(lng));
                         setData('radio', String(radio));
                     }}
+                    onRadioChange={(radio) => setData('radio', String(radio))}
+                    onLimpiar={() => {
+                        setData('lat', '');
+                        setData('lng', '');
+                    }}
                 />
             </div>
-            <div className="grid gap-2">
-                <Label>IPs autorizadas</Label>
+
+            {/* Card: IPs autorizadas */}
+            <div className="rounded-xl border bg-muted/20 p-4">
+                <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
+                    🔐 IPs autorizadas
+                    <InfoChip text="Permite que los empleados solo puedan fichar cuando estén conectados a la red Wi-Fi del centro. Conéctate primero a esa red antes de detectar la IP." />
+                </div>
+                <p className="mb-3 text-xs text-muted-foreground">
+                    Restringe el fichaje a la red Wi-Fi de este centro. Conéctate primero a esa red.
+                </p>
                 <CentroIP
                     ipsIniciales={data.ips}
                     onIPs={(ips) => setData('ips', ips)}
                 />
             </div>
+
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={onCancel}>
                     Cancelar
@@ -200,6 +319,7 @@ function CentroForm({
     );
 }
 
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function CentrosIndex({ workCenters, companies }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<WorkCenterWithCompany | null>(null);
@@ -337,9 +457,16 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
 
             {/* Dialog: Crear */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Nuevo centro de trabajo</DialogTitle>
+                        <div className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-full border border-violet-200 bg-violet-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-violet-700">
+                            <Building2 className="h-3 w-3" />
+                            Centro de trabajo
+                        </div>
+                        <DialogTitle>Nuevo centro</DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Configura los datos y el acceso de esta ubicación
+                        </p>
                     </DialogHeader>
                     <CentroForm
                         data={createForm.data}
@@ -356,9 +483,16 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
 
             {/* Dialog: Editar */}
             <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Editar centro de trabajo</DialogTitle>
+                        <div className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-full border border-violet-200 bg-violet-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-violet-700">
+                            <Building2 className="h-3 w-3" />
+                            Centro de trabajo
+                        </div>
+                        <DialogTitle>Editar centro</DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Configura los datos y el acceso de esta ubicación
+                        </p>
                     </DialogHeader>
                     <CentroForm
                         data={editForm.data}
@@ -391,9 +525,9 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
                         Antes de continuar, te recomendamos exportar los datos de este centro.
                         Una vez eliminado no podremos recuperarlos.
                     </div>
-                    <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 space-y-1">
+                    <div className="space-y-1 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                         <p className="font-medium">Se eliminará permanentemente:</p>
-                        <ul className="list-disc list-inside space-y-0.5">
+                        <ul className="list-inside list-disc space-y-0.5">
                             <li>El centro <strong>{deleteTarget?.nombre}</strong></li>
                             {(deleteTarget?.users_count ?? 0) > 0 && (
                                 <li>{deleteTarget?.users_count} empleado{deleteTarget?.users_count !== 1 ? 's' : ''}</li>

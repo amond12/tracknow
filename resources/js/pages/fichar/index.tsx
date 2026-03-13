@@ -35,7 +35,7 @@ function formatDate(dt: string): string {
     return new Date(dt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-type LocationState = { lat: number; lng: number } | null;
+type LocationState = { lat: number; lng: number; accuracy: number } | null;
 
 export default function FicharPage() {
     const { props } = usePage<{
@@ -74,9 +74,9 @@ export default function FicharPage() {
         return () => { if (clockRef.current) clearInterval(clockRef.current); };
     }, [accionPendiente]);
 
-    const iniciarForm = useForm({ lat: '', lng: '', ip_publica: '' });
-    const pausaForm = useForm({ lat: '', lng: '', ip_publica: '' });
-    const finalizarForm = useForm({ lat: '', lng: '', ip_publica: '' });
+    const iniciarForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
+    const pausaForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
+    const finalizarForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
 
     useEffect(() => {
         fetch('https://api.ipify.org?format=json')
@@ -97,7 +97,11 @@ export default function FicharPage() {
                 setGeoLoading(true);
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                        const currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                        const currentLocation = {
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude,
+                            accuracy: pos.coords.accuracy,
+                        };
                         setLocation(currentLocation);
                         setGeoError(null);
                         setGeoLoading(false);
@@ -164,6 +168,7 @@ export default function FicharPage() {
     const getPayload = (currentLocation: LocationState) => ({
         lat: currentLocation ? String(currentLocation.lat) : '',
         lng: currentLocation ? String(currentLocation.lng) : '',
+        accuracy: currentLocation ? String(Math.round(currentLocation.accuracy)) : '',
         ip_publica: ipPublica,
     });
 
@@ -289,7 +294,7 @@ export default function FicharPage() {
                                 )}
                                 <AlertDescription>
                                     {geoLoading && 'Obteniendo ubicación...'}
-                                    {!geoLoading && location && `Ubicación detectada (${location.lat.toFixed(5)}, ${location.lng.toFixed(5)})`}
+                                    {!geoLoading && location && `Ubicación detectada (${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}) ±${Math.round(location.accuracy)} m`}
                                     {!geoLoading && !location && (geoError ?? 'Ubicación no disponible. Se verificará por IP.')}
                                     {!geoLoading && !location && (
                                         <button
