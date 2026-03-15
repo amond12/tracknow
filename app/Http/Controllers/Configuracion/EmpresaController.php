@@ -31,13 +31,20 @@ class EmpresaController extends Controller
         $validated = $request->validate([
             'nombre'    => ['required', 'string', 'max:255'],
             'cif'       => ['required', 'string', 'max:20'],
-            'pais'      => ['required', 'string', 'max:100'],
-            'ciudad'    => ['required', 'string', 'max:100'],
-            'direccion' => ['required', 'string', 'max:255'],
-            'cp'        => ['required', 'string', 'max:10'],
+            'pais'      => ['nullable', 'string', 'max:100'],
+            'ciudad'    => ['nullable', 'string', 'max:100'],
+            'direccion' => ['nullable', 'string', 'max:255'],
+            'cp'        => ['nullable', 'string', 'max:10'],
         ]);
 
-        $request->user()->companies()->create($validated);
+        $request->user()->companies()->create([
+            'nombre'    => $validated['nombre'],
+            'cif'       => $validated['cif'],
+            'pais'      => $validated['pais'] ?? '',
+            'ciudad'    => $validated['ciudad'] ?? '',
+            'direccion' => $validated['direccion'] ?? '',
+            'cp'        => $validated['cp'] ?? '',
+        ]);
 
         return redirect()->back();
     }
@@ -49,13 +56,24 @@ class EmpresaController extends Controller
         $validated = $request->validate([
             'nombre'    => ['required', 'string', 'max:255'],
             'cif'       => ['required', 'string', 'max:20'],
-            'pais'      => ['required', 'string', 'max:100'],
-            'ciudad'    => ['required', 'string', 'max:100'],
-            'direccion' => ['required', 'string', 'max:255'],
-            'cp'        => ['required', 'string', 'max:10'],
+            'pais'      => ['nullable', 'string', 'max:100'],
+            'ciudad'    => ['nullable', 'string', 'max:100'],
+            'direccion' => ['nullable', 'string', 'max:255'],
+            'cp'        => ['nullable', 'string', 'max:10'],
         ]);
 
-        $empresa->update($validated);
+        $payload = [
+            'nombre' => $validated['nombre'],
+            'cif'    => $validated['cif'],
+        ];
+
+        foreach (['pais', 'ciudad', 'direccion', 'cp'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $payload[$field] = $validated[$field] ?? '';
+            }
+        }
+
+        $empresa->update($payload);
 
         return redirect()->back();
     }

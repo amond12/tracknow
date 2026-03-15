@@ -11,10 +11,10 @@ use Illuminate\Support\Collection;
 class HorasExtraService
 {
     /**
-     * Recalcula el resumen diario para todos los días naturales que toca un fichaje.
-     * Llamar tras cualquier cambio en un fichaje o sus pausas.
+     * Recalcula el resumen del dia de imputacion de un fichaje.
+     * Si la fecha de inicio ha cambiado, tambien puede recibir la fecha anterior.
      */
-    public function recalcularParaFichaje(Fichaje $fichaje): void
+    public function recalcularParaFichaje(Fichaje $fichaje, ?Carbon $fechaAnterior = null): void
     {
         if ($fichaje->estado !== 'finalizada') {
             return;
@@ -29,25 +29,28 @@ class HorasExtraService
             return;
         }
 
-        foreach ($this->diasQueAfecta($fichaje) as $fecha) {
+        $fechas = collect();
+
+        if ($fechaAnterior) {
+            $fechas->push($fechaAnterior->copy()->startOfDay());
+        }
+
+        $fechas->push($this->fechaResumenParaFichaje($fichaje));
+
+        foreach ($fechas->unique(fn (Carbon $fecha) => $fecha->toDateString()) as $fecha) {
             $this->recalcularDia($user, $fecha);
         }
     }
 
     /**
-     * Recalcula el resumen diario de un empleado para un día concreto.
-     * Agrega todos sus fichajes finalizados que solapan ese día natural.
+     * Recalcula el resumen diario de un empleado para una fecha de imputacion concreta.
+     * Agrega todos sus fichajes finalizados cuyo dia de inicio coincide con esa fecha.
      */
     public function recalcularDia(User $user, Carbon $fecha): void
     {
-        $fichajesDelDia = $this->fichajesQueTocanDia($user->id, $fecha);
+        $fecha = $fecha->copy()->startOfDay();
+        $fichajesDelDia = $this->fichajesAsignadosAFecha($user->id, $fecha);
 
-        $totalTrabajado = 0;
-        foreach ($fichajesDelDia as $f) {
-            $totalTrabajado += $this->calcularSegundosEnDia($f, $fecha);
-        }
-
-        // No sobreescribir entradas manuales creadas por un administrador
         $existing = ResumenDiario::where('user_id', $user->id)
             ->where('fecha', $fecha->toDateString())
             ->first();
@@ -56,54 +59,79 @@ class HorasExtraService
             return;
         }
 
-        $previsto = $user->horarioPrevistoDia($fecha);
-        $extra    = $totalTrabajado - $previsto;
+        if ($fichajesDelDia->isEmpty()) {
+            $existing?->delete();
+
+            return;
+        }
+
+        $totalTrabajado = 0;
+        foreach ($fichajesDelDia as $fichaje) {
+            $totalTrabajado += $this->segundosTrabajadosFichaje($fichaje);
+        }
+
+        $previsto = $this->segundosPrevistosParaFecha($user, $fecha, $existing);
+        $extra = $totalTrabajado - $previsto;
 
         ResumenDiario::updateOrCreate(
             ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-            ['horas_trabajadas' => $totalTrabajado, 'horas_extra' => $extra, 'origen' => 'auto', 'admin_id' => null]
+            [
+                'horas_trabajadas' => $totalTrabajado,
+                'segundos_previstos' => $previsto,
+                'horas_extra' => $extra,
+                'origen' => 'auto',
+                'admin_id' => null,
+            ]
         );
     }
 
     /**
-     * Suma los segundos trabajados por un empleado en un día natural
-     * consultando sus fichajes finalizados. Devuelve 0 si no hay fichajes.
+     * Suma los segundos trabajados por un empleado en la fecha de imputacion,
+     * que coincide con el dia de inicio del fichaje.
      */
     public function calcularHorasTrabajadas(User $user, Carbon $fecha): int
     {
-        $fichajes = $this->fichajesQueTocanDia($user->id, $fecha);
+        $fichajes = $this->fichajesAsignadosAFecha($user->id, $fecha->copy()->startOfDay());
 
         $total = 0;
         foreach ($fichajes as $fichaje) {
-            $total += $this->calcularSegundosEnDia($fichaje, $fecha);
+            $total += $this->segundosTrabajadosFichaje($fichaje);
         }
 
         return $total;
     }
 
     /**
-     * Calcula los segundos TRABAJADOS (sin pausas) que un fichaje aporta
-     * a un día natural concreto.
-     *
-     * Clampea la ventana del fichaje al día y resta las pausas que caen
-     * dentro de esa ventana (también clampeadas).
+     * La fecha resumen de un fichaje es siempre el dia de inicio.
+     */
+    public function fechaResumenParaFichaje(Fichaje $fichaje): Carbon
+    {
+        if ($fichaje->inicio_jornada) {
+            return Carbon::parse($fichaje->inicio_jornada)->startOfDay();
+        }
+
+        return Carbon::parse($fichaje->fecha)->startOfDay();
+    }
+
+    /**
+     * Calcula los segundos trabajados (sin pausas) que un fichaje aporta
+     * a un dia natural concreto. Se mantiene para utilidades y pruebas.
      */
     public function calcularSegundosEnDia(Fichaje $fichaje, Carbon $fecha): int
     {
         $dayStart = $fecha->copy()->startOfDay();
-        $dayEnd   = $fecha->copy()->endOfDay();
+        $dayEnd = $fecha->copy()->addDay()->startOfDay();
 
         $inicio = Carbon::parse($fichaje->inicio_jornada);
-        $fin    = Carbon::parse($fichaje->fin_jornada);
+        $fin = Carbon::parse($fichaje->fin_jornada);
 
         $efectivoInicio = $inicio->lt($dayStart) ? $dayStart->copy() : $inicio->copy();
-        $efectivoFin    = $fin->gt($dayEnd)       ? $dayEnd->copy()   : $fin->copy();
+        $efectivoFin = $fin->gt($dayEnd) ? $dayEnd->copy() : $fin->copy();
 
         if ($efectivoFin->lte($efectivoInicio)) {
             return 0;
         }
 
-        // En Carbon 3 la diferencia puede ser con signo; medir de inicio -> fin evita valores negativos.
         $bruto = (int) $efectivoInicio->diffInSeconds($efectivoFin);
 
         $totalPausas = 0;
@@ -113,10 +141,10 @@ class HorasExtraService
             }
 
             $pInicio = Carbon::parse($pausa->inicio_pausa);
-            $pFin    = Carbon::parse($pausa->fin_pausa);
+            $pFin = Carbon::parse($pausa->fin_pausa);
 
             $pEfInicio = $pInicio->lt($efectivoInicio) ? $efectivoInicio->copy() : $pInicio->copy();
-            $pEfFin    = $pFin->gt($efectivoFin)       ? $efectivoFin->copy()    : $pFin->copy();
+            $pEfFin = $pFin->gt($efectivoFin) ? $efectivoFin->copy() : $pFin->copy();
 
             if ($pEfFin->gt($pEfInicio)) {
                 $totalPausas += (int) $pEfInicio->diffInSeconds($pEfFin);
@@ -126,40 +154,49 @@ class HorasExtraService
         return max(0, $bruto - $totalPausas);
     }
 
-    /**
-     * Devuelve los días naturales (Carbon a medianoche) que toca el fichaje.
-     */
-    private function diasQueAfecta(Fichaje $fichaje): array
+    private function fichajesAsignadosAFecha(int $userId, Carbon $fecha): Collection
     {
-        $inicio = Carbon::parse($fichaje->inicio_jornada);
-        $fin    = Carbon::parse($fichaje->fin_jornada);
-
-        $iniDay = $inicio->copy()->startOfDay();
-        $finDay = $fin->copy()->startOfDay();
-
-        $dias = [$iniDay];
-
-        if ($finDay->gt($iniDay)) {
-            $dias[] = $finDay;
-        }
-
-        return $dias;
-    }
-
-    /**
-     * Devuelve todos los fichajes finalizados de un empleado que solapan un día natural.
-     */
-    private function fichajesQueTocanDia(int $userId, Carbon $fecha): Collection
-    {
-        $startOfDay     = $fecha->copy()->startOfDay();
-        $startOfNextDay = $fecha->copy()->addDay()->startOfDay();
-
         return Fichaje::where('user_id', $userId)
+            ->where('fecha', $fecha->toDateString())
             ->where('estado', 'finalizada')
             ->whereNotNull('fin_jornada')
-            ->where('inicio_jornada', '<', $startOfNextDay)
-            ->where('fin_jornada', '>=', $startOfDay)
             ->with('pausas')
             ->get();
+    }
+
+    private function segundosTrabajadosFichaje(Fichaje $fichaje): int
+    {
+        if ($fichaje->duracion_jornada !== null) {
+            return (int) $fichaje->duracion_jornada;
+        }
+
+        if (! $fichaje->inicio_jornada || ! $fichaje->fin_jornada) {
+            return 0;
+        }
+
+        $inicio = Carbon::parse($fichaje->inicio_jornada);
+        $fin = Carbon::parse($fichaje->fin_jornada);
+        $bruto = (int) $inicio->diffInSeconds($fin);
+
+        $totalPausas = 0;
+        foreach ($fichaje->pausas as $pausa) {
+            if (! $pausa->fin_pausa) {
+                continue;
+            }
+
+            $totalPausas += (int) Carbon::parse($pausa->inicio_pausa)
+                ->diffInSeconds(Carbon::parse($pausa->fin_pausa));
+        }
+
+        return max(0, $bruto - $totalPausas);
+    }
+
+    private function segundosPrevistosParaFecha(User $user, Carbon $fecha, ?ResumenDiario $existing): int
+    {
+        if ($existing && $existing->segundos_previstos !== null) {
+            return max(0, (int) $existing->segundos_previstos);
+        }
+
+        return max(0, $user->horarioPrevistoDia($fecha));
     }
 }

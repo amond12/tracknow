@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Fichaje extends Model
 {
     use SoftDeletes;
+
     protected $fillable = [
         'user_id',
         'work_center_id',
@@ -32,6 +35,13 @@ class Fichaje extends Model
         'fin_jornada' => 'datetime',
         'duracion_jornada' => 'integer',
     ];
+
+    protected function fecha(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => $value ? Carbon::parse($value)->toDateString() : null,
+        );
+    }
 
     public function user(): BelongsTo
     {

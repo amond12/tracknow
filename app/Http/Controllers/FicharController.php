@@ -18,7 +18,7 @@ class FicharController extends Controller
         $user = $request->user();
         $employee = $this->resolveEmployee($request);
 
-        if (!$employee) {
+        if (! $employee) {
             return Inertia::render('fichar/index', [
                 'employee' => null,
                 'fichajeActivo' => null,
@@ -54,22 +54,21 @@ class FicharController extends Controller
         $user = $request->user();
         $employee = $this->resolveEmployee($request);
 
-        if (!$employee) {
+        if (! $employee) {
             return back()->withErrors(['error' => $this->buildSetupMessage($user)]);
         }
 
-        if (!$employee->work_center_id) {
+        if (! $employee->work_center_id) {
             return back()->withErrors(['error' => 'No tienes un centro de trabajo asignado.']);
         }
 
-        // Comprobar si ya tiene jornada activa hoy
-        $jornadaHoy = Fichaje::where('user_id', $employee->id)
-            ->whereDate('fecha', today())
+        // No permitir una segunda jornada si la anterior sigue abierta, aunque cruce medianoche
+        $jornadaActiva = Fichaje::where('user_id', $employee->id)
             ->whereIn('estado', ['activa', 'pausa'])
             ->first();
 
-        if ($jornadaHoy) {
-            return back()->withErrors(['error' => 'Ya tienes una jornada activa hoy.']);
+        if ($jornadaActiva) {
+            return back()->withErrors(['error' => 'Ya tienes una jornada activa.']);
         }
 
         $request->validate([
@@ -79,7 +78,7 @@ class FicharController extends Controller
             'ip_publica' => 'nullable|string|max:45',
         ]);
 
-        if (!$employee->remoto) {
+        if (! $employee->remoto) {
             $error = $this->verificarUbicacion($request, $employee);
             if ($error) {
                 return back()->withErrors(['error' => $error]);
@@ -106,7 +105,7 @@ class FicharController extends Controller
         $user = $request->user();
         $employee = $this->resolveEmployee($request);
 
-        if (!$employee) {
+        if (! $employee) {
             return back()->withErrors(['error' => $this->buildSetupMessage($user)]);
         }
 
@@ -123,13 +122,13 @@ class FicharController extends Controller
             ->latest()
             ->first();
 
-        if (!$fichaje) {
+        if (! $fichaje) {
             return back()->withErrors(['error' => 'No tienes jornada activa.']);
         }
 
         if ($fichaje->estado === 'activa') {
             // Iniciar pausa
-            if (!$employee->remoto) {
+            if (! $employee->remoto) {
                 $error = $this->verificarUbicacion($request, $employee);
                 if ($error) {
                     return back()->withErrors(['error' => $error]);
@@ -149,11 +148,11 @@ class FicharController extends Controller
             // Reanudar pausa
             $pausaActiva = $fichaje->pausas()->whereNull('fin_pausa')->latest()->first();
 
-            if (!$pausaActiva) {
+            if (! $pausaActiva) {
                 return back()->withErrors(['error' => 'No se encontró la pausa activa.']);
             }
 
-            if (!$employee->remoto) {
+            if (! $employee->remoto) {
                 $error = $this->verificarUbicacion($request, $employee);
                 if ($error) {
                     return back()->withErrors(['error' => $error]);
@@ -182,7 +181,7 @@ class FicharController extends Controller
         $user = $request->user();
         $employee = $this->resolveEmployee($request);
 
-        if (!$employee) {
+        if (! $employee) {
             return back()->withErrors(['error' => $this->buildSetupMessage($user)]);
         }
 
@@ -199,11 +198,11 @@ class FicharController extends Controller
             ->latest()
             ->first();
 
-        if (!$fichaje) {
+        if (! $fichaje) {
             return back()->withErrors(['error' => 'No tienes jornada activa.']);
         }
 
-        if (!$employee->remoto) {
+        if (! $employee->remoto) {
             $error = $this->verificarUbicacion($request, $employee);
             if ($error) {
                 return back()->withErrors(['error' => $error]);
@@ -255,10 +254,11 @@ class FicharController extends Controller
 
         // Empleados y encargados: son directamente el trabajador
         if (in_array($user->role, ['empleado', 'encargado'])) {
-            if (!$user->company_id || !$user->work_center_id) {
+            if (! $user->company_id || ! $user->work_center_id) {
                 return null;
             }
             $user->load(['workCenter', 'company']);
+
             return $user;
         }
 
@@ -267,21 +267,23 @@ class FicharController extends Controller
         if ($user->role === 'admin') {
             if ($user->work_center_id) {
                 $user->load(['workCenter', 'company']);
+
                 return $user;
             }
 
             $workCenter = $this->firstOwnedWorkCenter($user);
-            if (!$workCenter) {
+            if (! $workCenter) {
                 return null;
             }
 
             $user->update([
-                'company_id'     => $workCenter->company_id,
+                'company_id' => $workCenter->company_id,
                 'work_center_id' => $workCenter->id,
-                'remoto'         => true,
+                'remoto' => true,
             ]);
 
             $user->refresh()->load(['workCenter', 'company']);
+
             return $user;
         }
 
@@ -294,11 +296,11 @@ class FicharController extends Controller
             return 'No tienes un perfil de empleado asignado.';
         }
 
-        if (!$user->companies()->exists()) {
+        if (! $user->companies()->exists()) {
             return 'Para fichar como administrador, crea primero una empresa y un centro de trabajo en Configuracion.';
         }
 
-        if (!$this->firstOwnedWorkCenter($user)) {
+        if (! $this->firstOwnedWorkCenter($user)) {
             return 'Para fichar como administrador, crea al menos un centro de trabajo en Configuracion.';
         }
 
@@ -318,7 +320,7 @@ class FicharController extends Controller
     {
         $workCenter = $employee->workCenter;
 
-        if (!$workCenter) {
+        if (! $workCenter) {
             return 'No tienes un centro de trabajo asignado.';
         }
 
@@ -361,6 +363,7 @@ class FicharController extends Controller
 
         $ipServidor = $request->ip();
         $ipPublica = $request->input('ip_publica', '—');
+
         return "No estás en el centro de trabajo.{$detalleDistancia} IP detectada: {$ipPublica} (servidor: {$ipServidor}). Verifica las IPs registradas en el centro o activa la geolocalización.";
     }
 

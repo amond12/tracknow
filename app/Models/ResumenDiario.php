@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -13,16 +15,25 @@ class ResumenDiario extends Model
         'user_id',
         'fecha',
         'horas_trabajadas',
+        'segundos_previstos',
         'horas_extra',
         'origen',
         'admin_id',
     ];
 
     protected $casts = [
-        'fecha'            => 'date',
+        'fecha' => 'date',
         'horas_trabajadas' => 'integer',
-        'horas_extra'      => 'integer',
+        'segundos_previstos' => 'integer',
+        'horas_extra' => 'integer',
     ];
+
+    protected function fecha(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => $value ? Carbon::parse($value)->toDateString() : null,
+        );
+    }
 
     public function user(): BelongsTo
     {

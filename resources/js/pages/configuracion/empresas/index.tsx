@@ -30,19 +30,11 @@ interface Props {
 type EmpresaFormData = {
     nombre: string;
     cif: string;
-    pais: string;
-    ciudad: string;
-    direccion: string;
-    cp: string;
 };
 
 const emptyForm: EmpresaFormData = {
     nombre: '',
     cif: '',
-    pais: '',
-    ciudad: '',
-    direccion: '',
-    cp: '',
 };
 
 function EmpresaForm({
@@ -85,46 +77,6 @@ function EmpresaForm({
                 />
                 <InputError message={errors.cif} />
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="pais">País</Label>
-                <Input
-                    id="pais"
-                    value={data.pais}
-                    onChange={(e) => setData('pais', e.target.value)}
-                    required
-                />
-                <InputError message={errors.pais} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="ciudad">Ciudad</Label>
-                <Input
-                    id="ciudad"
-                    value={data.ciudad}
-                    onChange={(e) => setData('ciudad', e.target.value)}
-                    required
-                />
-                <InputError message={errors.ciudad} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="direccion">Dirección</Label>
-                <Input
-                    id="direccion"
-                    value={data.direccion}
-                    onChange={(e) => setData('direccion', e.target.value)}
-                    required
-                />
-                <InputError message={errors.direccion} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="cp">Código postal</Label>
-                <Input
-                    id="cp"
-                    value={data.cp}
-                    onChange={(e) => setData('cp', e.target.value)}
-                    required
-                />
-                <InputError message={errors.cp} />
-            </div>
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={onCancel}>
                     Cancelar
@@ -151,10 +103,6 @@ export default function EmpresasIndex({ companies }: Props) {
         editForm.setData({
             nombre: company.nombre,
             cif: company.cif,
-            pais: company.pais,
-            ciudad: company.ciudad,
-            direccion: company.direccion,
-            cp: company.cp,
         });
         setEditTarget(company);
     }
@@ -211,10 +159,6 @@ export default function EmpresasIndex({ companies }: Props) {
                             <tr>
                                 <th className="px-4 py-3 text-left font-medium">Nombre</th>
                                 <th className="px-4 py-3 text-left font-medium">CIF/NIF</th>
-                                <th className="px-4 py-3 text-left font-medium">País</th>
-                                <th className="px-4 py-3 text-left font-medium">Ciudad</th>
-                                <th className="px-4 py-3 text-left font-medium">Dirección</th>
-                                <th className="px-4 py-3 text-left font-medium">CP</th>
                                 <th className="px-4 py-3 text-right font-medium">Acciones</th>
                             </tr>
                         </thead>
@@ -222,7 +166,7 @@ export default function EmpresasIndex({ companies }: Props) {
                             {companies.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={7}
+                                        colSpan={3}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         No hay empresas registradas
@@ -233,10 +177,6 @@ export default function EmpresasIndex({ companies }: Props) {
                                     <tr key={company.id} className="hover:bg-muted/30">
                                         <td className="px-4 py-3 font-medium">{company.nombre}</td>
                                         <td className="px-4 py-3">{company.cif}</td>
-                                        <td className="px-4 py-3">{company.pais}</td>
-                                        <td className="px-4 py-3">{company.ciudad}</td>
-                                        <td className="px-4 py-3">{company.direccion}</td>
-                                        <td className="px-4 py-3">{company.cp}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex justify-end gap-2">
                                                 <Button

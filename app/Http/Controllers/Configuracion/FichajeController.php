@@ -10,7 +10,6 @@ use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
 use App\Services\HorasExtraService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -27,9 +26,9 @@ class FichajeController extends Controller
             ->get(['id', 'company_id', 'nombre']);
 
         $employees = User::where(function ($q) use ($companyIds) {
-                $q->whereIn('company_id', $companyIds)
-                  ->whereIn('role', ['empleado', 'encargado']);
-            })
+            $q->whereIn('company_id', $companyIds)
+                ->whereIn('role', ['empleado', 'encargado']);
+        })
             ->orWhere('id', $user->id)
             ->orderBy('apellido')
             ->orderBy('name')
@@ -61,51 +60,58 @@ class FichajeController extends Controller
         $fichajes = $query->orderBy('fecha', 'desc')->orderBy('inicio_jornada', 'desc')->get();
 
         return Inertia::render('configuracion/fichajes/index', [
-            'fichajes'    => $fichajes,
-            'companies'   => $companies,
+            'fichajes' => $fichajes,
+            'companies' => $companies,
             'workCenters' => $workCenters,
-            'employees'   => $employees,
-            'filters'     => $request->only(['empresa_id', 'centro_id', 'empleado_id', 'fecha_desde', 'fecha_hasta']),
+            'employees' => $employees,
+            'filters' => $request->only(['empresa_id', 'centro_id', 'empleado_id', 'fecha_desde', 'fecha_hasta']),
         ]);
     }
 
     public function updateJornada(Request $request, Fichaje $fichaje)
     {
         $this->autorizarFichaje($request, $fichaje);
+        $service = app(HorasExtraService::class);
+        $fechaResumenAnterior = $service->fechaResumenParaFichaje($fichaje);
 
         $validated = $request->validate([
-            'campo'    => 'required|in:inicio_jornada,fin_jornada',
+            'campo' => 'required|in:inicio_jornada,fin_jornada',
             'datetime' => 'required|date',
-            'motivo'   => 'required|string|max:500',
+            'motivo' => 'required|string|max:500',
         ]);
 
         $campo = $validated['campo'];
         $nuevaFecha = \Carbon\Carbon::parse($validated['datetime']);
         $valorAnterior = $fichaje->{$campo}?->toJSON();
 
-        $fichaje->update([$campo => $nuevaFecha]);
+        $payload = [$campo => $nuevaFecha];
+        if ($campo === 'inicio_jornada') {
+            $payload['fecha'] = $nuevaFecha->toDateString();
+        }
+
+        $fichaje->update($payload);
 
         $edicion = EdicionFichaje::where([
             'fichaje_id' => $fichaje->id,
-            'pausa_id'   => null,
-            'campo'      => $campo,
+            'pausa_id' => null,
+            'campo' => $campo,
         ])->first();
 
         if ($edicion) {
             $edicion->update([
-                'user_id'     => $request->user()->id,
+                'user_id' => $request->user()->id,
                 'valor_nuevo' => $nuevaFecha->toJSON(),
-                'motivo'      => $validated['motivo'],
+                'motivo' => $validated['motivo'],
             ]);
         } else {
             EdicionFichaje::create([
-                'fichaje_id'     => $fichaje->id,
-                'pausa_id'       => null,
-                'user_id'        => $request->user()->id,
-                'campo'          => $campo,
+                'fichaje_id' => $fichaje->id,
+                'pausa_id' => null,
+                'user_id' => $request->user()->id,
+                'campo' => $campo,
                 'valor_anterior' => $valorAnterior,
-                'valor_nuevo'    => $nuevaFecha->toJSON(),
-                'motivo'         => $validated['motivo'],
+                'valor_nuevo' => $nuevaFecha->toJSON(),
+                'motivo' => $validated['motivo'],
             ]);
         }
 
@@ -118,7 +124,7 @@ class FichajeController extends Controller
         }
 
         if ($fichaje->estado === 'finalizada') {
-            app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
+            $service->recalcularParaFichaje($fichaje, $fechaResumenAnterior);
         }
 
         return back();
@@ -130,8 +136,8 @@ class FichajeController extends Controller
 
         $validated = $request->validate([
             'inicio_pausa' => 'required|date',
-            'fin_pausa'    => 'nullable|date',
-            'motivo'       => 'required|string|max:500',
+            'fin_pausa' => 'nullable|date',
+            'motivo' => 'required|string|max:500',
         ]);
 
         $inicioPausa = \Carbon\Carbon::parse($validated['inicio_pausa']);
@@ -142,21 +148,21 @@ class FichajeController extends Controller
             : null;
 
         $pausa = Pausa::create([
-            'fichaje_id'     => $fichaje->id,
-            'inicio_pausa'   => $inicioPausa,
-            'fin_pausa'      => $finPausa,
+            'fichaje_id' => $fichaje->id,
+            'inicio_pausa' => $inicioPausa,
+            'fin_pausa' => $finPausa,
             'duracion_pausa' => $duracionPausa,
         ]);
 
         EdicionFichaje::create([
-            'fichaje_id'     => $fichaje->id,
-            'pausa_id'       => $pausa->id,
-            'user_id'        => $request->user()->id,
-            'campo'          => 'creacion_pausa',
+            'fichaje_id' => $fichaje->id,
+            'pausa_id' => $pausa->id,
+            'user_id' => $request->user()->id,
+            'campo' => 'creacion_pausa',
             'valor_anterior' => null,
-            'valor_nuevo'    => json_encode([
+            'valor_nuevo' => json_encode([
                 'inicio_pausa' => $inicioPausa->toJSON(),
-                'fin_pausa'    => $finPausa?->toJSON(),
+                'fin_pausa' => $finPausa?->toJSON(),
             ]),
             'motivo' => $validated['motivo'],
         ]);
@@ -185,9 +191,9 @@ class FichajeController extends Controller
         }
 
         $validated = $request->validate([
-            'campo'    => 'required|in:inicio_pausa,fin_pausa',
+            'campo' => 'required|in:inicio_pausa,fin_pausa',
             'datetime' => 'required|date',
-            'motivo'   => 'required|string|max:500',
+            'motivo' => 'required|string|max:500',
         ]);
 
         $campo = $validated['campo'];
@@ -198,25 +204,25 @@ class FichajeController extends Controller
 
         $edicion = EdicionFichaje::where([
             'fichaje_id' => $fichaje->id,
-            'pausa_id'   => $pausa->id,
-            'campo'      => $campo,
+            'pausa_id' => $pausa->id,
+            'campo' => $campo,
         ])->first();
 
         if ($edicion) {
             $edicion->update([
-                'user_id'     => $request->user()->id,
+                'user_id' => $request->user()->id,
                 'valor_nuevo' => $nuevaFecha->toJSON(),
-                'motivo'      => $validated['motivo'],
+                'motivo' => $validated['motivo'],
             ]);
         } else {
             EdicionFichaje::create([
-                'fichaje_id'     => $fichaje->id,
-                'pausa_id'       => $pausa->id,
-                'user_id'        => $request->user()->id,
-                'campo'          => $campo,
+                'fichaje_id' => $fichaje->id,
+                'pausa_id' => $pausa->id,
+                'user_id' => $request->user()->id,
+                'campo' => $campo,
                 'valor_anterior' => $valorAnterior,
-                'valor_nuevo'    => $nuevaFecha->toJSON(),
-                'motivo'         => $validated['motivo'],
+                'valor_nuevo' => $nuevaFecha->toJSON(),
+                'motivo' => $validated['motivo'],
             ]);
         }
 
@@ -262,18 +268,18 @@ class FichajeController extends Controller
             if ($pausaActiva) {
                 $duracionPausa = max(0, (int) $ahora->diffInSeconds(\Carbon\Carbon::parse($pausaActiva->inicio_pausa), true));
                 $pausaActiva->update([
-                    'fin_pausa'      => $ahora,
+                    'fin_pausa' => $ahora,
                     'duracion_pausa' => $duracionPausa,
                 ]);
 
                 EdicionFichaje::create([
-                    'fichaje_id'     => $fichaje->id,
-                    'pausa_id'       => $pausaActiva->id,
-                    'user_id'        => $request->user()->id,
-                    'campo'          => 'fin_pausa',
+                    'fichaje_id' => $fichaje->id,
+                    'pausa_id' => $pausaActiva->id,
+                    'user_id' => $request->user()->id,
+                    'campo' => 'fin_pausa',
                     'valor_anterior' => null,
-                    'valor_nuevo'    => $ahora->toJSON(),
-                    'motivo'         => $validated['motivo'],
+                    'valor_nuevo' => $ahora->toJSON(),
+                    'motivo' => $validated['motivo'],
                 ]);
             }
         }
@@ -283,19 +289,19 @@ class FichajeController extends Controller
         $duracionJornada = max(0, (int) $ahora->diffInSeconds($fichaje->inicio_jornada, true) - $totalPausas);
 
         $fichaje->update([
-            'fin_jornada'      => $ahora,
+            'fin_jornada' => $ahora,
             'duracion_jornada' => $duracionJornada,
-            'estado'           => 'finalizada',
+            'estado' => 'finalizada',
         ]);
 
         EdicionFichaje::create([
-            'fichaje_id'     => $fichaje->id,
-            'pausa_id'       => null,
-            'user_id'        => $request->user()->id,
-            'campo'          => 'finalizacion_admin',
+            'fichaje_id' => $fichaje->id,
+            'pausa_id' => null,
+            'user_id' => $request->user()->id,
+            'campo' => 'finalizacion_admin',
             'valor_anterior' => null,
-            'valor_nuevo'    => $ahora->toJSON(),
-            'motivo'         => $validated['motivo'],
+            'valor_nuevo' => $ahora->toJSON(),
+            'motivo' => $validated['motivo'],
         ]);
 
         $fichaje->refresh()->load('pausas');
@@ -310,14 +316,14 @@ class FichajeController extends Controller
         $companyIds = Company::where('user_id', $user->id)->pluck('id');
 
         $validated = $request->validate([
-            'employee_id'           => 'required|integer',
-            'fecha'                 => 'required|date',
-            'inicio_jornada'        => 'required|date',
-            'fin_jornada'           => 'nullable|date',
-            'pausas'                => 'nullable|array',
+            'employee_id' => 'required|integer',
+            'fecha' => 'required|date',
+            'inicio_jornada' => 'required|date',
+            'fin_jornada' => 'nullable|date',
+            'pausas' => 'nullable|array',
             'pausas.*.inicio_pausa' => 'required|date',
-            'pausas.*.fin_pausa'    => 'nullable|date',
-            'motivo'                => 'required|string|max:500',
+            'pausas.*.fin_pausa' => 'nullable|date',
+            'motivo' => 'required|string|max:500',
         ]);
 
         $empleado = User::where('id', $validated['employee_id'])
@@ -325,26 +331,25 @@ class FichajeController extends Controller
             ->whereIn('role', ['empleado', 'encargado'])
             ->first();
 
-        if (!$empleado) {
+        if (! $empleado) {
             abort(403);
         }
-
-        $fecha = $validated['fecha'];
 
         $inicioJornada = \Carbon\Carbon::parse($validated['inicio_jornada']);
         $finJornada = $validated['fin_jornada']
             ? \Carbon\Carbon::parse($validated['fin_jornada'])
             : null;
+        $fecha = $inicioJornada->toDateString();
 
         $estado = $finJornada ? 'finalizada' : 'activa';
 
         $fichaje = Fichaje::create([
-            'user_id'        => $empleado->id,
+            'user_id' => $empleado->id,
             'work_center_id' => $empleado->work_center_id,
-            'fecha'          => $fecha,
+            'fecha' => $fecha,
             'inicio_jornada' => $inicioJornada,
-            'fin_jornada'    => $finJornada,
-            'estado'         => $estado,
+            'fin_jornada' => $finJornada,
+            'estado' => $estado,
         ]);
 
         $totalPausas = 0;
@@ -352,7 +357,7 @@ class FichajeController extends Controller
 
         foreach ($validated['pausas'] ?? [] as $pausaData) {
             $inicioPausa = \Carbon\Carbon::parse($pausaData['inicio_pausa']);
-            $finPausa = !empty($pausaData['fin_pausa'])
+            $finPausa = ! empty($pausaData['fin_pausa'])
                 ? \Carbon\Carbon::parse($pausaData['fin_pausa'])
                 : null;
 
@@ -361,9 +366,9 @@ class FichajeController extends Controller
                 : null;
 
             Pausa::create([
-                'fichaje_id'     => $fichaje->id,
-                'inicio_pausa'   => $inicioPausa,
-                'fin_pausa'      => $finPausa,
+                'fichaje_id' => $fichaje->id,
+                'inicio_pausa' => $inicioPausa,
+                'fin_pausa' => $finPausa,
                 'duracion_pausa' => $duracionPausa,
             ]);
 
@@ -371,7 +376,7 @@ class FichajeController extends Controller
 
             $pausasSnapshot[] = [
                 'inicio_pausa' => $inicioPausa->toJSON(),
-                'fin_pausa'    => $finPausa?->toJSON(),
+                'fin_pausa' => $finPausa?->toJSON(),
             ];
         }
 
@@ -383,17 +388,17 @@ class FichajeController extends Controller
         }
 
         EdicionFichaje::create([
-            'fichaje_id'     => $fichaje->id,
-            'pausa_id'       => null,
-            'user_id'        => $user->id,
-            'campo'          => 'creacion_admin',
+            'fichaje_id' => $fichaje->id,
+            'pausa_id' => null,
+            'user_id' => $user->id,
+            'campo' => 'creacion_admin',
             'valor_anterior' => null,
-            'valor_nuevo'    => json_encode([
-                'user_id'        => $empleado->id,
-                'fecha'          => $fecha,
+            'valor_nuevo' => json_encode([
+                'user_id' => $empleado->id,
+                'fecha' => $fecha,
                 'inicio_jornada' => $inicioJornada->toJSON(),
-                'fin_jornada'    => $finJornada?->toJSON(),
-                'pausas'         => $pausasSnapshot,
+                'fin_jornada' => $finJornada?->toJSON(),
+                'pausas' => $pausasSnapshot,
             ]),
             'motivo' => $validated['motivo'],
         ]);
@@ -414,16 +419,16 @@ class FichajeController extends Controller
         ]);
 
         EdicionFichaje::create([
-            'fichaje_id'     => $fichaje->id,
-            'pausa_id'       => $pausa->id,
-            'user_id'        => $request->user()->id,
-            'campo'          => 'eliminacion_pausa',
+            'fichaje_id' => $fichaje->id,
+            'pausa_id' => $pausa->id,
+            'user_id' => $request->user()->id,
+            'campo' => 'eliminacion_pausa',
             'valor_anterior' => json_encode([
                 'inicio_pausa' => $pausa->inicio_pausa?->toJSON(),
-                'fin_pausa'    => $pausa->fin_pausa?->toJSON(),
+                'fin_pausa' => $pausa->fin_pausa?->toJSON(),
             ]),
             'valor_nuevo' => 'eliminada',
-            'motivo'      => $validated['motivo'],
+            'motivo' => $validated['motivo'],
         ]);
 
         $pausa->delete();
@@ -452,30 +457,25 @@ class FichajeController extends Controller
         ]);
 
         EdicionFichaje::create([
-            'fichaje_id'     => $fichaje->id,
-            'pausa_id'       => null,
-            'user_id'        => $request->user()->id,
-            'campo'          => 'eliminacion',
+            'fichaje_id' => $fichaje->id,
+            'pausa_id' => null,
+            'user_id' => $request->user()->id,
+            'campo' => 'eliminacion',
             'valor_anterior' => null,
-            'valor_nuevo'    => now()->toJSON(),
-            'motivo'         => $validated['motivo'],
+            'valor_nuevo' => now()->toJSON(),
+            'motivo' => $validated['motivo'],
         ]);
 
         // Capturar datos antes de borrar para recalcular tras el soft-delete
-        $userId  = $fichaje->user_id;
-        $dias    = [Carbon::parse($fichaje->inicio_jornada)->startOfDay()];
-        if ($fichaje->fin_jornada && Carbon::parse($fichaje->fin_jornada)->toDateString() !== Carbon::parse($fichaje->inicio_jornada)->toDateString()) {
-            $dias[] = Carbon::parse($fichaje->fin_jornada)->startOfDay();
-        }
+        $userId = $fichaje->user_id;
+        $service = app(HorasExtraService::class);
+        $fechaResumenAnterior = $service->fechaResumenParaFichaje($fichaje);
 
         $fichaje->delete();
 
         $empleado = User::find($userId);
         if ($empleado) {
-            $service = app(HorasExtraService::class);
-            foreach ($dias as $fecha) {
-                $service->recalcularDia($empleado, $fecha);
-            }
+            $service->recalcularDia($empleado, $fechaResumenAnterior);
         }
 
         return back();
@@ -490,7 +490,7 @@ class FichajeController extends Controller
             ->whereIn('company_id', $companyIds)
             ->exists();
 
-        if (!$pertenece) {
+        if (! $pertenece) {
             abort(403);
         }
     }
