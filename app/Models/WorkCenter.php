@@ -19,6 +19,7 @@ class WorkCenter extends Model
         'poblacion',
         'direccion',
         'cp',
+        'timezone',
         'lat',
         'lng',
         'radio',

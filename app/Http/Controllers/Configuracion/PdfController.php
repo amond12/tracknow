@@ -9,6 +9,7 @@ use App\Models\ResumenDiario;
 use App\Models\User;
 use App\Models\Vacacion;
 use App\Models\WorkCenter;
+use App\Support\WorkCenterTimezone;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -102,6 +103,7 @@ class PdfController extends Controller
 
         $empresa = $empleado->company ?? Company::where('user_id', $request->user()->id)->first();
         $centro  = $empleado->workCenter ?? $empresa?->workCenters()->first();
+        $timezone = WorkCenterTimezone::resolve($centro);
 
         $fichajes = Fichaje::where('user_id', $empleado->id)
             ->whereMonth('fecha', $mes)
@@ -131,7 +133,7 @@ class PdfController extends Controller
             ->map(fn ($f) => Carbon::parse($f)->toDateString())
             ->toArray();
 
-        $filas = $fichajes->map(function ($f) use ($diasSemana, $resumenPorFecha, $eventosPorFecha) {
+        $filas = $fichajes->map(function ($f) use ($diasSemana, $resumenPorFecha, $eventosPorFecha, $timezone) {
             $fecha = Carbon::parse($f->fecha);
             $dateStr = $fecha->toDateString();
             $resumenDia = $resumenPorFecha->get($dateStr);
@@ -156,8 +158,8 @@ class PdfController extends Controller
             return [
                 'fecha'        => $fecha->format('d/m/Y'),
                 'dia_semana'   => $diasSemana[$fecha->dayOfWeekIso - 1],
-                'entrada'      => $f->inicio_jornada ? Carbon::parse($f->inicio_jornada)->format('H:i') : '—',
-                'salida'       => $f->fin_jornada    ? Carbon::parse($f->fin_jornada)->format('H:i')    : '—',
+                'entrada'      => $f->inicio_jornada ? WorkCenterTimezone::utcToLocal($f->inicio_jornada, $timezone)->format('H:i') : '—',
+                'salida'       => $f->fin_jornada    ? WorkCenterTimezone::utcToLocal($f->fin_jornada, $timezone)->format('H:i')    : '—',
                 'presencia'    => $f->duracion_jornada !== null ? $this->formatSeconds($f->duracion_jornada) : '—',
                 'jornada'      => $jornadaSeg !== null ? $this->formatSeconds($jornadaSeg) : '—',
                 'horas_extra'  => $horasExtraSeg > 0 ? ('+' . $this->formatSeconds($horasExtraSeg)) : '',
@@ -213,7 +215,7 @@ class PdfController extends Controller
             'mes'        => $mes,
             'anio'       => $anio,
             'mesNombre'  => $mesNombre,
-            'generadoEn' => now()->format('d/m/Y H:i'),
+            'generadoEn' => WorkCenterTimezone::nowUtc()->setTimezone($timezone)->format('d/m/Y H:i'),
             'esAdmin'    => $empleado->role === 'admin',
         ])->setPaper('A4', 'portrait');
 

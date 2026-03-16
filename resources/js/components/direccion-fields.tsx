@@ -7,9 +7,14 @@ import {
     useState,
 } from 'react';
 import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { hasMapboxToken, searchAddressSuggestions } from '@/lib/mapbox';
+import {
+    hasMapboxToken,
+    isReliableMapboxAddressMatch,
+    searchAddressSuggestions,
+} from '@/lib/mapbox';
 import type {
     MapboxAddressResult,
     MapboxAddressSuggestion,
@@ -22,6 +27,7 @@ type AddressField = keyof WorkCenterAddressInput;
 type AddressErrors = Partial<Record<AddressField, string>>;
 
 type FeedbackTone = 'success' | 'warning' | 'error';
+type LookupState = 'idle' | 'ready' | 'empty' | 'error';
 
 interface Props {
     values: WorkCenterAddressInput;
@@ -78,11 +84,17 @@ export function DireccionFields({
     onFieldChange,
     onAddressResolved,
 }: Props) {
+    const mapboxAvailable = hasMapboxToken();
     const [suggestions, setSuggestions] = useState<MapboxAddressSuggestion[]>(
         [],
     );
     const [suggestionsOpen, setSuggestionsOpen] = useState(false);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const [lookupState, setLookupState] = useState<LookupState>('idle');
+    const [manualEntryEnabled, setManualEntryEnabled] = useState(
+        !mapboxAvailable,
+    );
+    const [direccionFocused, setDireccionFocused] = useState(false);
     const [feedback, setFeedback] = useState<{
         tone: FeedbackTone;
         text: string;
@@ -90,6 +102,15 @@ export function DireccionFields({
     const selectionInProgressRef = useRef(false);
     const hideSuggestionsTimeoutRef = useRef<number | null>(null);
     const deferredQuery = useDeferredValue(buildAutocompleteQuery(values));
+    const hasDerivedFieldErrors = Boolean(
+        errors.pais || errors.provincia || errors.poblacion || errors.cp,
+    );
+
+    useEffect(() => {
+        if (!mapboxAvailable || hasDerivedFieldErrors) {
+            setManualEntryEnabled(true);
+        }
+    }, [hasDerivedFieldErrors, mapboxAvailable]);
 
     useEffect(() => {
         return () => {
@@ -100,20 +121,30 @@ export function DireccionFields({
     }, []);
 
     useEffect(() => {
-        if (!hasMapboxToken()) {
+        if (!mapboxAvailable) {
             setSuggestions([]);
             setSuggestionsOpen(false);
+            setLookupState('idle');
+            setLoadingSuggestions(false);
             return;
         }
 
         if (selectionInProgressRef.current) {
             selectionInProgressRef.current = false;
+            setLookupState('idle');
+            return;
+        }
+
+        if (!direccionFocused) {
+            setSuggestionsOpen(false);
+            setLoadingSuggestions(false);
             return;
         }
 
         if (values.direccion.trim().length < 3) {
             setSuggestions([]);
             setSuggestionsOpen(false);
+            setLookupState('idle');
             setLoadingSuggestions(false);
             return;
         }
@@ -121,6 +152,7 @@ export function DireccionFields({
         const controller = new AbortController();
         const timeoutId = window.setTimeout(async () => {
             setLoadingSuggestions(true);
+            setLookupState('idle');
 
             try {
                 const nextSuggestions = await searchAddressSuggestions(
@@ -128,11 +160,17 @@ export function DireccionFields({
                     controller.signal,
                 );
                 setSuggestions(nextSuggestions);
-                setSuggestionsOpen(nextSuggestions.length > 0);
+                setSuggestionsOpen(
+                    direccionFocused && nextSuggestions.length > 0,
+                );
+                setLookupState(
+                    nextSuggestions.length > 0 ? 'ready' : 'empty',
+                );
             } catch (error) {
                 if ((error as Error).name !== 'AbortError') {
                     setSuggestions([]);
                     setSuggestionsOpen(false);
+                    setLookupState('error');
                 }
             } finally {
                 if (!controller.signal.aborted) {
@@ -145,7 +183,7 @@ export function DireccionFields({
             controller.abort();
             window.clearTimeout(timeoutId);
         };
-    }, [deferredQuery, values.direccion]);
+    }, [deferredQuery, direccionFocused, mapboxAvailable, values.direccion]);
 
     function markAddressAsDirty(nextValues: WorkCenterAddressInput) {
         const hasValue = Object.values(nextValues).some(
@@ -158,7 +196,7 @@ export function DireccionFields({
 
     function applyResolvedAddress(
         result: MapboxAddressResult,
-        successText: string,
+        nextFeedback: { tone: FeedbackTone; text: string },
     ) {
         selectionInProgressRef.current = true;
 
@@ -166,10 +204,9 @@ export function DireccionFields({
             onAddressResolved(result);
             setSuggestions([]);
             setSuggestionsOpen(false);
-            setFeedback({
-                tone: 'success',
-                text: successText,
-            });
+            setLookupState('ready');
+            setManualEntryEnabled(false);
+            setFeedback(nextFeedback);
         });
     }
 
@@ -178,17 +215,48 @@ export function DireccionFields({
         markAddressAsDirty({ ...values, [field]: value });
 
         if (field === 'direccion') {
+            if (value.trim().length < 3) {
+                setSuggestions([]);
+                setSuggestionsOpen(false);
+                setLookupState('idle');
+                return;
+            }
+
             setSuggestionsOpen(
-                value.trim().length >= 3 && suggestions.length > 0,
+                direccionFocused &&
+                    value.trim().length >= 3 &&
+                    suggestions.length > 0,
             );
         }
     }
 
     function handleSuggestionSelect(suggestion: MapboxAddressSuggestion) {
+        const reliableMatch = isReliableMapboxAddressMatch(suggestion.result);
+
         applyResolvedAddress(
             suggestion.result,
-            'Direccion autocompletada y validada con Mapbox.',
+            reliableMatch
+                ? {
+                      tone: 'success',
+                      text: 'Direccion autocompletada con Mapbox.',
+                  }
+                : {
+                      tone: 'warning',
+                      text: 'Direccion autocompletada. Revisa los datos antes de guardar.',
+                  },
         );
+    }
+
+    function handleDireccionFocus() {
+        if (hideSuggestionsTimeoutRef.current !== null) {
+            window.clearTimeout(hideSuggestionsTimeoutRef.current);
+        }
+
+        setDireccionFocused(true);
+
+        if (suggestions.length > 0) {
+            setSuggestionsOpen(true);
+        }
     }
 
     function handleDireccionBlur() {
@@ -197,16 +265,33 @@ export function DireccionFields({
         }
 
         hideSuggestionsTimeoutRef.current = window.setTimeout(() => {
+            setDireccionFocused(false);
             setSuggestionsOpen(false);
         }, 150);
     }
 
+    const infoText = manualEntryEnabled
+        ? 'Escribe la direccion y completa manualmente pais, provincia, poblacion y codigo postal si Mapbox no puede rellenarlos.'
+        : 'Escribe la direccion y selecciona una sugerencia de Mapbox. Pais, provincia, poblacion y codigo postal se rellenan automaticamente.';
+
+    const fallbackMessage = !mapboxAvailable
+        ? 'Mapbox no esta disponible ahora mismo. Completa manualmente los datos postales obligatorios.'
+        : lookupState === 'error'
+          ? 'No se ha podido consultar Mapbox. Puedes completar los datos manualmente.'
+          : hasDerivedFieldErrors
+            ? 'Faltan datos postales obligatorios. Selecciona una sugerencia valida o completa los campos manualmente.'
+            : lookupState === 'empty' && values.direccion.trim().length >= 3
+              ? 'No hemos encontrado una coincidencia completa para esa direccion. Sigue escribiendo o completa el resto manualmente.'
+              : null;
+
+    const derivedInputClassName = cn(
+        !manualEntryEnabled && 'bg-muted/40 text-muted-foreground',
+    );
+
     return (
         <div className="grid gap-4">
             <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                Escribe la direccion primero y selecciona una sugerencia de
-                Mapbox. Pais, provincia, poblacion y codigo postal se rellenan
-                automaticamente.
+                {infoText}
             </div>
 
             <div className="grid gap-1.5">
@@ -224,9 +309,7 @@ export function DireccionFields({
                         onChange={(e) =>
                             handleFieldChange('direccion', e.target.value)
                         }
-                        onFocus={() =>
-                            setSuggestionsOpen(suggestions.length > 0)
-                        }
+                        onFocus={handleDireccionFocus}
                         onBlur={handleDireccionBlur}
                         placeholder="Calle Gran Via 28"
                         required
@@ -277,6 +360,23 @@ export function DireccionFields({
                 <InputError message={errors.direccion} />
             </div>
 
+            {fallbackMessage && (
+                <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{fallbackMessage}</span>
+                    {!manualEntryEnabled && mapboxAvailable && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setManualEntryEnabled(true)}
+                            className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+                        >
+                            Completar manualmente
+                        </Button>
+                    )}
+                </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                     <Label
@@ -288,10 +388,17 @@ export function DireccionFields({
                     <Input
                         id="pais"
                         value={values.pais}
-                        placeholder="Se rellena automaticamente"
-                        readOnly
-                        aria-readonly="true"
-                        className="bg-muted/40 text-muted-foreground"
+                        onChange={(e) =>
+                            handleFieldChange('pais', e.target.value)
+                        }
+                        placeholder={
+                            manualEntryEnabled
+                                ? 'Ej: Espana'
+                                : 'Se rellena automaticamente'
+                        }
+                        readOnly={!manualEntryEnabled}
+                        aria-readonly={!manualEntryEnabled}
+                        className={derivedInputClassName}
                         {...addressInputProps}
                     />
                     <InputError message={errors.pais} />
@@ -306,10 +413,17 @@ export function DireccionFields({
                     <Input
                         id="provincia"
                         value={values.provincia}
-                        placeholder="Se rellena automaticamente"
-                        readOnly
-                        aria-readonly="true"
-                        className="bg-muted/40 text-muted-foreground"
+                        onChange={(e) =>
+                            handleFieldChange('provincia', e.target.value)
+                        }
+                        placeholder={
+                            manualEntryEnabled
+                                ? 'Ej: Madrid'
+                                : 'Se rellena automaticamente'
+                        }
+                        readOnly={!manualEntryEnabled}
+                        aria-readonly={!manualEntryEnabled}
+                        className={derivedInputClassName}
                         {...addressInputProps}
                     />
                     <InputError message={errors.provincia} />
@@ -327,10 +441,17 @@ export function DireccionFields({
                     <Input
                         id="poblacion"
                         value={values.poblacion}
-                        placeholder="Se rellena automaticamente"
-                        readOnly
-                        aria-readonly="true"
-                        className="bg-muted/40 text-muted-foreground"
+                        onChange={(e) =>
+                            handleFieldChange('poblacion', e.target.value)
+                        }
+                        placeholder={
+                            manualEntryEnabled
+                                ? 'Ej: Madrid'
+                                : 'Se rellena automaticamente'
+                        }
+                        readOnly={!manualEntryEnabled}
+                        aria-readonly={!manualEntryEnabled}
+                        className={derivedInputClassName}
                         {...addressInputProps}
                     />
                     <InputError message={errors.poblacion} />
@@ -345,11 +466,16 @@ export function DireccionFields({
                     <Input
                         id="cp"
                         value={values.cp}
-                        placeholder="Se rellena automaticamente"
+                        onChange={(e) => handleFieldChange('cp', e.target.value)}
+                        placeholder={
+                            manualEntryEnabled
+                                ? 'Ej: 28013'
+                                : 'Se rellena automaticamente'
+                        }
                         inputMode="numeric"
-                        readOnly
-                        aria-readonly="true"
-                        className="bg-muted/40 text-muted-foreground"
+                        readOnly={!manualEntryEnabled}
+                        aria-readonly={!manualEntryEnabled}
+                        className={derivedInputClassName}
                         {...addressInputProps}
                     />
                     <InputError message={errors.cp} />

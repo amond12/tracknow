@@ -10,6 +10,7 @@ use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
 use App\Services\HorasExtraService;
+use App\Support\WorkCenterTimezone;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -30,11 +31,17 @@ class FichajeController extends Controller
                 ->whereIn('role', ['empleado', 'encargado']);
         })
             ->orWhere('id', $user->id)
+            ->with('workCenter:id,nombre,timezone')
             ->orderBy('apellido')
             ->orderBy('name')
             ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'remoto']);
 
-        $query = Fichaje::with(['user', 'workCenter', 'pausas', 'ediciones.user:id,name'])
+        $query = Fichaje::with([
+            'user',
+            'workCenter:id,nombre,timezone',
+            'pausas',
+            'ediciones.user:id,name',
+        ])
             ->whereHas('user', fn ($q) => $q->whereIn('company_id', $companyIds));
 
         if ($request->filled('empresa_id')) {
@@ -76,17 +83,24 @@ class FichajeController extends Controller
 
         $validated = $request->validate([
             'campo' => 'required|in:inicio_jornada,fin_jornada',
-            'datetime' => 'required|date',
+            'datetime' => 'required|date_format:Y-m-d\TH:i:s',
             'motivo' => 'required|string|max:500',
         ]);
 
         $campo = $validated['campo'];
-        $nuevaFecha = \Carbon\Carbon::parse($validated['datetime']);
+        $timezone = WorkCenterTimezone::resolve($fichaje->workCenter);
+        $nuevaFecha = WorkCenterTimezone::localToUtc(
+            $validated['datetime'],
+            $timezone,
+        );
         $valorAnterior = $fichaje->{$campo}?->toJSON();
 
         $payload = [$campo => $nuevaFecha];
         if ($campo === 'inicio_jornada') {
-            $payload['fecha'] = $nuevaFecha->toDateString();
+            $payload['fecha'] = $nuevaFecha
+                ->copy()
+                ->setTimezone($timezone)
+                ->toDateString();
         }
 
         $fichaje->update($payload);
@@ -135,13 +149,19 @@ class FichajeController extends Controller
         $this->autorizarFichaje($request, $fichaje);
 
         $validated = $request->validate([
-            'inicio_pausa' => 'required|date',
-            'fin_pausa' => 'nullable|date',
+            'inicio_pausa' => 'required|date_format:Y-m-d\TH:i:s',
+            'fin_pausa' => 'nullable|date_format:Y-m-d\TH:i:s',
             'motivo' => 'required|string|max:500',
         ]);
 
-        $inicioPausa = \Carbon\Carbon::parse($validated['inicio_pausa']);
-        $finPausa = $validated['fin_pausa'] ? \Carbon\Carbon::parse($validated['fin_pausa']) : null;
+        $timezone = WorkCenterTimezone::resolve($fichaje->workCenter);
+        $inicioPausa = WorkCenterTimezone::localToUtc(
+            $validated['inicio_pausa'],
+            $timezone,
+        );
+        $finPausa = $validated['fin_pausa']
+            ? WorkCenterTimezone::localToUtc($validated['fin_pausa'], $timezone)
+            : null;
 
         $duracionPausa = $finPausa
             ? max(0, (int) $finPausa->diffInSeconds($inicioPausa, true))
@@ -192,12 +212,16 @@ class FichajeController extends Controller
 
         $validated = $request->validate([
             'campo' => 'required|in:inicio_pausa,fin_pausa',
-            'datetime' => 'required|date',
+            'datetime' => 'required|date_format:Y-m-d\TH:i:s',
             'motivo' => 'required|string|max:500',
         ]);
 
         $campo = $validated['campo'];
-        $nuevaFecha = \Carbon\Carbon::parse($validated['datetime']);
+        $timezone = WorkCenterTimezone::resolve($fichaje->workCenter);
+        $nuevaFecha = WorkCenterTimezone::localToUtc(
+            $validated['datetime'],
+            $timezone,
+        );
         $valorAnterior = $pausa->{$campo}?->toJSON();
 
         $pausa->update([$campo => $nuevaFecha]);
@@ -260,7 +284,7 @@ class FichajeController extends Controller
             'motivo' => 'required|string|max:500',
         ]);
 
-        $ahora = now();
+        $ahora = WorkCenterTimezone::nowUtc();
 
         // Si estaba en pausa, cerrar la pausa activa
         if ($fichaje->estado === 'pausa') {
@@ -329,17 +353,24 @@ class FichajeController extends Controller
         $empleado = User::where('id', $validated['employee_id'])
             ->whereIn('company_id', $companyIds)
             ->whereIn('role', ['empleado', 'encargado'])
+            ->with('workCenter:id,timezone')
             ->first();
 
         if (! $empleado) {
             abort(403);
         }
 
-        $inicioJornada = \Carbon\Carbon::parse($validated['inicio_jornada']);
+        abort_if(! $empleado->workCenter, 422, 'El empleado no tiene centro de trabajo asignado.');
+
+        $timezone = WorkCenterTimezone::resolve($empleado->workCenter);
+        $inicioJornada = WorkCenterTimezone::localToUtc(
+            $validated['inicio_jornada'],
+            $timezone,
+        );
         $finJornada = $validated['fin_jornada']
-            ? \Carbon\Carbon::parse($validated['fin_jornada'])
+            ? WorkCenterTimezone::localToUtc($validated['fin_jornada'], $timezone)
             : null;
-        $fecha = $inicioJornada->toDateString();
+        $fecha = $inicioJornada->copy()->setTimezone($timezone)->toDateString();
 
         $estado = $finJornada ? 'finalizada' : 'activa';
 
@@ -356,9 +387,12 @@ class FichajeController extends Controller
         $pausasSnapshot = [];
 
         foreach ($validated['pausas'] ?? [] as $pausaData) {
-            $inicioPausa = \Carbon\Carbon::parse($pausaData['inicio_pausa']);
+            $inicioPausa = WorkCenterTimezone::localToUtc(
+                $pausaData['inicio_pausa'],
+                $timezone,
+            );
             $finPausa = ! empty($pausaData['fin_pausa'])
-                ? \Carbon\Carbon::parse($pausaData['fin_pausa'])
+                ? WorkCenterTimezone::localToUtc($pausaData['fin_pausa'], $timezone)
                 : null;
 
             $duracionPausa = $finPausa

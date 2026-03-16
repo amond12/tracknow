@@ -26,6 +26,7 @@ export type WorkCenter = {
     poblacion: string;
     direccion: string;
     cp: string;
+    timezone: string;
     lat?: number | null;
     lng?: number | null;
     radio?: number | null;

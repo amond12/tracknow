@@ -12,6 +12,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
+import {
+    DEFAULT_WORK_CENTER_TIMEZONE,
+    formatDateTimeInTimeZone,
+    formatDateValue,
+    formatTimeInTimeZone,
+    getTimeZoneLabel,
+} from '@/lib/timezones';
 import type { BreadcrumbItem, Fichaje, User } from '@/types';
 
 type AccionPendiente = 'iniciar' | 'pausa' | 'finalizar' | null;
@@ -27,14 +34,6 @@ function formatSeconds(seconds: number): string {
     return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 }
 
-function formatDateTime(dt: string): string {
-    return new Date(dt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(dt: string): string {
-    return new Date(dt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
 type LocationState = { lat: number; lng: number; accuracy: number } | null;
 
 export default function FicharPage() {
@@ -42,11 +41,28 @@ export default function FicharPage() {
         employee: User | null;
         fichajeActivo: Fichaje | null;
         historial: Fichaje[];
+        serverNowUtc?: string | null;
         setupMessage?: string | null;
         errors: Record<string, string>;
         [key: string]: unknown;
     }>();
-    const { employee, fichajeActivo, historial, errors, setupMessage } = props;
+    const { employee, fichajeActivo, historial, errors, serverNowUtc, setupMessage } = props;
+    const workCenterTimeZone = employee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+    const workCenterTimeZoneLabel = getTimeZoneLabel(workCenterTimeZone);
+    const [clientRenderedAt] = useState(() => Date.now());
+    const clockDriftMinutes = (() => {
+        if (!serverNowUtc) {
+            return null;
+        }
+
+        const serverTimestamp = new Date(serverNowUtc).getTime();
+        if (Number.isNaN(serverTimestamp)) {
+            return null;
+        }
+
+        const driftMinutes = Math.round((clientRenderedAt - serverTimestamp) / 60000);
+        return Math.abs(driftMinutes) >= 5 ? driftMinutes : null;
+    })();
 
     const [location, setLocation] = useState<LocationState>(null);
     const [ipPublica, setIpPublica] = useState<string>('');
@@ -64,7 +80,13 @@ export default function FicharPage() {
         if (accionPendiente) {
             const tick = () =>
                 setHoraConfirmacion(
-                    new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                    new Intl.DateTimeFormat('es-ES', {
+                        timeZone: workCenterTimeZone,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false,
+                    }).format(new Date()),
                 );
             tick();
             clockRef.current = setInterval(tick, 1000);
@@ -72,7 +94,7 @@ export default function FicharPage() {
             if (clockRef.current) clearInterval(clockRef.current);
         }
         return () => { if (clockRef.current) clearInterval(clockRef.current); };
-    }, [accionPendiente]);
+    }, [accionPendiente, workCenterTimeZone]);
 
     const iniciarForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
     const pausaForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
@@ -316,6 +338,16 @@ export default function FicharPage() {
                             </Alert>
                         )}
 
+                        {clockDriftMinutes !== null && (
+                            <Alert className="border-yellow-500">
+                                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                <AlertDescription>
+                                    La hora de este dispositivo difiere {Math.abs(clockDriftMinutes)} min de la hora del servidor.
+                                    La hora oficial usada para fichar es {workCenterTimeZoneLabel}.
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
                         {/* Panel de estado */}
                         <div className={`rounded-2xl border p-8 text-center transition-colors ${currentState.bg}`}>
                             <div className="flex flex-col items-center gap-4">
@@ -327,7 +359,7 @@ export default function FicharPage() {
                                     </p>
                                     {fichajeActivo && (
                                         <p className="text-xs text-muted-foreground mt-1">
-                                            Inicio: {formatDateTime(fichajeActivo.inicio_jornada)}
+                                            Inicio: {formatDateTimeInTimeZone(fichajeActivo.inicio_jornada, workCenterTimeZone)}
                                         </p>
                                     )}
                                 </div>
@@ -408,6 +440,7 @@ export default function FicharPage() {
                         {employee.work_center && (
                             <p className="text-sm text-center text-muted-foreground">
                                 Centro: <span className="font-medium">{employee.work_center.nombre}</span>
+                                <span className="ml-2 text-xs">{workCenterTimeZoneLabel}</span>
                                 {employee.remoto && (
                                     <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                                         <Wifi className="h-3 w-3" /> Remoto
@@ -443,10 +476,10 @@ export default function FicharPage() {
                                                         key={f.id}
                                                         className={`border-b last:border-0 ${i % 2 === 0 ? '' : 'bg-muted/10'}`}
                                                     >
-                                                        <td className="px-4 py-2">{formatDate(f.fecha)}</td>
-                                                        <td className="px-4 py-2">{formatDateTime(f.inicio_jornada)}</td>
+                                                        <td className="px-4 py-2">{formatDateValue(f.fecha)}</td>
+                                                        <td className="px-4 py-2">{formatTimeInTimeZone(f.inicio_jornada, workCenterTimeZone)}</td>
                                                         <td className="px-4 py-2">
-                                                            {f.fin_jornada ? formatDateTime(f.fin_jornada) : '—'}
+                                                            {f.fin_jornada ? formatTimeInTimeZone(f.fin_jornada, workCenterTimeZone) : '—'}
                                                         </td>
                                                         <td className="px-4 py-2">
                                                             {(f.pausas ?? []).length > 0
@@ -487,6 +520,7 @@ export default function FicharPage() {
                                 <p className={`text-4xl font-mono font-bold tabular-nums ${accionLabels[accionPendiente].colorHora}`}>
                                     {horaConfirmacion}
                                 </p>
+                                <p className="text-xs text-muted-foreground">{workCenterTimeZoneLabel}</p>
                             </div>
 
                             <DialogFooter className="flex-row justify-center gap-2 sm:justify-center">

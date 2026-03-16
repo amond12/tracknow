@@ -26,6 +26,10 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import type { MapboxAddressResult } from '@/lib/mapbox';
+import {
+    DEFAULT_WORK_CENTER_TIMEZONE,
+    WORK_CENTER_TIMEZONE_OPTIONS,
+} from '@/lib/timezones';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem, Company, WorkCenter } from '@/types';
 
@@ -52,6 +56,7 @@ type CentroFormData = {
     poblacion: string;
     direccion: string;
     cp: string;
+    timezone: string;
     lat: string;
     lng: string;
     radio: string;
@@ -66,6 +71,7 @@ const emptyForm: CentroFormData = {
     poblacion: '',
     direccion: '',
     cp: '',
+    timezone: DEFAULT_WORK_CENTER_TIMEZONE,
     lat: '',
     lng: '',
     radio: '100',
@@ -156,11 +162,11 @@ function CentroForm({
     const hasExactLocation = data.lat !== '' && data.lng !== '';
 
     function applyResolvedAddressFields(result: MapboxAddressResult) {
-        setData('pais', result.pais);
-        setData('provincia', result.provincia);
-        setData('poblacion', result.poblacion);
-        setData('cp', result.cp);
-        setData('direccion', result.direccion || result.label);
+        setData('pais', result.pais || data.pais);
+        setData('provincia', result.provincia || data.provincia);
+        setData('poblacion', result.poblacion || data.poblacion);
+        setData('cp', result.cp || data.cp);
+        setData('direccion', result.direccion || result.label || data.direccion);
     }
 
     function applyResolvedAddressFromDireccion(result: MapboxAddressResult) {
@@ -255,6 +261,35 @@ function CentroForm({
                 onFieldChange={handleAddressFieldChange}
                 onAddressResolved={applyResolvedAddressFromDireccion}
             />
+
+            <div className="grid gap-1.5">
+                <Label
+                    htmlFor="timezone"
+                    className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                >
+                    Zona horaria del centro
+                </Label>
+                <Select
+                    value={data.timezone}
+                    onValueChange={(value) => setData('timezone', value)}
+                >
+                    <SelectTrigger id="timezone">
+                        <SelectValue placeholder="Selecciona una zona horaria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {WORK_CENTER_TIMEZONE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                    Esta zona se usa como hora oficial del centro para fichajes,
+                    registros y PDFs.
+                </p>
+                <InputError message={errors.timezone} />
+            </div>
 
             <SectionDivider label="Control de presencia" />
 
@@ -379,6 +414,7 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
             poblacion: centro.poblacion,
             direccion: centro.direccion,
             cp: centro.cp,
+            timezone: centro.timezone,
             lat: centro.lat ? String(centro.lat) : '',
             lng: centro.lng ? String(centro.lng) : '',
             radio: centro.radio ? String(centro.radio) : '100',

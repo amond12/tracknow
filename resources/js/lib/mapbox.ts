@@ -74,6 +74,33 @@ function normalizeWhitespace(value: string): string {
     return value.replace(/\s+/g, ' ').trim();
 }
 
+export function isCompleteWorkCenterAddress(
+    input: WorkCenterAddressInput,
+): boolean {
+    return (
+        normalizeWhitespace(input.direccion).length > 0 &&
+        normalizeWhitespace(input.pais).length > 0 &&
+        normalizeWhitespace(input.provincia).length > 0 &&
+        normalizeWhitespace(input.poblacion).length > 0 &&
+        normalizeWhitespace(input.cp).length > 0
+    );
+}
+
+export function isReliableMapboxAddressMatch(
+    result: Pick<MapboxAddressResult, 'accuracy' | 'confidence'>,
+): boolean {
+    const confidence = (result.confidence ?? '').toLowerCase();
+    const accuracy = (result.accuracy ?? '').toLowerCase();
+
+    return (
+        confidence === 'exact' ||
+        confidence === 'high' ||
+        accuracy === 'rooftop' ||
+        accuracy === 'parcel' ||
+        accuracy === 'point'
+    );
+}
+
 function getStreetLabel(feature: MapboxFeature): string {
     const properties = feature.properties;
     const context = properties?.context;
@@ -247,7 +274,7 @@ export async function searchAddressSuggestions(
         .map((feature) => {
             const result = normalizeFeature(feature);
 
-            if (!result) {
+            if (!result || !isCompleteWorkCenterAddress(result)) {
                 return null;
             }
 

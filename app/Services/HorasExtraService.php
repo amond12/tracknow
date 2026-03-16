@@ -102,14 +102,10 @@ class HorasExtraService
     }
 
     /**
-     * La fecha resumen de un fichaje es siempre el dia de inicio.
+     * La fecha resumen de un fichaje es siempre la fecha legal almacenada.
      */
     public function fechaResumenParaFichaje(Fichaje $fichaje): Carbon
     {
-        if ($fichaje->inicio_jornada) {
-            return Carbon::parse($fichaje->inicio_jornada)->startOfDay();
-        }
-
         return Carbon::parse($fichaje->fecha)->startOfDay();
     }
 

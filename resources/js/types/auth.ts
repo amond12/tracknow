@@ -21,7 +21,7 @@ export type User = {
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
     company?: { id: number; nombre: string };
-    work_center?: { id: number; nombre: string };
+    work_center?: { id: number; nombre: string; timezone?: string | null };
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

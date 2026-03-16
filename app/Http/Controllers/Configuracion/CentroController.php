@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HorasExtraLog;
 use App\Models\User;
 use App\Models\WorkCenter;
+use App\Support\WorkCenterTimezone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,11 @@ class CentroController extends Controller
             'poblacion'  => ['required', 'string', 'max:100'],
             'direccion'  => ['required', 'string', 'max:255'],
             'cp'         => ['required', 'string', 'max:10'],
+            'timezone'   => ['required', 'string', 'max:100', function ($attribute, $value, $fail) {
+                if (! WorkCenterTimezone::isValid($value)) {
+                    $fail('La zona horaria seleccionada no es valida.');
+                }
+            }],
             'lat'        => ['nullable', 'numeric'],
             'lng'        => ['nullable', 'numeric'],
             'radio'      => ['nullable', 'integer', 'min:10'],
@@ -67,6 +73,11 @@ class CentroController extends Controller
             'poblacion'  => ['required', 'string', 'max:100'],
             'direccion'  => ['required', 'string', 'max:255'],
             'cp'         => ['required', 'string', 'max:10'],
+            'timezone'   => ['required', 'string', 'max:100', function ($attribute, $value, $fail) {
+                if (! WorkCenterTimezone::isValid($value)) {
+                    $fail('La zona horaria seleccionada no es valida.');
+                }
+            }],
             'lat'        => ['nullable', 'numeric'],
             'lng'        => ['nullable', 'numeric'],
             'radio'      => ['nullable', 'integer', 'min:10'],

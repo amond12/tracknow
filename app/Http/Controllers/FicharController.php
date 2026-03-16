@@ -6,6 +6,7 @@ use App\Models\Fichaje;
 use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
+use App\Support\WorkCenterTimezone;
 use App\Services\HorasExtraService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,6 +24,7 @@ class FicharController extends Controller
                 'employee' => null,
                 'fichajeActivo' => null,
                 'historial' => [],
+                'serverNowUtc' => WorkCenterTimezone::nowUtc()->toJSON(),
                 'setupMessage' => $this->buildSetupMessage($user),
             ]);
         }
@@ -44,6 +46,7 @@ class FicharController extends Controller
             'employee' => $employee,
             'fichajeActivo' => $fichajeActivo,
             'historial' => $historial,
+            'serverNowUtc' => WorkCenterTimezone::nowUtc()->toJSON(),
             'setupMessage' => null,
         ]);
     }
@@ -85,11 +88,14 @@ class FicharController extends Controller
             }
         }
 
+        $startedAt = WorkCenterTimezone::nowUtc();
+        $workCenter = $employee->workCenter;
+
         Fichaje::create([
             'user_id' => $employee->id,
             'work_center_id' => $employee->work_center_id,
-            'fecha' => today(),
-            'inicio_jornada' => now(),
+            'fecha' => WorkCenterTimezone::currentDateFor($workCenter),
+            'inicio_jornada' => $startedAt,
             'estado' => 'activa',
             'lat_inicio' => $employee->remoto ? $request->lat : null,
             'lng_inicio' => $employee->remoto ? $request->lng : null,
@@ -135,9 +141,11 @@ class FicharController extends Controller
                 }
             }
 
+            $pauseStartedAt = WorkCenterTimezone::nowUtc();
+
             Pausa::create([
                 'fichaje_id' => $fichaje->id,
-                'inicio_pausa' => now(),
+                'inicio_pausa' => $pauseStartedAt,
                 'lat_inicio' => $employee->remoto ? $request->lat : null,
                 'lng_inicio' => $employee->remoto ? $request->lng : null,
                 'ip_inicio' => $request->ip(),
@@ -159,10 +167,14 @@ class FicharController extends Controller
                 }
             }
 
-            $duracion = (int) now()->diffInSeconds($pausaActiva->inicio_pausa, true);
+            $pauseFinishedAt = WorkCenterTimezone::nowUtc();
+            $duracion = (int) $pauseFinishedAt->diffInSeconds(
+                $pausaActiva->inicio_pausa,
+                true,
+            );
 
             $pausaActiva->update([
-                'fin_pausa' => now(),
+                'fin_pausa' => $pauseFinishedAt,
                 'duracion_pausa' => $duracion,
                 'lat_fin' => $employee->remoto ? $request->lat : null,
                 'lng_fin' => $employee->remoto ? $request->lng : null,
@@ -209,13 +221,18 @@ class FicharController extends Controller
             }
         }
 
+        $finishedAt = WorkCenterTimezone::nowUtc();
+
         // Si estaba en pausa, cerrarla primero
         if ($fichaje->estado === 'pausa') {
             $pausaActiva = $fichaje->pausas()->whereNull('fin_pausa')->latest()->first();
             if ($pausaActiva) {
-                $duracion = (int) now()->diffInSeconds($pausaActiva->inicio_pausa, true);
+                $duracion = (int) $finishedAt->diffInSeconds(
+                    $pausaActiva->inicio_pausa,
+                    true,
+                );
                 $pausaActiva->update([
-                    'fin_pausa' => now(),
+                    'fin_pausa' => $finishedAt,
                     'duracion_pausa' => $duracion,
                     'lat_fin' => $employee->remoto ? $request->lat : null,
                     'lng_fin' => $employee->remoto ? $request->lng : null,
@@ -229,11 +246,14 @@ class FicharController extends Controller
         $fichaje->load('pausas');
 
         $totalPausas = $fichaje->pausas->sum('duracion_pausa');
-        $duracionTotal = (int) now()->diffInSeconds($fichaje->inicio_jornada, true);
+        $duracionTotal = (int) $finishedAt->diffInSeconds(
+            $fichaje->inicio_jornada,
+            true,
+        );
         $duracionJornada = max(0, $duracionTotal - $totalPausas);
 
         $fichaje->update([
-            'fin_jornada' => now(),
+            'fin_jornada' => $finishedAt,
             'duracion_jornada' => $duracionJornada,
             'estado' => 'finalizada',
             'lat_fin' => $employee->remoto ? $request->lat : null,

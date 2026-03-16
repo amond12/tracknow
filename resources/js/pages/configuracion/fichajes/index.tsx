@@ -19,6 +19,16 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
+import {
+    DEFAULT_WORK_CENTER_TIMEZONE,
+    formatDateTimeInTimeZone,
+    formatDateValue,
+    formatTimeInTimeZone,
+    getCurrentDateKeyInTimeZone,
+    getDateKeyInTimeZone,
+    getTimeInputValueInTimeZone,
+    getTimeZoneLabel,
+} from '@/lib/timezones';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem, Company, EdicionFichaje, Fichaje, Pausa, User, WorkCenter } from '@/types';
 
@@ -32,7 +42,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 type FichajeConRelaciones = Fichaje & {
     user: Pick<User, 'id' | 'name' | 'apellido' | 'remoto'>;
-    work_center: Pick<WorkCenter, 'id' | 'nombre'>;
+    work_center: Pick<WorkCenter, 'id' | 'nombre' | 'timezone'>;
     pausas: Pausa[];
     ediciones: EdicionFichaje[];
 };
@@ -41,7 +51,11 @@ interface Props {
     fichajes: FichajeConRelaciones[];
     companies: Pick<Company, 'id' | 'nombre'>[];
     workCenters: (Pick<WorkCenter, 'id' | 'nombre'> & { company_id: number })[];
-    employees: (Pick<User, 'id' | 'name' | 'apellido' | 'remoto'> & { company_id: number; work_center_id: number })[];
+    employees: (Pick<User, 'id' | 'name' | 'apellido' | 'remoto'> & {
+        company_id: number;
+        work_center_id: number;
+        work_center?: Pick<WorkCenter, 'id' | 'nombre' | 'timezone'>;
+    })[];
     filters: {
         empresa_id?: string;
         centro_id?: string;
@@ -53,42 +67,11 @@ interface Props {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function localDateString(date = new Date()): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
 function formatSeconds(seconds: number): string {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
-}
-
-function formatTime(dt: string): string {
-    return new Date(dt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(dt: string): string {
-    return new Date(dt).toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
-}
-
-function toTimeInput(dt: string): string {
-    const d = new Date(dt);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-function formatDatetime(dt: string): string {
-    return new Date(dt).toLocaleString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
 }
 
 function campoLabel(campo: string): string {
@@ -128,6 +111,7 @@ function HoraEditable({
     urlPut,
     campo,
     fecha,
+    timeZone,
     onSuccess,
 }: {
     label: string;
@@ -135,18 +119,18 @@ function HoraEditable({
     urlPut: string;
     campo: string;
     fecha: string;
+    timeZone: string;
     onSuccess: () => void;
 }) {
     const [editing, setEditing] = useState(false);
-    const [hora, setHora] = useState(valor ? toTimeInput(valor) : '');
+    const [hora, setHora] = useState(valor ? getTimeInputValueInTimeZone(valor, timeZone) : '');
     const [motivo, setMotivo] = useState('');
     const [processing, setProcessing] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     function handleSave(e: React.FormEvent) {
         e.preventDefault();
-        // Usar la fecha del valor actual si existe (para jornadas nocturnas que cruzan medianoche)
-        const baseDate = valor ? valor.substring(0, 10) : fecha.substring(0, 10);
+        const baseDate = valor ? getDateKeyInTimeZone(valor, timeZone) : fecha;
         const localIso = `${baseDate}T${hora}:00`;
 
         setProcessing(true);
@@ -168,13 +152,13 @@ function HoraEditable({
             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
             {!editing ? (
                 <div className="flex items-center gap-2">
-                    <span className="font-mono text-base font-medium">{valor ? formatTime(valor) : '—'}</span>
+                    <span className="font-mono text-base font-medium">{valor ? formatTimeInTimeZone(valor, timeZone) : '—'}</span>
                     {valor && (
                         <Button
                             size="icon"
                             variant="ghost"
                             className="h-6 w-6 hover:bg-primary/10 hover:text-primary"
-                            onClick={() => { setHora(toTimeInput(valor)); setEditing(true); }}
+                            onClick={() => { setHora(getTimeInputValueInTimeZone(valor, timeZone)); setEditing(true); }}
                             title="Editar"
                         >
                             <Pencil className="h-3 w-3" />
@@ -272,7 +256,7 @@ function FinalizarSection({ fichaje, onSuccess }: { fichaje: FichajeConRelacione
     );
 }
 
-function TrazabilidadSection({ ediciones }: { ediciones: EdicionFichaje[] }) {
+function TrazabilidadSection({ ediciones, timeZone }: { ediciones: EdicionFichaje[]; timeZone: string }) {
     const [open, setOpen] = useState(false);
 
     if (ediciones.length === 0) return null;
@@ -295,14 +279,14 @@ function TrazabilidadSection({ ediciones }: { ediciones: EdicionFichaje[] }) {
                     {ediciones.map((ed) => {
                         const esCampoHora = ['inicio_jornada', 'fin_jornada', 'inicio_pausa', 'fin_pausa', 'finalizacion_admin'].includes(ed.campo);
                         const fmtValor = (v: string | null | undefined) =>
-                            esCampoHora && v ? formatTime(v) : (v ?? '—');
+                            esCampoHora && v ? formatTimeInTimeZone(v, timeZone) : (v ?? '—');
                         return (
                             <div key={ed.id} className="px-4 py-3 text-xs">
                                 <div className="mb-1.5 flex items-center justify-between gap-2">
                                     <span className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">
                                         {campoLabel(ed.campo)}
                                     </span>
-                                    <span className="text-muted-foreground">{formatDatetime(ed.created_at)}</span>
+                                    <span className="text-muted-foreground">{formatDateTimeInTimeZone(ed.created_at, timeZone)}</span>
                                 </div>
                                 {ed.valor_anterior ? (
                                     <p className="text-muted-foreground">
@@ -404,10 +388,11 @@ function NuevoFichajeModal({
     const availableEmployees = empresaId === 'all'
         ? employees
         : employees.filter((e) => e.company_id === Number(empresaId));
+    const initialDate = getCurrentDateKeyInTimeZone(DEFAULT_WORK_CENTER_TIMEZONE);
 
     const [data, setData] = useState({
         employee_id: '',
-        fecha: localDateString(),
+        fecha: initialDate,
         inicio_jornada: '',
         fin_jornada: '',
         motivo: '',
@@ -454,7 +439,7 @@ function NuevoFichajeModal({
         router.post('/fichajes', payload, {
             preserveScroll: true,
             onSuccess: () => {
-                setData({ employee_id: '', fecha: localDateString(), inicio_jornada: '', fin_jornada: '', motivo: '' });
+                setData({ employee_id: '', fecha: initialDate, inicio_jornada: '', fin_jornada: '', motivo: '' });
                 setPausas([]);
                 setErrors({});
                 onClose();
@@ -465,6 +450,7 @@ function NuevoFichajeModal({
     }
 
     const selectedEmployee = availableEmployees.find((e) => String(e.id) === data.employee_id);
+    const selectedTimeZone = selectedEmployee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
 
     return (
         <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-lg">
@@ -490,7 +476,18 @@ function NuevoFichajeModal({
                     <div className="grid gap-4 p-4 sm:grid-cols-2">
                         <div className="grid gap-1.5 sm:col-span-2">
                             <Label className="text-xs font-medium">Empleado</Label>
-                            <Select value={data.employee_id} onValueChange={(v) => update('employee_id', v)}>
+                            <Select
+                                value={data.employee_id}
+                                onValueChange={(value) => {
+                                    const employee = availableEmployees.find((item) => String(item.id) === value);
+                                    const timeZone = employee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+                                    setData((prev) => ({
+                                        ...prev,
+                                        employee_id: value,
+                                        fecha: getCurrentDateKeyInTimeZone(timeZone),
+                                    }));
+                                }}
+                            >
                                 <SelectTrigger className="h-9">
                                     <SelectValue placeholder="Selecciona un empleado" />
                                 </SelectTrigger>
@@ -503,14 +500,22 @@ function NuevoFichajeModal({
                                 </SelectContent>
                             </Select>
                             {errors.employee_id && <p className="text-xs text-destructive">{errors.employee_id}</p>}
+                            <p className="text-xs text-muted-foreground">
+                                Hora oficial del centro: {getTimeZoneLabel(selectedTimeZone)}
+                            </p>
                         </div>
 
                         {selectedEmployee && (
                             <div className="sm:col-span-2 flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm">
                                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                                    {[selectedEmployee.name, selectedEmployee.apellido].filter(Boolean).map((s) => s[0]).join('').toUpperCase()}
+                                    {[selectedEmployee.name, selectedEmployee.apellido].map((value) => value?.[0] ?? '').join('').toUpperCase()}
                                 </div>
                                 <span className="font-medium text-foreground">{selectedEmployee.name} {selectedEmployee.apellido}</span>
+                                {selectedEmployee.work_center && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {selectedEmployee.work_center.nombre}
+                                    </span>
+                                )}
                                 {selectedEmployee.remoto && (
                                     <span className="ml-auto rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                                         Remoto
@@ -533,6 +538,9 @@ function NuevoFichajeModal({
                                 required
                             />
                             {errors.fecha && <p className="text-xs text-destructive">{errors.fecha}</p>}
+                            <p className="text-xs text-muted-foreground">
+                                La fecha y las horas se interpretan con la zona del centro seleccionado.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -728,7 +736,17 @@ function EliminarPausaButton({ fichaje, pausa, onSuccess }: { fichaje: FichajeCo
     );
 }
 
-function AnadirPausaSection({ fichaje, fecha, onSuccess }: { fichaje: FichajeConRelaciones; fecha: string; onSuccess: () => void }) {
+function AnadirPausaSection({
+    fichaje,
+    fecha,
+    timeZone,
+    onSuccess,
+}: {
+    fichaje: FichajeConRelaciones;
+    fecha: string;
+    timeZone: string;
+    onSuccess: () => void;
+}) {
     const [open, setOpen] = useState(false);
     const [inicioPausa, setInicioPausa] = useState('');
     const [finPausa, setFinPausa] = useState('');
@@ -777,6 +795,9 @@ function AnadirPausaSection({ fichaje, fecha, onSuccess }: { fichaje: FichajeCon
             </button>
             {open && (
                 <div className="border-t p-4">
+                    <p className="mb-3 text-xs text-muted-foreground">
+                        Hora oficial del centro: {getTimeZoneLabel(timeZone)}
+                    </p>
                     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-1">
@@ -837,6 +858,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
 
     const estado = estadoBadge[fichaje.estado];
     const urlJornada = `/fichajes/${fichaje.id}/jornada`;
+    const timeZone = fichaje.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
 
     function reload() {
         router.reload({ only: ['fichajes'] });
@@ -865,7 +887,8 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                             <DialogTitle className="text-lg font-semibold leading-tight">
                                 {fichaje.user?.name} {fichaje.user?.apellido}
                             </DialogTitle>
-                            <p className="text-sm text-muted-foreground">{formatDate(fichaje.fecha)}</p>
+                            <p className="text-sm text-muted-foreground">{formatDateValue(fichaje.fecha)}</p>
+                            <p className="text-xs text-muted-foreground">{getTimeZoneLabel(timeZone)}</p>
                         </div>
                     </div>
                     <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${estado.className}`}>
@@ -890,6 +913,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                                 urlPut={urlJornada}
                                 campo="inicio_jornada"
                                 fecha={fichaje.fecha}
+                                timeZone={timeZone}
                                 onSuccess={reload}
                             />
                             <HoraEditable
@@ -898,6 +922,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                                 urlPut={urlJornada}
                                 campo="fin_jornada"
                                 fecha={fichaje.fecha}
+                                timeZone={timeZone}
                                 onSuccess={reload}
                             />
                         </div>
@@ -954,6 +979,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                                                 urlPut={urlPausa}
                                                 campo="inicio_pausa"
                                                 fecha={fichaje.fecha}
+                                                timeZone={timeZone}
                                                 onSuccess={reload}
                                             />
                                             <HoraEditable
@@ -962,6 +988,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                                                 urlPut={urlPausa}
                                                 campo="fin_pausa"
                                                 fecha={fichaje.fecha}
+                                                timeZone={timeZone}
                                                 onSuccess={reload}
                                             />
                                         </div>
@@ -983,7 +1010,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                 )}
 
                 {/* Añadir pausa */}
-                <AnadirPausaSection fichaje={fichaje} fecha={fichaje.fecha} onSuccess={reload} />
+                <AnadirPausaSection fichaje={fichaje} fecha={fichaje.fecha} timeZone={timeZone} onSuccess={reload} />
 
                 {/* Finalizar */}
                 {fichaje.estado !== 'finalizada' && (
@@ -991,7 +1018,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                 )}
 
                 {/* Trazabilidad */}
-                <TrazabilidadSection ediciones={fichaje.ediciones ?? []} />
+                <TrazabilidadSection ediciones={fichaje.ediciones ?? []} timeZone={timeZone} />
 
                 {/* Eliminar */}
                 <EliminarSection fichaje={fichaje} onDeleted={reloadAndClose} />
@@ -1026,7 +1053,7 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const today = localDateString();
+    const today = getCurrentDateKeyInTimeZone(DEFAULT_WORK_CENTER_TIMEZONE);
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? today);
     const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? today);
     const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -1315,6 +1342,7 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
                                     fichajes.map((f) => {
                                         const totalPausas = f.pausas.reduce((acc, p) => acc + (p.duracion_pausa ?? 0), 0);
                                         const estado = estadoBadge[f.estado] ?? estadoBadge.finalizada;
+                                        const timeZone = f.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
 
                                         return (
                                             <tr
@@ -1322,7 +1350,7 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
                                                 className="cursor-pointer transition-colors hover:bg-muted/40"
                                                 onClick={() => setSelectedId(f.id)}
                                             >
-                                                <td className="px-4 py-3 font-medium">{formatDate(f.fecha)}</td>
+                                                <td className="px-4 py-3 font-medium">{formatDateValue(f.fecha)}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
@@ -1337,9 +1365,9 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 font-mono text-sm">{formatTime(f.inicio_jornada)}</td>
+                                                <td className="px-4 py-3 font-mono text-sm">{formatTimeInTimeZone(f.inicio_jornada, timeZone)}</td>
                                                 <td className="px-4 py-3 font-mono text-sm">
-                                                    {f.fin_jornada ? formatTime(f.fin_jornada) : <span className="text-muted-foreground">—</span>}
+                                                    {f.fin_jornada ? formatTimeInTimeZone(f.fin_jornada, timeZone) : <span className="text-muted-foreground">—</span>}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {f.pausas.length > 0 ? (
