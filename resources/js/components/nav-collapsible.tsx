@@ -56,15 +56,16 @@ export function NavCollapsible({
                             </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                            <SidebarMenuSub className="mt-1 ml-4 gap-1 border-sidebar-border/55 px-0 pl-2.5">
+                            <SidebarMenuSub className="mt-1 ml-3.5 gap-1 border-sidebar-border/55 px-0 pl-2">
                                 {items.map((item) => (
                                     <SidebarMenuSubItem key={item.title}>
                                         <SidebarMenuSubButton
                                             asChild
+                                            multiline
                                             isActive={isCurrentOrParentUrl(
                                                 item.href,
                                             )}
-                                            className="h-8 rounded-lg px-2 text-[12.5px] font-medium text-sidebar-foreground/72 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground data-[active=true]:bg-white data-[active=true]:text-blue-600 dark:data-[active=true]:bg-sidebar-accent dark:data-[active=true]:text-blue-300"
+                                            className="min-h-8 rounded-lg px-1.5 text-[12px] font-medium text-sidebar-foreground/72 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground data-[active=true]:bg-white data-[active=true]:text-blue-600 dark:data-[active=true]:bg-sidebar-accent dark:data-[active=true]:text-blue-300 [&>svg]:size-3.5"
                                         >
                                             <Link href={item.href} prefetch>
                                                 {item.icon && <item.icon />}
