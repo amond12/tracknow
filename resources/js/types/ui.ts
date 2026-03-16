@@ -11,4 +11,5 @@ export type AuthLayoutProps = {
     name?: string;
     title?: string;
     description?: string;
+    maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
 };

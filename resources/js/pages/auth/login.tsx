@@ -17,6 +17,11 @@ type Props = {
     canRegister: boolean;
 };
 
+const labelClassName =
+    'text-[10px] font-bold tracking-[0.18em] text-slate-600 uppercase';
+const inputClassName =
+    'h-10 rounded-xl border-slate-200 bg-blue-50/40 px-3.5 shadow-none transition duration-200 focus-visible:border-blue-300 focus-visible:bg-white focus-visible:ring-blue-100';
+
 export default function Login({
     status,
     canResetPassword,
@@ -24,10 +29,16 @@ export default function Login({
 }: Props) {
     return (
         <AuthLayout
-            title="Log in to your account"
-            description="Enter your email and password below to log in"
+            title="Iniciar sesion"
+            description="Accede a tu cuenta para continuar."
         >
-            <Head title="Log in" />
+            <Head title="Iniciar sesion" />
+
+            {status && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+                    {status}
+                </div>
+            )}
 
             <Form
                 {...store.form()}
@@ -36,9 +47,14 @@ export default function Login({
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-6">
+                        <div className="grid gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label
+                                    htmlFor="email"
+                                    className={labelClassName}
+                                >
+                                    Email
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -47,21 +63,27 @@ export default function Login({
                                     autoFocus
                                     tabIndex={1}
                                     autoComplete="email"
-                                    placeholder="email@example.com"
+                                    placeholder="tu@empresa.com"
+                                    className={inputClassName}
                                 />
                                 <InputError message={errors.email} />
                             </div>
 
                             <div className="grid gap-2">
                                 <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
+                                    <Label
+                                        htmlFor="password"
+                                        className={labelClassName}
+                                    >
+                                        Contrasena
+                                    </Label>
                                     {canResetPassword && (
                                         <TextLink
                                             href={request()}
-                                            className="ml-auto text-sm"
+                                            className="ml-auto text-sm font-medium text-blue-700 decoration-blue-200 hover:text-blue-800"
                                             tabIndex={5}
                                         >
-                                            Forgot password?
+                                            Has olvidado tu contrasena?
                                         </TextLink>
                                     )}
                                 </div>
@@ -72,49 +94,53 @@ export default function Login({
                                     required
                                     tabIndex={2}
                                     autoComplete="current-password"
-                                    placeholder="Password"
+                                    placeholder="Introduce tu contrasena"
+                                    className={inputClassName}
                                 />
                                 <InputError message={errors.password} />
                             </div>
 
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center justify-between rounded-xl border border-blue-100 bg-blue-50/50 px-3.5 py-2.5">
+                                <Label
+                                    htmlFor="remember"
+                                    className="text-sm font-medium text-slate-900"
+                                >
+                                    Mantener sesion iniciada
+                                </Label>
                                 <Checkbox
                                     id="remember"
                                     name="remember"
                                     tabIndex={3}
                                 />
-                                <Label htmlFor="remember">Remember me</Label>
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full"
+                                className="mt-1 h-10 w-full rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/25 hover:bg-blue-700"
                                 tabIndex={4}
                                 disabled={processing}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
-                                Log in
+                                Iniciar sesion
                             </Button>
                         </div>
 
                         {canRegister && (
-                            <div className="text-center text-sm text-muted-foreground">
-                                Don't have an account?{' '}
-                                <TextLink href={register()} tabIndex={5}>
-                                    Sign up
+                            <div className="rounded-xl border border-blue-100 bg-blue-50/50 px-3 py-2.5 text-center text-sm text-slate-600">
+                                Todavia no tienes acceso?{' '}
+                                <TextLink
+                                    href={register()}
+                                    tabIndex={5}
+                                    className="font-semibold text-blue-700 decoration-blue-200 hover:text-blue-800"
+                                >
+                                    Crear cuenta
                                 </TextLink>
                             </div>
                         )}
                     </>
                 )}
             </Form>
-
-            {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
         </AuthLayout>
     );
 }
