@@ -8,39 +8,16 @@ import { Circle, MapContainer, Marker, TileLayer } from 'react-leaflet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    getMapboxRasterTilesUrl,
+    hasMapboxToken,
+    validateWorkCenterAddress,
+} from '@/lib/mapbox';
+import type { MapboxAddressResult } from '@/lib/mapbox';
 
-// Fix Leaflet default icon broken in Vite/webpack bundlers
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
+    ._getIconUrl;
 L.Icon.Default.mergeOptions({ iconUrl, iconRetinaUrl, shadowUrl });
-
-// Prefijos de tipo de vía comunes en lenguas de España
-const STREET_TYPE_PREFIXES = /^(calle|carrer|carrer de|carrer d'|avinguda|avinguda de|avinguda d'|avenida|avenida de|passeig|passeig de|paseo|paseo de|plaça|plaça de|plaza|plaza de|carretera|carretera de|rúa|rúa de|rua|rua de|camino|camino de|cami|camí|camí de|travessera|travessera de|travesia|gran via|via|c\/|av\.|avda\.|pza\.|pl\.)\s+/i;
-
-function stripStreetType(street: string): string {
-    return street.replace(STREET_TYPE_PREFIXES, '').trim();
-}
-
-async function geocodeStructured(
-    street: string,
-    city: string,
-    state: string,
-    postalcode: string,
-    country: string,
-): Promise<{ lat: number; lng: number } | null> {
-    const params = new URLSearchParams({ format: 'json', limit: '1', addressdetails: '1' });
-    if (street) params.set('street', street);
-    if (city) params.set('city', city);
-    if (state) params.set('state', state);
-    if (postalcode) params.set('postalcode', postalcode);
-    if (country) params.set('country', country);
-
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-        headers: { 'Accept-Language': 'es' },
-    });
-    const data = await res.json();
-    if (!data || data.length === 0) return null;
-    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-}
 
 interface Props {
     direccion: string;
@@ -54,6 +31,8 @@ interface Props {
     onCoordenadas: (lat: number, lng: number, radio: number) => void;
     onRadioChange?: (radio: number) => void;
     onLimpiar?: () => void;
+    onAddressResolved?: (address: MapboxAddressResult) => void;
+    autoLocateOnMount?: boolean;
 }
 
 export function CentroLocalizador({
@@ -68,6 +47,8 @@ export function CentroLocalizador({
     onCoordenadas,
     onRadioChange,
     onLimpiar,
+    onAddressResolved,
+    autoLocateOnMount = false,
 }: Props) {
     const [lat, setLat] = useState<number | null>(initialLat);
     const [lng, setLng] = useState<number | null>(initialLng);
@@ -75,6 +56,7 @@ export function CentroLocalizador({
     const [error, setError] = useState<string | null>(null);
     const [geocoding, setGeocoding] = useState(false);
     const markerRef = useRef<L.Marker>(null);
+    const autoLocateAttemptedRef = useRef(false);
 
     useEffect(() => {
         setLat(initialLat);
@@ -85,45 +67,79 @@ export function CentroLocalizador({
         setRadio(initialRadio ?? 100);
     }, [initialRadio]);
 
-    async function handlePosicionar() {
-        if (!direccion.trim() && !poblacion.trim()) {
-            setError('Introduce al menos la dirección o la población antes de posicionar.');
+    const handlePosicionar = useCallback(async () => {
+        if (!hasMapboxToken()) {
+            setError('Falta configurar VITE_MAPBOX_TOKEN para usar el mapa.');
             return;
         }
+
+        if (!direccion.trim() && !poblacion.trim()) {
+            setError(
+                'Introduce al menos la direccion o la poblacion antes de posicionar.',
+            );
+            return;
+        }
+
         setGeocoding(true);
         setError(null);
 
         try {
-            // Intento 1: query estructurada con la dirección tal como está
-            let result = await geocodeStructured(direccion, poblacion, provincia, cp, pais);
-
-            // Intento 2: eliminar el prefijo de tipo de vía (Calle → Carrer, etc.)
-            if (!result && direccion.trim()) {
-                const stripped = stripStreetType(direccion);
-                if (stripped !== direccion.trim()) {
-                    result = await geocodeStructured(stripped, poblacion, provincia, cp, pais);
-                }
-            }
-
-            // Intento 3: solo ciudad + CP + país (sin calle), para al menos centrar el mapa
-            if (!result) {
-                result = await geocodeStructured('', poblacion || provincia, provincia, cp, pais);
-            }
+            const result = await validateWorkCenterAddress({
+                direccion,
+                poblacion,
+                provincia,
+                cp,
+                pais,
+            });
 
             if (!result) {
-                setError('No se encontró la dirección. Comprueba los datos e inténtalo de nuevo.');
+                setError(
+                    'Mapbox no ha encontrado la direccion. Revisa los datos e intentalo otra vez.',
+                );
                 return;
             }
 
             setLat(result.lat);
             setLng(result.lng);
             onCoordenadas(result.lat, result.lng, radio);
+            onAddressResolved?.(result);
         } catch {
-            setError('Error al conectar con el servicio de geocodificación.');
+            setError('Error al conectar con Mapbox.');
         } finally {
             setGeocoding(false);
         }
-    }
+    }, [
+        cp,
+        direccion,
+        onAddressResolved,
+        onCoordenadas,
+        pais,
+        poblacion,
+        provincia,
+        radio,
+    ]);
+
+    useEffect(() => {
+        if (
+            !autoLocateOnMount ||
+            autoLocateAttemptedRef.current ||
+            initialLat !== null ||
+            initialLng !== null ||
+            (!direccion.trim() && !poblacion.trim())
+        ) {
+            return;
+        }
+
+        autoLocateAttemptedRef.current = true;
+        void handlePosicionar();
+    }, [
+        autoLocateOnMount,
+        direccion,
+        handlePosicionar,
+        initialLat,
+        initialLng,
+        poblacion,
+    ]);
 
     const handleDragEnd = useCallback(() => {
         const marker = markerRef.current;
@@ -137,6 +153,7 @@ export function CentroLocalizador({
     function handleRadioChange(value: number) {
         setRadio(value);
         onRadioChange?.(value);
+
         if (lat !== null && lng !== null) {
             onCoordenadas(lat, lng, value);
         }
@@ -151,16 +168,20 @@ export function CentroLocalizador({
 
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handlePosicionar}
                     disabled={geocoding}
-                    className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 hover:-translate-y-px transition-all"
+                    className="border-emerald-200 bg-emerald-50 text-emerald-700 transition-all hover:-translate-y-px hover:border-emerald-300 hover:bg-emerald-100"
                 >
-                    {geocoding ? 'Buscando...' : '📍 Posicionar en el mapa'}
+                    {geocoding
+                        ? 'Posicionando...'
+                        : lat !== null && lng !== null
+                          ? 'Reposicionar desde la direccion'
+                          : 'Posicionar desde la direccion'}
                 </Button>
                 {lat !== null && lng !== null && (
                     <Button
@@ -168,9 +189,9 @@ export function CentroLocalizador({
                         variant="outline"
                         size="sm"
                         onClick={handleLimpiar}
-                        className="border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 hover:-translate-y-px transition-all"
+                        className="border-red-200 bg-red-50 text-red-600 transition-all hover:-translate-y-px hover:border-red-300 hover:bg-red-100"
                     >
-                        ✕ Quitar posición
+                        Quitar posicion
                     </Button>
                 )}
             </div>
@@ -179,7 +200,10 @@ export function CentroLocalizador({
 
             {lat !== null && lng !== null && (
                 <>
-                    <div className="overflow-hidden rounded-lg border" style={{ height: 240 }}>
+                    <div
+                        className="overflow-hidden rounded-lg border"
+                        style={{ height: 240 }}
+                    >
                         <MapContainer
                             key={`${lat},${lng}`}
                             center={[lat, lng]}
@@ -187,8 +211,10 @@ export function CentroLocalizador({
                             style={{ height: '100%', width: '100%' }}
                         >
                             <TileLayer
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                url={getMapboxRasterTilesUrl()}
+                                attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                tileSize={512}
+                                zoomOffset={-1}
                             />
                             <Marker
                                 position={[lat, lng]}
@@ -196,25 +222,47 @@ export function CentroLocalizador({
                                 ref={markerRef}
                                 eventHandlers={{ dragend: handleDragEnd }}
                             />
-                            <Circle center={[lat, lng]} radius={radio} pathOptions={{ color: '#10b981', fillOpacity: 0.12 }} />
+                            <Circle
+                                center={[lat, lng]}
+                                radius={radio}
+                                pathOptions={{
+                                    color: '#10b981',
+                                    fillOpacity: 0.12,
+                                }}
+                            />
                         </MapContainer>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
-                            <Label className="text-xs text-muted-foreground">Latitud</Label>
-                            <Input readOnly value={lat.toFixed(6)} className="h-8 text-sm font-mono" />
+                            <Label className="text-xs text-muted-foreground">
+                                Latitud
+                            </Label>
+                            <Input
+                                readOnly
+                                value={lat.toFixed(6)}
+                                className="h-8 font-mono text-sm"
+                            />
                         </div>
                         <div className="grid gap-1">
-                            <Label className="text-xs text-muted-foreground">Longitud</Label>
-                            <Input readOnly value={lng.toFixed(6)} className="h-8 text-sm font-mono" />
+                            <Label className="text-xs text-muted-foreground">
+                                Longitud
+                            </Label>
+                            <Input
+                                readOnly
+                                value={lng.toFixed(6)}
+                                className="h-8 font-mono text-sm"
+                            />
                         </div>
                     </div>
                 </>
             )}
 
             <div className="grid gap-1">
-                <Label htmlFor="radio_geofence" className="text-xs text-muted-foreground">
+                <Label
+                    htmlFor="radio_geofence"
+                    className="text-xs text-muted-foreground"
+                >
                     Radio de geofence (metros)
                 </Label>
                 <div className="flex items-center gap-2">
@@ -223,13 +271,18 @@ export function CentroLocalizador({
                         type="number"
                         min={10}
                         value={radio}
-                        onChange={(e) => handleRadioChange(Number(e.target.value))}
-                        className="h-8 text-sm w-24 font-mono text-center"
+                        onChange={(e) =>
+                            handleRadioChange(Number(e.target.value))
+                        }
+                        className="h-8 w-24 text-center font-mono text-sm"
                     />
-                    <span className="text-xs text-muted-foreground">metros de radio</span>
+                    <span className="text-xs text-muted-foreground">
+                        metros de radio
+                    </span>
                 </div>
                 <p className="text-xs text-muted-foreground/70">
-                    💡 100 m → un edificio &nbsp;·&nbsp; 500 m → un campus
+                    Si mueves el pin manualmente, revisa la direccion antes de
+                    guardar.
                 </p>
             </div>
         </div>
