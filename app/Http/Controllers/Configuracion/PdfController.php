@@ -28,21 +28,21 @@ class PdfController extends Controller
         $workCenters = WorkCenter::whereIn('company_id', $companyIds)
             ->get(['id', 'company_id', 'nombre']);
 
-        $employees = User::where(function ($q) use ($companyIds) {
-                $q->whereIn('company_id', $companyIds)
-                  ->whereIn('role', ['empleado', 'encargado']);
-            })
+        $employees = User::where(function ($query) use ($companyIds) {
+            $query->whereIn('company_id', $companyIds)
+                ->whereIn('role', ['empleado', 'encargado']);
+        })
             ->orWhere('id', $user->id)
             ->orderBy('apellido')
             ->orderBy('name')
             ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'remoto']);
 
-        $mes  = (int) $request->input('mes',  now()->month);
+        $mes = (int) $request->input('mes', now()->month);
         $anio = (int) $request->input('anio', now()->year);
 
-        $query = User::where(function ($q) use ($companyIds) {
-            $q->whereIn('company_id', $companyIds)
-              ->whereIn('role', ['empleado', 'encargado']);
+        $query = User::where(function ($query) use ($companyIds) {
+            $query->whereIn('company_id', $companyIds)
+                ->whereIn('role', ['empleado', 'encargado']);
         })->orWhere('id', $user->id);
 
         if ($request->filled('empresa_id')) {
@@ -58,31 +58,31 @@ class PdfController extends Controller
         }
 
         $empleadosFiltrados = $query
-            ->with(['fichajes' => function ($q) use ($mes, $anio) {
-                $q->whereMonth('fecha', $mes)
-                  ->whereYear('fecha', $anio)
-                  ->orderBy('fecha');
+            ->with(['fichajes' => function ($query) use ($mes, $anio) {
+                $query->whereMonth('fecha', $mes)
+                    ->whereYear('fecha', $anio)
+                    ->orderBy('fecha');
             }])
             ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni']);
 
-        $resumen = $empleadosFiltrados->map(fn ($e) => [
-            'id'             => $e->id,
-            'nombre'         => $e->name,
-            'apellido'       => $e->apellido,
-            'dni'            => $e->dni,
-            'total_segundos' => $e->fichajes->sum('duracion_jornada'),
-            'total_dias'     => $e->fichajes->count(),
-            'tiene_fichajes' => $e->fichajes->isNotEmpty(),
+        $resumen = $empleadosFiltrados->map(fn ($employee) => [
+            'id' => $employee->id,
+            'nombre' => $employee->name,
+            'apellido' => $employee->apellido,
+            'dni' => $employee->dni,
+            'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
+            'total_dias' => $employee->fichajes->count(),
+            'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
         ])->values();
 
         return Inertia::render('configuracion/pdfs/index', [
-            'companies'   => $companies,
+            'companies' => $companies,
             'workCenters' => $workCenters,
-            'employees'   => $employees,
-            'resumen'     => $resumen,
-            'filters'     => $request->only(['empresa_id', 'centro_id', 'empleado_id', 'mes', 'anio']),
-            'mes'         => $mes,
-            'anio'        => $anio,
+            'employees' => $employees,
+            'resumen' => $resumen,
+            'filters' => $request->only(['empresa_id', 'centro_id', 'empleado_id', 'mes', 'anio']),
+            'mes' => $mes,
+            'anio' => $anio,
         ]);
     }
 
@@ -91,9 +91,9 @@ class PdfController extends Controller
         $companyIds = Company::where('user_id', $request->user()->id)->pluck('id');
 
         $esPropioAdmin = $empleado->id === $request->user()->id;
-        abort_if(!$esPropioAdmin && !$companyIds->contains($empleado->company_id), 403);
+        abort_if(! $esPropioAdmin && ! $companyIds->contains($empleado->company_id), 403);
 
-        $mes  = (int) $request->query('mes',  now()->month);
+        $mes = (int) $request->query('mes', now()->month);
         $anio = (int) $request->query('anio', now()->year);
 
         abort_if($mes < 1 || $mes > 12, 422);
@@ -102,7 +102,7 @@ class PdfController extends Controller
         $empleado->load(['company', 'workCenter']);
 
         $empresa = $empleado->company ?? Company::where('user_id', $request->user()->id)->first();
-        $centro  = $empleado->workCenter ?? $empresa?->workCenters()->first();
+        $centro = $empleado->workCenter ?? $empresa?->workCenters()->first();
         $timezone = WorkCenterTimezone::resolve($centro);
 
         $fichajes = Fichaje::where('user_id', $empleado->id)
@@ -116,84 +116,86 @@ class PdfController extends Controller
             ->whereMonth('fecha', $mes)
             ->whereYear('fecha', $anio)
             ->get()
-            ->keyBy(fn ($r) => $r->fecha->toDateString());
+            ->keyBy(fn ($resumen) => $resumen->fecha->toDateString());
 
-        $diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-        $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        $diasSemana = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
+        $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
         $eventos = Vacacion::where('user_id', $empleado->id)
             ->whereMonth('fecha', $mes)
             ->whereYear('fecha', $anio)
             ->get(['fecha', 'tipo', 'motivo', 'dia_completo', 'hora_inicio', 'hora_fin']);
 
-        $eventosPorFecha = $eventos->keyBy(fn ($e) => Carbon::parse($e->fecha)->toDateString());
+        $eventosPorFecha = $eventos->keyBy(fn ($evento) => Carbon::parse($evento->fecha)->toDateString());
 
         $fechasConFichaje = $fichajes->pluck('fecha')
-            ->map(fn ($f) => Carbon::parse($f)->toDateString())
+            ->map(fn ($fecha) => Carbon::parse($fecha)->toDateString())
             ->toArray();
 
-        $filas = $fichajes->map(function ($f) use ($diasSemana, $resumenPorFecha, $eventosPorFecha, $timezone) {
-            $fecha = Carbon::parse($f->fecha);
+        $filas = $fichajes->map(function ($fichaje) use ($diasSemana, $resumenPorFecha, $eventosPorFecha, $timezone) {
+            $fecha = Carbon::parse($fichaje->fecha);
             $dateStr = $fecha->toDateString();
             $resumenDia = $resumenPorFecha->get($dateStr);
             $horasExtraSeg = $resumenDia?->horas_extra ?? 0;
+            $rowTimeZone = WorkCenterTimezone::resolve($fichaje->timezone ?: $timezone);
 
-            $jornadaSeg = ($f->inicio_jornada && $f->fin_jornada)
-                ? Carbon::parse($f->fin_jornada)->diffInSeconds(Carbon::parse($f->inicio_jornada))
+            $jornadaSeg = ($fichaje->inicio_jornada && $fichaje->fin_jornada)
+                ? Carbon::parse($fichaje->fin_jornada)->diffInSeconds(Carbon::parse($fichaje->inicio_jornada))
                 : null;
 
-            // Observación: ausencias parciales en días con fichaje
-            $obs = '';
+            $observaciones = '';
             $evento = $eventosPorFecha->get($dateStr);
             if ($evento && $evento->tipo === 'ausencia') {
-                if (!$evento->dia_completo && $evento->hora_inicio && $evento->hora_fin) {
-                    $obs = 'AUSENCIA ' . substr($evento->hora_inicio, 0, 5) . '-' . substr($evento->hora_fin, 0, 5);
-                    if ($evento->motivo) $obs .= ': ' . $evento->motivo;
+                if (! $evento->dia_completo && $evento->hora_inicio && $evento->hora_fin) {
+                    $observaciones = 'AUSENCIA '.substr($evento->hora_inicio, 0, 5).'-'.substr($evento->hora_fin, 0, 5);
+                    if ($evento->motivo) {
+                        $observaciones .= ': '.$evento->motivo;
+                    }
                 } else {
-                    $obs = 'AUSENCIA' . ($evento->motivo ? ': ' . $evento->motivo : '');
+                    $observaciones = 'AUSENCIA'.($evento->motivo ? ': '.$evento->motivo : '');
                 }
             }
 
             return [
-                'fecha'        => $fecha->format('d/m/Y'),
-                'dia_semana'   => $diasSemana[$fecha->dayOfWeekIso - 1],
-                'entrada'      => $f->inicio_jornada ? WorkCenterTimezone::utcToLocal($f->inicio_jornada, $timezone)->format('H:i') : '—',
-                'salida'       => $f->fin_jornada    ? WorkCenterTimezone::utcToLocal($f->fin_jornada, $timezone)->format('H:i')    : '—',
-                'presencia'    => $f->duracion_jornada !== null ? $this->formatSeconds($f->duracion_jornada) : '—',
-                'jornada'      => $jornadaSeg !== null ? $this->formatSeconds($jornadaSeg) : '—',
-                'horas_extra'  => $horasExtraSeg > 0 ? ('+' . $this->formatSeconds($horasExtraSeg)) : '',
-                'observaciones' => $obs,
+                'fecha' => $fecha->format('d/m/Y'),
+                'dia_semana' => $diasSemana[$fecha->dayOfWeekIso - 1],
+                'entrada' => $fichaje->inicio_jornada ? WorkCenterTimezone::utcToLocal($fichaje->inicio_jornada, $rowTimeZone)->format('H:i') : '-',
+                'salida' => $fichaje->fin_jornada ? WorkCenterTimezone::utcToLocal($fichaje->fin_jornada, $rowTimeZone)->format('H:i') : '-',
+                'presencia' => $fichaje->duracion_jornada !== null ? $this->formatSeconds($fichaje->duracion_jornada) : '-',
+                'jornada' => $jornadaSeg !== null ? $this->formatSeconds($jornadaSeg) : '-',
+                'horas_extra' => $horasExtraSeg > 0 ? '+'.$this->formatSeconds($horasExtraSeg) : '',
+                'observaciones' => $observaciones,
             ];
         })->toArray();
 
-        // Filas sin fichaje: vacaciones, ausencias y festivos
         foreach ($eventosPorFecha as $fechaStr => $evento) {
-            if (!in_array($fechaStr, $fechasConFichaje)) {
+            if (! in_array($fechaStr, $fechasConFichaje)) {
                 $fecha = Carbon::parse($fechaStr);
 
                 if ($evento->tipo === 'vacacion') {
-                    $obs = 'VACACIONES';
+                    $observaciones = 'VACACIONES';
                 } elseif ($evento->tipo === 'ausencia') {
-                    if (!$evento->dia_completo && $evento->hora_inicio && $evento->hora_fin) {
-                        $obs = 'AUSENCIA ' . substr($evento->hora_inicio, 0, 5) . '-' . substr($evento->hora_fin, 0, 5);
-                        if ($evento->motivo) $obs .= ': ' . $evento->motivo;
+                    if (! $evento->dia_completo && $evento->hora_inicio && $evento->hora_fin) {
+                        $observaciones = 'AUSENCIA '.substr($evento->hora_inicio, 0, 5).'-'.substr($evento->hora_fin, 0, 5);
+                        if ($evento->motivo) {
+                            $observaciones .= ': '.$evento->motivo;
+                        }
                     } else {
-                        $obs = 'AUSENCIA' . ($evento->motivo ? ': ' . $evento->motivo : '');
+                        $observaciones = 'AUSENCIA'.($evento->motivo ? ': '.$evento->motivo : '');
                     }
                 } else {
-                    $obs = 'FESTIVO' . ($evento->motivo ? ': ' . $evento->motivo : '');
+                    $observaciones = 'FESTIVO'.($evento->motivo ? ': '.$evento->motivo : '');
                 }
 
                 $filas[] = [
-                    'fecha'        => $fecha->format('d/m/Y'),
-                    'dia_semana'   => $diasSemana[$fecha->dayOfWeekIso - 1],
-                    'entrada'      => '—',
-                    'salida'       => '—',
-                    'presencia'    => '—',
-                    'jornada'      => '—',
-                    'horas_extra'  => '',
-                    'observaciones' => $obs,
+                    'fecha' => $fecha->format('d/m/Y'),
+                    'dia_semana' => $diasSemana[$fecha->dayOfWeekIso - 1],
+                    'entrada' => '-',
+                    'salida' => '-',
+                    'presencia' => '-',
+                    'jornada' => '-',
+                    'horas_extra' => '',
+                    'observaciones' => $observaciones,
                 ];
             }
         }
@@ -203,20 +205,20 @@ class PdfController extends Controller
         });
 
         $totalSegundos = $fichajes->sum('duracion_jornada');
-        $totalHoras    = $this->formatSecondsLong($totalSegundos);
-        $mesNombre     = $meses[$mes];
+        $totalHoras = $this->formatSecondsLong($totalSegundos);
+        $mesNombre = $meses[$mes];
 
         $pdf = Pdf::loadView('pdf.jornada', [
-            'empleado'   => $empleado,
-            'empresa'    => $empresa,
-            'centro'     => $centro,
-            'filas'      => $filas,
+            'empleado' => $empleado,
+            'empresa' => $empresa,
+            'centro' => $centro,
+            'filas' => $filas,
             'totalHoras' => $totalHoras,
-            'mes'        => $mes,
-            'anio'       => $anio,
-            'mesNombre'  => $mesNombre,
+            'mes' => $mes,
+            'anio' => $anio,
+            'mesNombre' => $mesNombre,
             'generadoEn' => WorkCenterTimezone::nowUtc()->setTimezone($timezone)->format('d/m/Y H:i'),
-            'esAdmin'    => $empleado->role === 'admin',
+            'esAdmin' => $empleado->role === 'admin',
         ])->setPaper('A4', 'portrait');
 
         $filename = sprintf(
@@ -224,7 +226,7 @@ class PdfController extends Controller
             Str::slug($empleado->apellido),
             Str::slug($empleado->name),
             $mes,
-            $anio
+            $anio,
         );
 
         return $pdf->download($filename);
@@ -233,16 +235,18 @@ class PdfController extends Controller
     private function formatSeconds(int $seconds): string
     {
         $seconds = abs($seconds);
-        $h = intdiv($seconds, 3600);
-        $m = intdiv($seconds % 3600, 60);
-        return sprintf('%02d:%02d', $h, $m);
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        return sprintf('%02d:%02d', $hours, $minutes);
     }
 
     private function formatSecondsLong(int $seconds): string
     {
         $seconds = abs($seconds);
-        $h = intdiv($seconds, 3600);
-        $m = intdiv($seconds % 3600, 60);
-        return $m > 0 ? "{$h}h {$m}min" : "{$h}h";
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        return $minutes > 0 ? "{$hours}h {$minutes}min" : "{$hours}h";
     }
 }

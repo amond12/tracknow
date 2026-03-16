@@ -4,7 +4,7 @@ use App\Models\User;
 
 test('employees are redirected away from dashboard', function () {
     $employee = User::factory()->create([
-        'role' => 'employee',
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)
@@ -14,7 +14,7 @@ test('employees are redirected away from dashboard', function () {
 
 test('employees can enter settings but are redirected away from profile', function () {
     $employee = User::factory()->create([
-        'role' => 'employee',
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)
@@ -24,7 +24,7 @@ test('employees can enter settings but are redirected away from profile', functi
 
 test('employees cannot access profile settings page', function () {
     $employee = User::factory()->create([
-        'role' => 'employee',
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)
@@ -34,7 +34,7 @@ test('employees cannot access profile settings page', function () {
 
 test('employees cannot update profile settings', function () {
     $employee = User::factory()->create([
-        'role' => 'employee',
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)
@@ -47,7 +47,7 @@ test('employees cannot update profile settings', function () {
 
 test('employees cannot delete own account', function () {
     $employee = User::factory()->create([
-        'role' => 'employee',
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)

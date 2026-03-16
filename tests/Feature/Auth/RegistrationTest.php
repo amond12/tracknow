@@ -12,6 +12,7 @@ test('new users can register', function () {
         'apellido' => 'Admin',
         'email' => 'test@example.com',
         'telefono' => '600000000',
+        'dni' => '12345678A',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
@@ -24,4 +25,5 @@ test('new users can register', function () {
     expect($user)->not->toBeNull();
     expect($user->apellido)->toBe('Admin');
     expect($user->telefono)->toBe('600000000');
+    expect($user->dni)->toBe('12345678A');
 });

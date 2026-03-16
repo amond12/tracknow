@@ -6,9 +6,10 @@ use App\Models\Fichaje;
 use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
-use App\Support\WorkCenterTimezone;
 use App\Services\HorasExtraService;
+use App\Support\WorkCenterTimezone;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class FicharController extends Controller
@@ -24,21 +25,22 @@ class FicharController extends Controller
                 'employee' => null,
                 'fichajeActivo' => null,
                 'historial' => [],
-                'serverNowUtc' => WorkCenterTimezone::nowUtc()->toJSON(),
                 'setupMessage' => $this->buildSetupMessage($user),
             ]);
         }
 
         $fichajeActivo = Fichaje::where('user_id', $employee->id)
             ->whereIn('estado', ['activa', 'pausa'])
-            ->with('pausas')
-            ->latest()
+            ->with(['pausas', 'workCenter:id,nombre,timezone'])
+            ->orderByDesc('fecha')
+            ->orderByDesc('inicio_jornada')
             ->first();
 
         $historial = Fichaje::where('user_id', $employee->id)
             ->where('estado', 'finalizada')
-            ->with('pausas')
-            ->latest()
+            ->with(['pausas', 'workCenter:id,nombre,timezone'])
+            ->orderByDesc('fecha')
+            ->orderByDesc('inicio_jornada')
             ->take(7)
             ->get();
 
@@ -46,7 +48,6 @@ class FicharController extends Controller
             'employee' => $employee,
             'fichajeActivo' => $fichajeActivo,
             'historial' => $historial,
-            'serverNowUtc' => WorkCenterTimezone::nowUtc()->toJSON(),
             'setupMessage' => null,
         ]);
     }
@@ -65,15 +66,6 @@ class FicharController extends Controller
             return back()->withErrors(['error' => 'No tienes un centro de trabajo asignado.']);
         }
 
-        // No permitir una segunda jornada si la anterior sigue abierta, aunque cruce medianoche
-        $jornadaActiva = Fichaje::where('user_id', $employee->id)
-            ->whereIn('estado', ['activa', 'pausa'])
-            ->first();
-
-        if ($jornadaActiva) {
-            return back()->withErrors(['error' => 'Ya tienes una jornada activa.']);
-        }
-
         $request->validate([
             'lat' => 'nullable|numeric',
             'lng' => 'nullable|numeric',
@@ -81,28 +73,40 @@ class FicharController extends Controller
             'ip_publica' => 'nullable|string|max:45',
         ]);
 
-        if (! $employee->remoto) {
-            $error = $this->verificarUbicacion($request, $employee);
-            if ($error) {
-                return back()->withErrors(['error' => $error]);
-            }
+        $error = $this->validarContextoFichaje($request, $employee);
+        if ($error) {
+            return back()->withErrors(['error' => $error]);
         }
 
-        $startedAt = WorkCenterTimezone::nowUtc();
-        $workCenter = $employee->workCenter;
+        return DB::transaction(function () use ($employee, $request) {
+            $this->lockEmployeeForFichaje($employee);
 
-        Fichaje::create([
-            'user_id' => $employee->id,
-            'work_center_id' => $employee->work_center_id,
-            'fecha' => WorkCenterTimezone::currentDateFor($workCenter),
-            'inicio_jornada' => $startedAt,
-            'estado' => 'activa',
-            'lat_inicio' => $employee->remoto ? $request->lat : null,
-            'lng_inicio' => $employee->remoto ? $request->lng : null,
-            'ip_inicio' => $request->ip(),
-        ]);
+            $jornadaActiva = $this->activeFichajeQuery($employee->id)
+                ->lockForUpdate()
+                ->first();
 
-        return back();
+            if ($jornadaActiva) {
+                return back()->withErrors(['error' => 'Ya tienes una jornada activa.']);
+            }
+
+            $startedAt = WorkCenterTimezone::nowUtc();
+            $workCenter = $employee->workCenter;
+            $timezone = WorkCenterTimezone::resolve($workCenter);
+
+            Fichaje::create([
+                'user_id' => $employee->id,
+                'work_center_id' => $employee->work_center_id,
+                'timezone' => $timezone,
+                'fecha' => $startedAt->copy()->setTimezone($timezone)->toDateString(),
+                'inicio_jornada' => $startedAt,
+                'estado' => 'activa',
+                'lat_inicio' => $employee->remoto ? $request->lat : null,
+                'lng_inicio' => $employee->remoto ? $request->lng : null,
+                'ip_inicio' => $request->ip(),
+            ]);
+
+            return back();
+        });
     }
 
     public function pausa(Request $request)
@@ -122,49 +126,47 @@ class FicharController extends Controller
             'ip_publica' => 'nullable|string|max:45',
         ]);
 
-        $fichaje = Fichaje::where('user_id', $employee->id)
-            ->whereIn('estado', ['activa', 'pausa'])
-            ->with('pausas')
-            ->latest()
-            ->first();
+        return DB::transaction(function () use ($employee, $request) {
+            $this->lockEmployeeForFichaje($employee);
 
-        if (! $fichaje) {
-            return back()->withErrors(['error' => 'No tienes jornada activa.']);
-        }
+            $fichaje = $this->activeFichajeQuery($employee->id)
+                ->with('pausas')
+                ->lockForUpdate()
+                ->first();
 
-        if ($fichaje->estado === 'activa') {
-            // Iniciar pausa
-            if (! $employee->remoto) {
-                $error = $this->verificarUbicacion($request, $employee);
-                if ($error) {
-                    return back()->withErrors(['error' => $error]);
-                }
+            if (! $fichaje) {
+                return back()->withErrors(['error' => 'No tienes jornada activa.']);
             }
 
-            $pauseStartedAt = WorkCenterTimezone::nowUtc();
+            $error = $this->validarContextoFichaje($request, $employee);
+            if ($error) {
+                return back()->withErrors(['error' => $error]);
+            }
 
-            Pausa::create([
-                'fichaje_id' => $fichaje->id,
-                'inicio_pausa' => $pauseStartedAt,
-                'lat_inicio' => $employee->remoto ? $request->lat : null,
-                'lng_inicio' => $employee->remoto ? $request->lng : null,
-                'ip_inicio' => $request->ip(),
-            ]);
+            if ($fichaje->estado === 'activa') {
+                $pauseStartedAt = WorkCenterTimezone::nowUtc();
 
-            $fichaje->update(['estado' => 'pausa']);
-        } else {
-            // Reanudar pausa
-            $pausaActiva = $fichaje->pausas()->whereNull('fin_pausa')->latest()->first();
+                Pausa::create([
+                    'fichaje_id' => $fichaje->id,
+                    'inicio_pausa' => $pauseStartedAt,
+                    'lat_inicio' => $employee->remoto ? $request->lat : null,
+                    'lng_inicio' => $employee->remoto ? $request->lng : null,
+                    'ip_inicio' => $request->ip(),
+                ]);
+
+                $fichaje->update(['estado' => 'pausa']);
+
+                return back();
+            }
+
+            $pausaActiva = $fichaje->pausas()
+                ->whereNull('fin_pausa')
+                ->orderByDesc('inicio_pausa')
+                ->lockForUpdate()
+                ->first();
 
             if (! $pausaActiva) {
-                return back()->withErrors(['error' => 'No se encontró la pausa activa.']);
-            }
-
-            if (! $employee->remoto) {
-                $error = $this->verificarUbicacion($request, $employee);
-                if ($error) {
-                    return back()->withErrors(['error' => $error]);
-                }
+                return back()->withErrors(['error' => 'No se encontro la pausa activa.']);
             }
 
             $pauseFinishedAt = WorkCenterTimezone::nowUtc();
@@ -182,9 +184,9 @@ class FicharController extends Controller
             ]);
 
             $fichaje->update(['estado' => 'activa']);
-        }
 
-        return back();
+            return back();
+        });
     }
 
     public function finalizar(Request $request)
@@ -204,67 +206,70 @@ class FicharController extends Controller
             'ip_publica' => 'nullable|string|max:45',
         ]);
 
-        $fichaje = Fichaje::where('user_id', $employee->id)
-            ->whereIn('estado', ['activa', 'pausa'])
-            ->with('pausas')
-            ->latest()
-            ->first();
+        return DB::transaction(function () use ($employee, $request) {
+            $this->lockEmployeeForFichaje($employee);
 
-        if (! $fichaje) {
-            return back()->withErrors(['error' => 'No tienes jornada activa.']);
-        }
+            $fichaje = $this->activeFichajeQuery($employee->id)
+                ->with('pausas')
+                ->lockForUpdate()
+                ->first();
 
-        if (! $employee->remoto) {
-            $error = $this->verificarUbicacion($request, $employee);
+            if (! $fichaje) {
+                return back()->withErrors(['error' => 'No tienes jornada activa.']);
+            }
+
+            $error = $this->validarContextoFichaje($request, $employee);
             if ($error) {
                 return back()->withErrors(['error' => $error]);
             }
-        }
 
-        $finishedAt = WorkCenterTimezone::nowUtc();
+            $finishedAt = WorkCenterTimezone::nowUtc();
 
-        // Si estaba en pausa, cerrarla primero
-        if ($fichaje->estado === 'pausa') {
-            $pausaActiva = $fichaje->pausas()->whereNull('fin_pausa')->latest()->first();
-            if ($pausaActiva) {
-                $duracion = (int) $finishedAt->diffInSeconds(
-                    $pausaActiva->inicio_pausa,
-                    true,
-                );
-                $pausaActiva->update([
-                    'fin_pausa' => $finishedAt,
-                    'duracion_pausa' => $duracion,
-                    'lat_fin' => $employee->remoto ? $request->lat : null,
-                    'lng_fin' => $employee->remoto ? $request->lng : null,
-                    'ip_fin' => $request->ip(),
-                ]);
+            if ($fichaje->estado === 'pausa') {
+                $pausaActiva = $fichaje->pausas()
+                    ->whereNull('fin_pausa')
+                    ->orderByDesc('inicio_pausa')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($pausaActiva) {
+                    $duracion = (int) $finishedAt->diffInSeconds(
+                        $pausaActiva->inicio_pausa,
+                        true,
+                    );
+                    $pausaActiva->update([
+                        'fin_pausa' => $finishedAt,
+                        'duracion_pausa' => $duracion,
+                        'lat_fin' => $employee->remoto ? $request->lat : null,
+                        'lng_fin' => $employee->remoto ? $request->lng : null,
+                        'ip_fin' => $request->ip(),
+                    ]);
+                }
             }
-        }
 
-        // Refrescar fichaje con pausas cerradas
-        $fichaje->refresh();
-        $fichaje->load('pausas');
+            $fichaje->refresh()->load('pausas');
 
-        $totalPausas = $fichaje->pausas->sum('duracion_pausa');
-        $duracionTotal = (int) $finishedAt->diffInSeconds(
-            $fichaje->inicio_jornada,
-            true,
-        );
-        $duracionJornada = max(0, $duracionTotal - $totalPausas);
+            $totalPausas = $fichaje->pausas->sum('duracion_pausa');
+            $duracionTotal = (int) $finishedAt->diffInSeconds(
+                $fichaje->inicio_jornada,
+                true,
+            );
+            $duracionJornada = max(0, $duracionTotal - $totalPausas);
 
-        $fichaje->update([
-            'fin_jornada' => $finishedAt,
-            'duracion_jornada' => $duracionJornada,
-            'estado' => 'finalizada',
-            'lat_fin' => $employee->remoto ? $request->lat : null,
-            'lng_fin' => $employee->remoto ? $request->lng : null,
-            'ip_fin' => $request->ip(),
-        ]);
+            $fichaje->update([
+                'fin_jornada' => $finishedAt,
+                'duracion_jornada' => $duracionJornada,
+                'estado' => 'finalizada',
+                'lat_fin' => $employee->remoto ? $request->lat : null,
+                'lng_fin' => $employee->remoto ? $request->lng : null,
+                'ip_fin' => $request->ip(),
+            ]);
 
-        $fichaje->refresh()->load('pausas');
-        app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
+            $fichaje->refresh()->load('pausas');
+            app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
 
-        return back();
+            return back();
+        });
     }
 
     private function resolveEmployee(Request $request): ?User
@@ -272,7 +277,6 @@ class FicharController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        // Empleados y encargados: son directamente el trabajador
         if (in_array($user->role, ['empleado', 'encargado'])) {
             if (! $user->company_id || ! $user->work_center_id) {
                 return null;
@@ -282,8 +286,6 @@ class FicharController extends Controller
             return $user;
         }
 
-        // Admins: deben tener company_id + work_center_id asignados para fichar
-        // Si no los tiene, intentar asignar el primer centro propio
         if ($user->role === 'admin') {
             if ($user->work_center_id) {
                 $user->load(['workCenter', 'company']);
@@ -336,6 +338,36 @@ class FicharController extends Controller
             ->first();
     }
 
+    private function activeFichajeQuery(int $userId)
+    {
+        return Fichaje::query()
+            ->where('user_id', $userId)
+            ->whereIn('estado', ['activa', 'pausa'])
+            ->orderByDesc('fecha')
+            ->orderByDesc('inicio_jornada');
+    }
+
+    private function lockEmployeeForFichaje(User $employee): void
+    {
+        User::query()
+            ->whereKey($employee->id)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    private function validarContextoFichaje(Request $request, User $employee): ?string
+    {
+        if ($employee->remoto) {
+            if (! $request->filled('lat') || ! $request->filled('lng')) {
+                return 'Debes permitir la geolocalizacion para fichar en remoto.';
+            }
+
+            return null;
+        }
+
+        return $this->verificarUbicacion($request, $employee);
+    }
+
     private function verificarUbicacion(Request $request, User $employee): ?string
     {
         $workCenter = $employee->workCenter;
@@ -344,52 +376,38 @@ class FicharController extends Controller
             return 'No tienes un centro de trabajo asignado.';
         }
 
-        // Verificar por IP (servidor + IP pública detectada por el cliente)
         $ips = $workCenter->ips ?? [];
-        $distancia = null;
         $radio = $workCenter->radio ?? 100;
-        $accuracy = $request->filled('accuracy') ? (float) $request->input('accuracy') : null;
         $ipsAComprobar = array_filter(array_unique([
             $request->ip(),
             $request->input('ip_publica'),
         ]));
+
         foreach ($ipsAComprobar as $ip) {
             if (in_array($ip, $ips, true)) {
                 return null;
             }
         }
 
-        // Verificar por geolocalización
         if ($request->filled('lat') && $request->filled('lng') && $workCenter->lat !== null && $workCenter->lng !== null) {
             $distancia = $this->haversine(
                 (float) $request->lat,
                 (float) $request->lng,
                 (float) $workCenter->lat,
-                (float) $workCenter->lng
+                (float) $workCenter->lng,
             );
+
             if ($distancia <= $radio) {
                 return null;
             }
         }
 
-        // Mensaje descriptivo para facilitar el diagnóstico
-        $detalleDistancia = '';
-        if ($distancia !== null) {
-            $detalleDistancia = ' Distancia detectada: '.round($distancia).' m. Radio permitido: '.round($radio).' m.';
-            if ($accuracy !== null) {
-                $detalleDistancia .= ' Precisión GPS reportada: ±'.round($accuracy).' m.';
-            }
-        }
-
-        $ipServidor = $request->ip();
-        $ipPublica = $request->input('ip_publica', '—');
-
-        return "No estás en el centro de trabajo.{$detalleDistancia} IP detectada: {$ipPublica} (servidor: {$ipServidor}). Verifica las IPs registradas en el centro o activa la geolocalización.";
+        return 'No se pudo validar tu ubicacion para fichar.';
     }
 
     private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
-        $earthRadius = 6371000; // metros
+        $earthRadius = 6371000;
 
         $dLat = deg2rad($lat2 - $lat1);
         $dLng = deg2rad($lng2 - $lng1);

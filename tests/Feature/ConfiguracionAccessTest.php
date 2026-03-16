@@ -4,7 +4,7 @@ use App\Models\User;
 
 test('employees cannot access configuration pages', function (string $routeName) {
     $employee = User::factory()->create([
-        'role' => 'employee',
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)

@@ -858,7 +858,7 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
 
     const estado = estadoBadge[fichaje.estado];
     const urlJornada = `/fichajes/${fichaje.id}/jornada`;
-    const timeZone = fichaje.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+    const timeZone = fichaje.timezone ?? fichaje.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
 
     function reload() {
         router.reload({ only: ['fichajes'] });
@@ -1342,7 +1342,7 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
                                     fichajes.map((f) => {
                                         const totalPausas = f.pausas.reduce((acc, p) => acc + (p.duracion_pausa ?? 0), 0);
                                         const estado = estadoBadge[f.estado] ?? estadoBadge.finalizada;
-                                        const timeZone = f.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+                                        const timeZone = f.timezone ?? f.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
 
                                         return (
                                             <tr

@@ -4,7 +4,7 @@ use App\Models\Company;
 use App\Models\User;
 use App\Models\WorkCenter;
 
-test('onsite employee sees distance and radius when geofence rejects the check-in', function () {
+test('onsite employee sees the generic geofence rejection message', function () {
     $owner = User::factory()->create([
         'role' => 'admin',
     ]);
@@ -27,6 +27,7 @@ test('onsite employee sees distance and radius when geofence rejects the check-i
         'poblacion' => 'Madrid',
         'direccion' => 'Calle Mayor 1',
         'cp' => '28001',
+        'timezone' => 'Europe/Madrid',
         'lat' => 40.4168,
         'lng' => -3.7038,
         'radio' => 100,
@@ -48,10 +49,5 @@ test('onsite employee sees distance and radius when geofence rejects the check-i
 
     $response->assertSessionHasErrors('error');
 
-    $error = session('errors')->first('error');
-
-    expect($error)
-        ->toContain('Distancia detectada:')
-        ->toContain('Radio permitido: 100 m.')
-        ->toContain('Precisión GPS reportada: ±42 m.');
+    expect(session('errors')->first('error'))->toBe('No se pudo validar tu ubicacion para fichar.');
 });

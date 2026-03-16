@@ -17,6 +17,7 @@ class Fichaje extends Model
     protected $fillable = [
         'user_id',
         'work_center_id',
+        'timezone',
         'fecha',
         'inicio_jornada',
         'fin_jornada',

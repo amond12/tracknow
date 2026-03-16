@@ -88,7 +88,7 @@ class FichajeController extends Controller
         ]);
 
         $campo = $validated['campo'];
-        $timezone = WorkCenterTimezone::resolve($fichaje->workCenter);
+        $timezone = WorkCenterTimezone::resolve($fichaje->timezone ?: $fichaje->workCenter?->timezone);
         $nuevaFecha = WorkCenterTimezone::localToUtc(
             $validated['datetime'],
             $timezone,
@@ -154,7 +154,7 @@ class FichajeController extends Controller
             'motivo' => 'required|string|max:500',
         ]);
 
-        $timezone = WorkCenterTimezone::resolve($fichaje->workCenter);
+        $timezone = WorkCenterTimezone::resolve($fichaje->timezone ?: $fichaje->workCenter?->timezone);
         $inicioPausa = WorkCenterTimezone::localToUtc(
             $validated['inicio_pausa'],
             $timezone,
@@ -217,7 +217,7 @@ class FichajeController extends Controller
         ]);
 
         $campo = $validated['campo'];
-        $timezone = WorkCenterTimezone::resolve($fichaje->workCenter);
+        $timezone = WorkCenterTimezone::resolve($fichaje->timezone ?: $fichaje->workCenter?->timezone);
         $nuevaFecha = WorkCenterTimezone::localToUtc(
             $validated['datetime'],
             $timezone,
@@ -377,6 +377,7 @@ class FichajeController extends Controller
         $fichaje = Fichaje::create([
             'user_id' => $empleado->id,
             'work_center_id' => $empleado->work_center_id,
+            'timezone' => $timezone,
             'fecha' => $fecha,
             'inicio_jornada' => $inicioJornada,
             'fin_jornada' => $finJornada,

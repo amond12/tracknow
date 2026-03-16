@@ -28,7 +28,11 @@ test('no permite iniciar una segunda jornada activa si la anterior cruza mediano
 
     try {
         $this->actingAs($empleado)
-            ->post(route('fichar.iniciar'))
+            ->post(route('fichar.iniciar'), [
+                'lat' => 40.4168,
+                'lng' => -3.7038,
+                'accuracy' => 10,
+            ])
             ->assertSessionHasErrors(['error' => 'Ya tienes una jornada activa.']);
     } finally {
         Carbon::setTestNow();

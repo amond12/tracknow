@@ -70,6 +70,7 @@ export type Fichaje = {
     id: number;
     user_id: number;
     work_center_id: number;
+    timezone?: string;
     fecha: string;
     inicio_jornada: string;
     fin_jornada?: string | null;
@@ -81,6 +82,7 @@ export type Fichaje = {
     lat_fin?: number | null;
     lng_fin?: number | null;
     ip_fin?: string | null;
+    work_center?: Pick<WorkCenter, 'id' | 'nombre' | 'timezone'>;
     pausas?: Pausa[];
     ediciones?: EdicionFichaje[];
     created_at: string;
