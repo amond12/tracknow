@@ -1,5 +1,16 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Building2, CalendarDays, ClipboardList, Clock, FileText, LayoutGrid, MapPin, Settings2, TrendingUp, Users } from 'lucide-react';
+import {
+    Building2,
+    CalendarDays,
+    ClipboardList,
+    Clock,
+    FileText,
+    LayoutGrid,
+    MapPin,
+    Settings2,
+    TrendingUp,
+    Users,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavCollapsible } from '@/components/nav-collapsible';
 import { NavMain } from '@/components/nav-main';
@@ -74,15 +85,25 @@ export function AppSidebar() {
     const isEmployee = ['empleado', 'encargado'].includes(auth.user.role);
     const homeHref = isEmployee ? '/fichar' : DASHBOARD_URL;
     const visibleMainNavItems = isEmployee
-        ? mainNavItems.filter((item) => item.href !== DASHBOARD_URL && item.href !== '/fichajes' && item.href !== '/pdfs' && item.href !== '/horas-extra')
+        ? mainNavItems.filter(
+              (item) =>
+                  item.href !== DASHBOARD_URL &&
+                  item.href !== '/fichajes' &&
+                  item.href !== '/pdfs' &&
+                  item.href !== '/horas-extra',
+          )
         : mainNavItems;
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+            <SidebarHeader className="px-2.5 pt-2.5 pb-1.5">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            asChild
+                            className="h-auto rounded-2xl border border-sidebar-border/70 bg-white/75 px-2.5 py-2 shadow-[0_18px_36px_-28px_rgba(15,23,42,0.38)] transition-all group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-0! hover:bg-white/95 hover:shadow-[0_22px_42px_-30px_rgba(15,23,42,0.45)] dark:bg-sidebar-accent/45 dark:hover:bg-sidebar-accent/65"
+                        >
                             <Link href={homeHref} prefetch>
                                 <AppLogo />
                             </Link>
@@ -91,14 +112,18 @@ export function AppSidebar() {
                 </SidebarMenu>
             </SidebarHeader>
 
-            <SidebarContent>
+            <SidebarContent className="gap-4 px-2 pb-2">
                 <NavMain items={visibleMainNavItems} />
                 {!isEmployee && (
-                    <NavCollapsible title="Configuración" icon={Settings2} items={configNavItems} />
+                    <NavCollapsible
+                        title="Configuración"
+                        icon={Settings2}
+                        items={configNavItems}
+                    />
                 )}
             </SidebarContent>
 
-            <SidebarFooter>
+            <SidebarFooter className="px-2.5 pt-1 pb-2.5">
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

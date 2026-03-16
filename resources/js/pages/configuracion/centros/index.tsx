@@ -1,5 +1,13 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Building2, Info, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+    Building2,
+    Info,
+    MapPin,
+    Pencil,
+    Plus,
+    Trash2,
+    Wifi,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { CentroIP } from '@/components/centro-ip';
@@ -23,6 +31,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useSidebar } from '@/components/ui/sidebar';
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import type { MapboxAddressResult } from '@/lib/mapbox';
@@ -30,6 +39,7 @@ import {
     DEFAULT_WORK_CENTER_TIMEZONE,
     WORK_CENTER_TIMEZONE_OPTIONS,
 } from '@/lib/timezones';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem, Company, WorkCenter } from '@/types';
 
@@ -117,22 +127,57 @@ function Tooltip({ text, children }: { text: string; children: ReactNode }) {
 function InfoChip({ text }: { text: string }) {
     return (
         <Tooltip text={text}>
-            <span className="inline-flex cursor-help items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground/70 transition-colors hover:bg-violet-50 hover:text-violet-600">
+            <span className="inline-flex cursor-help items-center gap-1 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 transition-colors hover:border-blue-200 hover:bg-blue-100">
                 <Info className="h-3 w-3" /> Para que sirve
             </span>
         </Tooltip>
     );
 }
 
-function SectionDivider({ label }: { label: string }) {
+function FormSection({
+    eyebrow,
+    title,
+    description,
+    icon,
+    className,
+    children,
+}: {
+    eyebrow: string;
+    title: string;
+    description: string;
+    icon?: ReactNode;
+    className?: string;
+    children: ReactNode;
+}) {
     return (
-        <div className="my-1 flex items-center gap-2">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-[10px] font-bold tracking-widest text-muted-foreground/60 uppercase">
-                {label}
-            </span>
-            <div className="h-px flex-1 bg-border" />
-        </div>
+        <section
+            className={cn(
+                'rounded-2xl border border-border/70 bg-background/90 p-4 shadow-sm',
+                className,
+            )}
+        >
+            <div className="mb-4 flex items-start gap-3">
+                {icon && (
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                        {icon}
+                    </div>
+                )}
+                <div className="space-y-1">
+                    <p className="text-[11px] font-semibold tracking-[0.22em] text-blue-700/80 uppercase">
+                        {eyebrow}
+                    </p>
+                    <div className="space-y-1">
+                        <h3 className="text-sm font-semibold tracking-tight">
+                            {title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                            {description}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {children}
+        </section>
     );
 }
 
@@ -145,6 +190,7 @@ function CentroForm({
     onCancel,
     submitLabel,
     companies,
+    compactLayout = false,
 }: {
     data: CentroFormData;
     setData: <K extends keyof CentroFormData>(
@@ -157,6 +203,7 @@ function CentroForm({
     onCancel: () => void;
     submitLabel: string;
     companies: Pick<Company, 'id' | 'nombre'>[];
+    compactLayout?: boolean;
 }) {
     const [showLocationEditor, setShowLocationEditor] = useState(false);
     const hasExactLocation = data.lat !== '' && data.lng !== '';
@@ -166,7 +213,10 @@ function CentroForm({
         setData('provincia', result.provincia || data.provincia);
         setData('poblacion', result.poblacion || data.poblacion);
         setData('cp', result.cp || data.cp);
-        setData('direccion', result.direccion || result.label || data.direccion);
+        setData(
+            'direccion',
+            result.direccion || result.label || data.direccion,
+        );
     }
 
     function applyResolvedAddressFromDireccion(result: MapboxAddressResult) {
@@ -193,207 +243,278 @@ function CentroForm({
     return (
         <form
             onSubmit={onSubmit}
-            className="flex flex-col gap-4"
+            className={cn('flex flex-col', compactLayout ? 'gap-4' : 'gap-5')}
             autoComplete="off"
         >
-            <div className="grid gap-1.5">
-                <Label
-                    htmlFor="company_id"
-                    className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+            <div
+                className={cn(
+                    'grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.92fr)] 2xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]',
+                    compactLayout &&
+                        'xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.88fr)] 2xl:grid-cols-[minmax(0,1.05fr)_minmax(300px,0.9fr)]',
+                )}
+            >
+                <FormSection
+                    eyebrow="Base"
+                    title="Datos del centro"
+                    description="Define la empresa, el nombre y la dirección que se usarán como referencia oficial."
+                    icon={<Building2 className="h-4 w-4" />}
                 >
-                    Empresa
-                </Label>
-                <Select
-                    value={data.company_id ? String(data.company_id) : ''}
-                    onValueChange={(value) => setData('company_id', value)}
-                    required
-                >
-                    <SelectTrigger id="company_id">
-                        <SelectValue placeholder="Selecciona una empresa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {companies.map((company) => (
-                            <SelectItem
-                                key={company.id}
-                                value={String(company.id)}
-                            >
-                                {company.nombre}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <InputError message={errors.company_id} />
-            </div>
-
-            <div className="grid gap-1.5">
-                <Label
-                    htmlFor="nombre"
-                    className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-                >
-                    Nombre del centro
-                </Label>
-                <Input
-                    id="nombre"
-                    value={data.nombre}
-                    onChange={(e) => setData('nombre', e.target.value)}
-                    placeholder="Ej: Oficina Madrid Centro"
-                    required
-                    autoFocus
-                />
-                <InputError message={errors.nombre} />
-            </div>
-
-            <DireccionFields
-                values={{
-                    pais: data.pais,
-                    provincia: data.provincia,
-                    poblacion: data.poblacion,
-                    cp: data.cp,
-                    direccion: data.direccion,
-                }}
-                errors={{
-                    pais: errors.pais,
-                    provincia: errors.provincia,
-                    poblacion: errors.poblacion,
-                    cp: errors.cp,
-                    direccion: errors.direccion,
-                }}
-                onFieldChange={handleAddressFieldChange}
-                onAddressResolved={applyResolvedAddressFromDireccion}
-            />
-
-            <div className="grid gap-1.5">
-                <Label
-                    htmlFor="timezone"
-                    className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-                >
-                    Zona horaria del centro
-                </Label>
-                <Select
-                    value={data.timezone}
-                    onValueChange={(value) => setData('timezone', value)}
-                >
-                    <SelectTrigger id="timezone">
-                        <SelectValue placeholder="Selecciona una zona horaria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {WORK_CENTER_TIMEZONE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                    Esta zona se usa como hora oficial del centro para fichajes,
-                    registros y PDFs.
-                </p>
-                <InputError message={errors.timezone} />
-            </div>
-
-            <SectionDivider label="Control de presencia" />
-
-            <div className="rounded-xl border bg-muted/20 p-4">
-                <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
-                    Ubicacion exacta para fichajes (opcional)
-                    <InfoChip text="Solo hace falta si quieres validar fichajes por proximidad. Si no configuras el mapa, el centro se guarda igualmente con su direccion postal." />
-                </div>
-                {!showLocationEditor ? (
-                    <div className="flex flex-col gap-3">
-                        <p className="text-xs text-muted-foreground">
-                            Puedes guardar el centro solo con la direccion. Abre
-                            el mapa unicamente si quieres fijar la ubicacion
-                            exacta y el radio de validacion.
-                        </p>
-
-                        {hasExactLocation && (
-                            <div className="rounded-lg border bg-background px-3 py-2 text-xs text-muted-foreground">
-                                Ubicacion configurada en{' '}
-                                <span className="font-mono">
-                                    {Number(data.lat).toFixed(6)},{' '}
-                                    {Number(data.lng).toFixed(6)}
-                                </span>
-                                .
+                    <div className="grid gap-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-1.5">
+                                <Label
+                                    htmlFor="company_id"
+                                    className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Empresa
+                                </Label>
+                                <Select
+                                    value={
+                                        data.company_id
+                                            ? String(data.company_id)
+                                            : ''
+                                    }
+                                    onValueChange={(value) =>
+                                        setData('company_id', value)
+                                    }
+                                    required
+                                >
+                                    <SelectTrigger id="company_id">
+                                        <SelectValue placeholder="Selecciona una empresa" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {companies.map((company) => (
+                                            <SelectItem
+                                                key={company.id}
+                                                value={String(company.id)}
+                                            >
+                                                {company.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError message={errors.company_id} />
                             </div>
-                        )}
 
-                        <div className="flex flex-wrap gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setShowLocationEditor(true)}
+                            <div className="grid gap-1.5">
+                                <Label
+                                    htmlFor="nombre"
+                                    className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                                >
+                                    Nombre del centro
+                                </Label>
+                                <Input
+                                    id="nombre"
+                                    value={data.nombre}
+                                    onChange={(e) =>
+                                        setData('nombre', e.target.value)
+                                    }
+                                    placeholder="Ej: Oficina Madrid Centro"
+                                    required
+                                    autoFocus
+                                />
+                                <InputError message={errors.nombre} />
+                            </div>
+                        </div>
+
+                        <DireccionFields
+                            values={{
+                                pais: data.pais,
+                                provincia: data.provincia,
+                                poblacion: data.poblacion,
+                                cp: data.cp,
+                                direccion: data.direccion,
+                            }}
+                            errors={{
+                                pais: errors.pais,
+                                provincia: errors.provincia,
+                                poblacion: errors.poblacion,
+                                cp: errors.cp,
+                                direccion: errors.direccion,
+                            }}
+                            onFieldChange={handleAddressFieldChange}
+                            onAddressResolved={
+                                applyResolvedAddressFromDireccion
+                            }
+                        />
+
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="timezone"
+                                className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
                             >
-                                {hasExactLocation
-                                    ? 'Editar ubicacion en el mapa'
-                                    : 'Configurar ubicacion en el mapa'}
-                            </Button>
+                                Zona horaria
+                            </Label>
+                            <Select
+                                value={data.timezone}
+                                onValueChange={(value) =>
+                                    setData('timezone', value)
+                                }
+                            >
+                                <SelectTrigger id="timezone">
+                                    <SelectValue placeholder="Selecciona una zona horaria" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {WORK_CENTER_TIMEZONE_OPTIONS.map(
+                                        (option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={option.value}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ),
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Se usará como hora oficial del centro para
+                                fichajes, registros y PDFs.
+                            </p>
+                            <InputError message={errors.timezone} />
                         </div>
                     </div>
-                ) : (
-                    <div className="flex flex-col gap-3">
-                        <p className="text-xs text-muted-foreground">
-                            Ajusta el pin solo si quieres usar validacion por
-                            proximidad para este centro.
-                        </p>
+                </FormSection>
 
-                        <CentroLocalizador
-                            direccion={data.direccion}
-                            poblacion={data.poblacion}
-                            provincia={data.provincia}
-                            cp={data.cp}
-                            pais={data.pais}
-                            initialLat={data.lat ? Number(data.lat) : null}
-                            initialLng={data.lng ? Number(data.lng) : null}
-                            initialRadio={data.radio ? Number(data.radio) : 100}
-                            autoLocateOnMount={!hasExactLocation}
-                            onAddressResolved={applyResolvedAddressFields}
-                            onCoordenadas={(lat, lng, radio) => {
-                                setData('lat', String(lat));
-                                setData('lng', String(lng));
-                                setData('radio', String(radio));
-                            }}
-                            onRadioChange={(radio) =>
-                                setData('radio', String(radio))
-                            }
-                            onLimpiar={() => {
-                                setData('lat', '');
-                                setData('lng', '');
-                                setShowLocationEditor(false);
-                            }}
-                        />
+                <FormSection
+                    eyebrow="Acceso"
+                    title="Validación de fichajes"
+                    description="Configura solo lo necesario. El centro puede guardarse aunque no actives mapa ni red."
+                    icon={<MapPin className="h-4 w-4" />}
+                    className="h-full"
+                >
+                    <div className="grid gap-4">
+                        <div className="rounded-xl border border-border/70 bg-muted/15 p-4">
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-sm font-semibold">
+                                        <MapPin className="h-4 w-4 text-blue-600" />
+                                        Ubicación exacta
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Opcional. Fija el pin y el radio solo si
+                                        quieres validar fichajes por proximidad.
+                                    </p>
+                                </div>
+                                <InfoChip text="Si no configuras el mapa, el centro se guarda igualmente con su direccion postal. Solo hace falta si vas a validar fichajes por cercania." />
+                            </div>
+
+                            {!showLocationEditor ? (
+                                <div className="flex flex-col gap-3">
+                                    {hasExactLocation && (
+                                        <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                                            Ubicación lista en{' '}
+                                            <span className="font-mono">
+                                                {Number(data.lat).toFixed(6)},{' '}
+                                                {Number(data.lng).toFixed(6)}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() =>
+                                            setShowLocationEditor(true)
+                                        }
+                                        className="w-full rounded-xl"
+                                    >
+                                        {hasExactLocation
+                                            ? 'Editar ubicación en mapa'
+                                            : 'Configurar ubicación en mapa'}
+                                    </Button>
+                                </div>
+                            ) : (
+                                <CentroLocalizador
+                                    direccion={data.direccion}
+                                    poblacion={data.poblacion}
+                                    provincia={data.provincia}
+                                    cp={data.cp}
+                                    pais={data.pais}
+                                    initialLat={
+                                        data.lat ? Number(data.lat) : null
+                                    }
+                                    initialLng={
+                                        data.lng ? Number(data.lng) : null
+                                    }
+                                    initialRadio={
+                                        data.radio ? Number(data.radio) : 100
+                                    }
+                                    autoLocateOnMount={!hasExactLocation}
+                                    onAddressResolved={
+                                        applyResolvedAddressFields
+                                    }
+                                    onCoordenadas={(lat, lng, radio) => {
+                                        setData('lat', String(lat));
+                                        setData('lng', String(lng));
+                                        setData('radio', String(radio));
+                                    }}
+                                    onRadioChange={(radio) =>
+                                        setData('radio', String(radio))
+                                    }
+                                    onLimpiar={() => {
+                                        setData('lat', '');
+                                        setData('lng', '');
+                                        setShowLocationEditor(false);
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        <div className="rounded-xl border border-border/70 bg-muted/15 p-4">
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-sm font-semibold">
+                                        <Wifi className="h-4 w-4 text-blue-600" />
+                                        IPs autorizadas
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Úsalo solo si quieres restringir el
+                                        fichaje a la red Wi‑Fi del centro.
+                                    </p>
+                                </div>
+                                <InfoChip text="Permite que los empleados solo puedan fichar cuando esten conectados a la red Wi-Fi del centro. Conectate primero a esa red antes de detectar la IP." />
+                            </div>
+
+                            <CentroIP
+                                ipsIniciales={data.ips}
+                                onIPs={(ips) => setData('ips', ips)}
+                            />
+                        </div>
                     </div>
-                )}
+                </FormSection>
             </div>
 
-            <div className="rounded-xl border bg-muted/20 p-4">
-                <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
-                    IPs autorizadas
-                    <InfoChip text="Permite que los empleados solo puedan fichar cuando esten conectados a la red Wi-Fi del centro. Conectate primero a esa red antes de detectar la IP." />
-                </div>
-                <p className="mb-3 text-xs text-muted-foreground">
-                    Restringe el fichaje a la red Wi-Fi de este centro.
-                    Conectate primero a esa red.
+            <DialogFooter className="border-t border-border/70 pt-4 sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                    Puedes guardar el centro solo con su dirección postal. Mapa
+                    e IPs son opcionales.
                 </p>
-                <CentroIP
-                    ipsIniciales={data.ips}
-                    onIPs={(ips) => setData('ips', ips)}
-                />
-            </div>
-
-            <DialogFooter>
-                <Button type="button" variant="outline" onClick={onCancel}>
-                    Cancelar
-                </Button>
-                <Button type="submit" disabled={processing}>
-                    {processing && <Spinner />}
-                    {submitLabel}
-                </Button>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onCancel}
+                        className="rounded-xl"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={processing}
+                        className="rounded-xl px-5"
+                    >
+                        {processing && <Spinner />}
+                        {submitLabel}
+                    </Button>
+                </div>
             </DialogFooter>
         </form>
     );
 }
 
 export default function CentrosIndex({ workCenters, companies }: Props) {
+    const { state: sidebarState, isMobile } = useSidebar();
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<WorkCenterWithCompany | null>(
         null,
@@ -404,6 +525,12 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
 
     const createForm = useForm<CentroFormData>(emptyForm);
     const editForm = useForm<CentroFormData>(emptyForm);
+    const compactDialogLayout = !isMobile && sidebarState === 'expanded';
+    const centerDialogClassName = cn(
+        'max-h-[92vh] w-[calc(100vw-1rem)] gap-0 overflow-y-auto border-border/70 p-0 shadow-2xl sm:w-[min(1040px,calc(100vw-2rem))] sm:max-w-[1040px] lg:overflow-hidden',
+        compactDialogLayout &&
+            'xl:left-[calc(50%+4.5rem)] xl:w-[min(940px,calc(100vw-18rem))] xl:max-w-[940px] 2xl:left-[calc(50%+4rem)] 2xl:w-[min(1000px,calc(100vw-19rem))] 2xl:max-w-[1000px]',
+    );
 
     function openEdit(centro: WorkCenterWithCompany) {
         editForm.setData({
@@ -575,27 +702,33 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
             </div>
 
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                    <DialogHeader>
-                        <div className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-full border border-violet-200 bg-violet-100 px-2.5 py-1 text-[10px] font-bold tracking-widest text-violet-700 uppercase">
+                <DialogContent className={centerDialogClassName}>
+                    <DialogHeader className="border-b border-border/70 bg-muted/15 px-4 py-4 pr-11 sm:px-6 sm:py-5 sm:pr-12">
+                        <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-bold tracking-widest text-blue-700 uppercase">
                             <Building2 className="h-3 w-3" />
                             Centro de trabajo
                         </div>
-                        <DialogTitle>Nuevo centro</DialogTitle>
+                        <DialogTitle className="text-xl">
+                            Nuevo centro
+                        </DialogTitle>
                         <p className="text-sm text-muted-foreground">
-                            Configura los datos y el acceso de esta ubicacion
+                            Completa lo esencial y activa solo las validaciones
+                            que realmente vayas a usar.
                         </p>
                     </DialogHeader>
-                    <CentroForm
-                        data={createForm.data}
-                        setData={createForm.setData}
-                        errors={createForm.errors}
-                        processing={createForm.processing}
-                        onSubmit={handleCreate}
-                        onCancel={() => setCreateOpen(false)}
-                        submitLabel="Crear centro"
-                        companies={companies}
-                    />
+                    <div className="overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
+                        <CentroForm
+                            data={createForm.data}
+                            setData={createForm.setData}
+                            errors={createForm.errors}
+                            processing={createForm.processing}
+                            onSubmit={handleCreate}
+                            onCancel={() => setCreateOpen(false)}
+                            submitLabel="Crear centro"
+                            companies={companies}
+                            compactLayout={compactDialogLayout}
+                        />
+                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -603,27 +736,33 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
                 open={!!editTarget}
                 onOpenChange={(open) => !open && setEditTarget(null)}
             >
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                    <DialogHeader>
-                        <div className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-full border border-violet-200 bg-violet-100 px-2.5 py-1 text-[10px] font-bold tracking-widest text-violet-700 uppercase">
+                <DialogContent className={centerDialogClassName}>
+                    <DialogHeader className="border-b border-border/70 bg-muted/15 px-4 py-4 pr-11 sm:px-6 sm:py-5 sm:pr-12">
+                        <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-bold tracking-widest text-blue-700 uppercase">
                             <Building2 className="h-3 w-3" />
                             Centro de trabajo
                         </div>
-                        <DialogTitle>Editar centro</DialogTitle>
+                        <DialogTitle className="text-xl">
+                            Editar centro
+                        </DialogTitle>
                         <p className="text-sm text-muted-foreground">
-                            Configura los datos y el acceso de esta ubicacion
+                            Ajusta los datos base, la ubicación exacta y las
+                            restricciones de acceso del centro.
                         </p>
                     </DialogHeader>
-                    <CentroForm
-                        data={editForm.data}
-                        setData={editForm.setData}
-                        errors={editForm.errors}
-                        processing={editForm.processing}
-                        onSubmit={handleEdit}
-                        onCancel={() => setEditTarget(null)}
-                        submitLabel="Guardar cambios"
-                        companies={companies}
-                    />
+                    <div className="overflow-hidden px-4 py-4 sm:px-6 sm:py-5">
+                        <CentroForm
+                            data={editForm.data}
+                            setData={editForm.setData}
+                            errors={editForm.errors}
+                            processing={editForm.processing}
+                            onSubmit={handleEdit}
+                            onCancel={() => setEditTarget(null)}
+                            submitLabel="Guardar cambios"
+                            companies={companies}
+                            compactLayout={compactDialogLayout}
+                        />
+                    </div>
                 </DialogContent>
             </Dialog>
 

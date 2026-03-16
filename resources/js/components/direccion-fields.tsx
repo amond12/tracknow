@@ -91,9 +91,8 @@ export function DireccionFields({
     const [suggestionsOpen, setSuggestionsOpen] = useState(false);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
     const [lookupState, setLookupState] = useState<LookupState>('idle');
-    const [manualEntryEnabled, setManualEntryEnabled] = useState(
-        !mapboxAvailable,
-    );
+    const [manualEntryEnabled, setManualEntryEnabled] =
+        useState(!mapboxAvailable);
     const [direccionFocused, setDireccionFocused] = useState(false);
     const [feedback, setFeedback] = useState<{
         tone: FeedbackTone;
@@ -163,9 +162,7 @@ export function DireccionFields({
                 setSuggestionsOpen(
                     direccionFocused && nextSuggestions.length > 0,
                 );
-                setLookupState(
-                    nextSuggestions.length > 0 ? 'ready' : 'empty',
-                );
+                setLookupState(nextSuggestions.length > 0 ? 'ready' : 'empty');
             } catch (error) {
                 if ((error as Error).name !== 'AbortError') {
                     setSuggestions([]);
@@ -289,8 +286,8 @@ export function DireccionFields({
     );
 
     return (
-        <div className="grid gap-4">
-            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+        <div className="grid gap-3">
+            <div className="rounded-xl border border-blue-200/80 bg-blue-50/80 px-3 py-2 text-xs text-blue-800">
                 {infoText}
             </div>
 
@@ -361,7 +358,7 @@ export function DireccionFields({
             </div>
 
             {fallbackMessage && (
-                <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between">
                     <span>{fallbackMessage}</span>
                     {!manualEntryEnabled && mapboxAvailable && (
                         <Button
@@ -377,7 +374,7 @@ export function DireccionFields({
                 </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                     <Label
                         htmlFor="pais"
@@ -430,7 +427,7 @@ export function DireccionFields({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                     <Label
                         htmlFor="poblacion"
@@ -466,7 +463,9 @@ export function DireccionFields({
                     <Input
                         id="cp"
                         value={values.cp}
-                        onChange={(e) => handleFieldChange('cp', e.target.value)}
+                        onChange={(e) =>
+                            handleFieldChange('cp', e.target.value)
+                        }
                         placeholder={
                             manualEntryEnabled
                                 ? 'Ej: 28013'

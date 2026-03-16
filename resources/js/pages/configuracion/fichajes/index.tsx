@@ -1,6 +1,34 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { AlertTriangle, Building2, Calendar, ChevronDown, ChevronUp, Clock, Coffee, Filter, LogOut, MapPin, Pencil, Plus, Search, Trash2, Users, X } from 'lucide-react';
+import {
+    AlertTriangle,
+    Building2,
+    Calendar,
+    ChevronDown,
+    ChevronUp,
+    Clock,
+    Coffee,
+    Filter,
+    LogOut,
+    MapPin,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    Users,
+    X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import {
+    FilterField,
+    FilterInput,
+    FilterPanel,
+    FilterPill,
+    FilterSelectTrigger,
+    filterDropdownClassName,
+    filterDropdownEmptyClassName,
+    filterDropdownListClassName,
+    filterDropdownOptionClassName,
+} from '@/components/filter-panel';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -30,7 +58,15 @@ import {
     getTimeZoneLabel,
 } from '@/lib/timezones';
 import { dashboard } from '@/routes';
-import type { BreadcrumbItem, Company, EdicionFichaje, Fichaje, Pausa, User, WorkCenter } from '@/types';
+import type {
+    BreadcrumbItem,
+    Company,
+    EdicionFichaje,
+    Fichaje,
+    Pausa,
+    User,
+    WorkCenter,
+} from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
@@ -91,7 +127,15 @@ function campoLabel(campo: string): string {
 
 // ─── Subcomponentes del modal ─────────────────────────────────────────────────
 
-function MapLink({ lat, lng, label }: { lat: number; lng: number; label: string }) {
+function MapLink({
+    lat,
+    lng,
+    label,
+}: {
+    lat: number;
+    lng: number;
+    label: string;
+}) {
     return (
         <a
             href={`https://www.google.com/maps?q=${lat},${lng}`}
@@ -123,7 +167,9 @@ function HoraEditable({
     onSuccess: () => void;
 }) {
     const [editing, setEditing] = useState(false);
-    const [hora, setHora] = useState(valor ? getTimeInputValueInTimeZone(valor, timeZone) : '');
+    const [hora, setHora] = useState(
+        valor ? getTimeInputValueInTimeZone(valor, timeZone) : '',
+    );
     const [motivo, setMotivo] = useState('');
     const [processing, setProcessing] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -134,31 +180,47 @@ function HoraEditable({
         const localIso = `${baseDate}T${hora}:00`;
 
         setProcessing(true);
-        router.put(urlPut, { campo, datetime: localIso, motivo }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setEditing(false);
-                setMotivo('');
-                setFieldErrors({});
-                onSuccess();
+        router.put(
+            urlPut,
+            { campo, datetime: localIso, motivo },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setEditing(false);
+                    setMotivo('');
+                    setFieldErrors({});
+                    onSuccess();
+                },
+                onError: (errs) => setFieldErrors(errs),
+                onFinish: () => setProcessing(false),
             },
-            onError: (errs) => setFieldErrors(errs),
-            onFinish: () => setProcessing(false),
-        });
+        );
     }
 
     return (
         <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+            <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {label}
+            </span>
             {!editing ? (
                 <div className="flex items-center gap-2">
-                    <span className="font-mono text-base font-medium">{valor ? formatTimeInTimeZone(valor, timeZone) : '—'}</span>
+                    <span className="font-mono text-base font-medium">
+                        {valor ? formatTimeInTimeZone(valor, timeZone) : '—'}
+                    </span>
                     {valor && (
                         <Button
                             size="icon"
                             variant="ghost"
                             className="h-6 w-6 hover:bg-primary/10 hover:text-primary"
-                            onClick={() => { setHora(getTimeInputValueInTimeZone(valor, timeZone)); setEditing(true); }}
+                            onClick={() => {
+                                setHora(
+                                    getTimeInputValueInTimeZone(
+                                        valor,
+                                        timeZone,
+                                    ),
+                                );
+                                setEditing(true);
+                            }}
                             title="Editar"
                         >
                             <Pencil className="h-3 w-3" />
@@ -166,9 +228,14 @@ function HoraEditable({
                     )}
                 </div>
             ) : (
-                <form onSubmit={handleSave} className="flex flex-col gap-2 rounded-xl border bg-muted/20 p-4">
+                <form
+                    onSubmit={handleSave}
+                    className="flex flex-col gap-2 rounded-xl border bg-muted/20 p-4"
+                >
                     <div className="grid gap-1">
-                        <Label htmlFor={`hora-${campo}`} className="text-xs">Nueva hora</Label>
+                        <Label htmlFor={`hora-${campo}`} className="text-xs">
+                            Nueva hora
+                        </Label>
                         <Input
                             id={`hora-${campo}`}
                             type="time"
@@ -177,10 +244,16 @@ function HoraEditable({
                             className="h-9 w-32 text-sm"
                             required
                         />
-                        {fieldErrors.hora && <p className="text-xs text-destructive">{fieldErrors.hora}</p>}
+                        {fieldErrors.hora && (
+                            <p className="text-xs text-destructive">
+                                {fieldErrors.hora}
+                            </p>
+                        )}
                     </div>
                     <div className="grid gap-1">
-                        <Label htmlFor={`motivo-${campo}`} className="text-xs">Motivo (obligatorio)</Label>
+                        <Label htmlFor={`motivo-${campo}`} className="text-xs">
+                            Motivo (obligatorio)
+                        </Label>
                         <textarea
                             id={`motivo-${campo}`}
                             value={motivo}
@@ -189,7 +262,11 @@ function HoraEditable({
                             placeholder="Indica el motivo de la modificación..."
                             required
                         />
-                        {fieldErrors.motivo && <p className="text-xs text-destructive">{fieldErrors.motivo}</p>}
+                        {fieldErrors.motivo && (
+                            <p className="text-xs text-destructive">
+                                {fieldErrors.motivo}
+                            </p>
+                        )}
                     </div>
                     <div className="flex gap-2">
                         <Button type="submit" size="sm" disabled={processing}>
@@ -200,7 +277,11 @@ function HoraEditable({
                             type="button"
                             size="sm"
                             variant="ghost"
-                            onClick={() => { setEditing(false); setMotivo(''); setFieldErrors({}); }}
+                            onClick={() => {
+                                setEditing(false);
+                                setMotivo('');
+                                setFieldErrors({});
+                            }}
                         >
                             Cancelar
                         </Button>
@@ -211,7 +292,13 @@ function HoraEditable({
     );
 }
 
-function FinalizarSection({ fichaje, onSuccess }: { fichaje: FichajeConRelaciones; onSuccess: () => void }) {
+function FinalizarSection({
+    fichaje,
+    onSuccess,
+}: {
+    fichaje: FichajeConRelaciones;
+    onSuccess: () => void;
+}) {
     const { data, setData, post, processing, errors } = useForm({ motivo: '' });
 
     function handleFinalizar(e: React.FormEvent) {
@@ -226,37 +313,63 @@ function FinalizarSection({ fichaje, onSuccess }: { fichaje: FichajeConRelacione
         <div className="overflow-hidden rounded-xl border border-orange-200 bg-orange-50/50 dark:border-orange-900/40 dark:bg-orange-900/10">
             <div className="flex items-center gap-2 border-b border-orange-200/60 bg-orange-100/50 px-4 py-3 dark:border-orange-900/30 dark:bg-orange-900/20">
                 <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-400">Finalizar jornada</h4>
+                <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-400">
+                    Finalizar jornada
+                </h4>
             </div>
             <div className="p-4">
-            {fichaje.estado === 'pausa' && (
-                <p className="mb-3 text-xs text-muted-foreground">
-                    El fichaje está en pausa. Al finalizar se cerrará la pausa activa y la jornada a la misma hora.
-                </p>
-            )}
-            <form onSubmit={handleFinalizar} className="flex flex-col gap-2">
-                <div className="grid gap-1">
-                    <Label className="text-xs">Motivo (obligatorio)</Label>
-                    <textarea
-                        value={data.motivo}
-                        onChange={(e) => setData('motivo', e.target.value)}
-                        className="min-h-[60px] w-full resize-none rounded-md border bg-background px-3 py-2 text-xs"
-                        placeholder="Indica el motivo de la finalización..."
-                        required
-                    />
-                    {errors.motivo && <p className="text-xs text-destructive">{errors.motivo}</p>}
-                </div>
-                <Button type="submit" variant="destructive" size="sm" disabled={processing} className="w-fit gap-2">
-                    {processing ? <Spinner /> : <LogOut className="h-3.5 w-3.5" />}
-                    Finalizar jornada
-                </Button>
-            </form>
+                {fichaje.estado === 'pausa' && (
+                    <p className="mb-3 text-xs text-muted-foreground">
+                        El fichaje está en pausa. Al finalizar se cerrará la
+                        pausa activa y la jornada a la misma hora.
+                    </p>
+                )}
+                <form
+                    onSubmit={handleFinalizar}
+                    className="flex flex-col gap-2"
+                >
+                    <div className="grid gap-1">
+                        <Label className="text-xs">Motivo (obligatorio)</Label>
+                        <textarea
+                            value={data.motivo}
+                            onChange={(e) => setData('motivo', e.target.value)}
+                            className="min-h-[60px] w-full resize-none rounded-md border bg-background px-3 py-2 text-xs"
+                            placeholder="Indica el motivo de la finalización..."
+                            required
+                        />
+                        {errors.motivo && (
+                            <p className="text-xs text-destructive">
+                                {errors.motivo}
+                            </p>
+                        )}
+                    </div>
+                    <Button
+                        type="submit"
+                        variant="destructive"
+                        size="sm"
+                        disabled={processing}
+                        className="w-fit gap-2"
+                    >
+                        {processing ? (
+                            <Spinner />
+                        ) : (
+                            <LogOut className="h-3.5 w-3.5" />
+                        )}
+                        Finalizar jornada
+                    </Button>
+                </form>
             </div>
         </div>
     );
 }
 
-function TrazabilidadSection({ ediciones, timeZone }: { ediciones: EdicionFichaje[]; timeZone: string }) {
+function TrazabilidadSection({
+    ediciones,
+    timeZone,
+}: {
+    ediciones: EdicionFichaje[];
+    timeZone: string;
+}) {
     const [open, setOpen] = useState(false);
 
     if (ediciones.length === 0) return null;
@@ -270,41 +383,70 @@ function TrazabilidadSection({ ediciones, timeZone }: { ediciones: EdicionFichaj
             >
                 <span>
                     Trazabilidad ({ediciones.length}{' '}
-                    {ediciones.length === 1 ? 'modificación' : 'modificaciones'})
+                    {ediciones.length === 1 ? 'modificación' : 'modificaciones'}
+                    )
                 </span>
-                {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {open ? (
+                    <ChevronUp className="h-4 w-4" />
+                ) : (
+                    <ChevronDown className="h-4 w-4" />
+                )}
             </button>
             {open && (
                 <div className="divide-y border-t">
                     {ediciones.map((ed) => {
-                        const esCampoHora = ['inicio_jornada', 'fin_jornada', 'inicio_pausa', 'fin_pausa', 'finalizacion_admin'].includes(ed.campo);
+                        const esCampoHora = [
+                            'inicio_jornada',
+                            'fin_jornada',
+                            'inicio_pausa',
+                            'fin_pausa',
+                            'finalizacion_admin',
+                        ].includes(ed.campo);
                         const fmtValor = (v: string | null | undefined) =>
-                            esCampoHora && v ? formatTimeInTimeZone(v, timeZone) : (v ?? '—');
+                            esCampoHora && v
+                                ? formatTimeInTimeZone(v, timeZone)
+                                : (v ?? '—');
                         return (
                             <div key={ed.id} className="px-4 py-3 text-xs">
                                 <div className="mb-1.5 flex items-center justify-between gap-2">
                                     <span className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold">
                                         {campoLabel(ed.campo)}
                                     </span>
-                                    <span className="text-muted-foreground">{formatDateTimeInTimeZone(ed.created_at, timeZone)}</span>
+                                    <span className="text-muted-foreground">
+                                        {formatDateTimeInTimeZone(
+                                            ed.created_at,
+                                            timeZone,
+                                        )}
+                                    </span>
                                 </div>
                                 {ed.valor_anterior ? (
                                     <p className="text-muted-foreground">
-                                        <span className="line-through">{fmtValor(ed.valor_anterior)}</span>
+                                        <span className="line-through">
+                                            {fmtValor(ed.valor_anterior)}
+                                        </span>
                                         {' → '}
-                                        <span className="font-semibold text-foreground">{fmtValor(ed.valor_nuevo)}</span>
+                                        <span className="font-semibold text-foreground">
+                                            {fmtValor(ed.valor_nuevo)}
+                                        </span>
                                     </p>
                                 ) : (
                                     <p className="text-muted-foreground">
-                                        Valor: <span className="font-semibold text-foreground">{fmtValor(ed.valor_nuevo)}</span>
+                                        Valor:{' '}
+                                        <span className="font-semibold text-foreground">
+                                            {fmtValor(ed.valor_nuevo)}
+                                        </span>
                                     </p>
                                 )}
                                 <p className="mt-1">
-                                    <span className="text-muted-foreground">Motivo: </span>
+                                    <span className="text-muted-foreground">
+                                        Motivo:{' '}
+                                    </span>
                                     {ed.motivo}
                                 </p>
                                 {ed.user && (
-                                    <p className="mt-0.5 text-muted-foreground">Por: {ed.user.name}</p>
+                                    <p className="mt-0.5 text-muted-foreground">
+                                        Por: {ed.user.name}
+                                    </p>
                                 )}
                             </div>
                         );
@@ -315,7 +457,13 @@ function TrazabilidadSection({ ediciones, timeZone }: { ediciones: EdicionFichaj
     );
 }
 
-function EliminarSection({ fichaje, onDeleted }: { fichaje: FichajeConRelaciones; onDeleted: () => void }) {
+function EliminarSection({
+    fichaje,
+    onDeleted,
+}: {
+    fichaje: FichajeConRelaciones;
+    onDeleted: () => void;
+}) {
     const [motivo, setMotivo] = useState('');
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -344,16 +492,27 @@ function EliminarSection({ fichaje, onDeleted }: { fichaje: FichajeConRelaciones
                     <Trash2 className="h-3.5 w-3.5" />
                     Eliminar fichaje
                 </span>
-                {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {open ? (
+                    <ChevronUp className="h-4 w-4" />
+                ) : (
+                    <ChevronDown className="h-4 w-4" />
+                )}
             </button>
             {open && (
                 <div className="border-t bg-destructive/5 p-4">
                     <p className="mb-3 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        El fichaje quedará eliminado pero su registro permanecerá en la base de datos para cumplimiento legal (Ley 10/2021).
+                        El fichaje quedará eliminado pero su registro
+                        permanecerá en la base de datos para cumplimiento legal
+                        (Ley 10/2021).
                     </p>
-                    <form onSubmit={handleEliminar} className="flex flex-col gap-2">
+                    <form
+                        onSubmit={handleEliminar}
+                        className="flex flex-col gap-2"
+                    >
                         <div className="grid gap-1">
-                            <Label className="text-xs">Motivo de eliminación (obligatorio)</Label>
+                            <Label className="text-xs">
+                                Motivo de eliminación (obligatorio)
+                            </Label>
                             <textarea
                                 value={motivo}
                                 onChange={(e) => setMotivo(e.target.value)}
@@ -361,10 +520,24 @@ function EliminarSection({ fichaje, onDeleted }: { fichaje: FichajeConRelaciones
                                 placeholder="Indica el motivo de la eliminación..."
                                 required
                             />
-                            {errors.motivo && <p className="text-xs text-destructive">{errors.motivo}</p>}
+                            {errors.motivo && (
+                                <p className="text-xs text-destructive">
+                                    {errors.motivo}
+                                </p>
+                            )}
                         </div>
-                        <Button type="submit" variant="destructive" size="sm" disabled={processing} className="w-fit gap-2">
-                            {processing ? <Spinner /> : <Trash2 className="h-3.5 w-3.5" />}
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            size="sm"
+                            disabled={processing}
+                            className="w-fit gap-2"
+                        >
+                            {processing ? (
+                                <Spinner />
+                            ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                            )}
                             Confirmar eliminación
                         </Button>
                     </form>
@@ -385,10 +558,13 @@ function NuevoFichajeModal({
     empresaId: string;
     onClose: () => void;
 }) {
-    const availableEmployees = empresaId === 'all'
-        ? employees
-        : employees.filter((e) => e.company_id === Number(empresaId));
-    const initialDate = getCurrentDateKeyInTimeZone(DEFAULT_WORK_CENTER_TIMEZONE);
+    const availableEmployees =
+        empresaId === 'all'
+            ? employees
+            : employees.filter((e) => e.company_id === Number(empresaId));
+    const initialDate = getCurrentDateKeyInTimeZone(
+        DEFAULT_WORK_CENTER_TIMEZONE,
+    );
 
     const [data, setData] = useState({
         employee_id: '',
@@ -414,7 +590,9 @@ function NuevoFichajeModal({
     }
 
     function updatePausa(idx: number, field: keyof PausaForm, value: string) {
-        setPausas((prev) => prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p)));
+        setPausas((prev) =>
+            prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p)),
+        );
     }
 
     function handleSubmit(e: React.FormEvent) {
@@ -439,7 +617,13 @@ function NuevoFichajeModal({
         router.post('/fichajes', payload, {
             preserveScroll: true,
             onSuccess: () => {
-                setData({ employee_id: '', fecha: initialDate, inicio_jornada: '', fin_jornada: '', motivo: '' });
+                setData({
+                    employee_id: '',
+                    fecha: initialDate,
+                    inicio_jornada: '',
+                    fin_jornada: '',
+                    motivo: '',
+                });
                 setPausas([]);
                 setErrors({});
                 onClose();
@@ -449,8 +633,11 @@ function NuevoFichajeModal({
         });
     }
 
-    const selectedEmployee = availableEmployees.find((e) => String(e.id) === data.employee_id);
-    const selectedTimeZone = selectedEmployee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+    const selectedEmployee = availableEmployees.find(
+        (e) => String(e.id) === data.employee_id,
+    );
+    const selectedTimeZone =
+        selectedEmployee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
 
     return (
         <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-lg">
@@ -460,8 +647,12 @@ function NuevoFichajeModal({
                         <Plus className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                        <DialogTitle className="text-base font-semibold">Nuevo fichaje manual</DialogTitle>
-                        <p className="text-xs text-muted-foreground">Crea un fichaje con fecha y horas personalizadas</p>
+                        <DialogTitle className="text-base font-semibold">
+                            Nuevo fichaje manual
+                        </DialogTitle>
+                        <p className="text-xs text-muted-foreground">
+                            Crea un fichaje con fecha y horas personalizadas
+                        </p>
                     </div>
                 </div>
             </DialogHeader>
@@ -471,20 +662,30 @@ function NuevoFichajeModal({
                 <div className="overflow-hidden rounded-xl border">
                     <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                         <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Empleado y fecha</span>
+                        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                            Empleado y fecha
+                        </span>
                     </div>
                     <div className="grid gap-4 p-4 sm:grid-cols-2">
                         <div className="grid gap-1.5 sm:col-span-2">
-                            <Label className="text-xs font-medium">Empleado</Label>
+                            <Label className="text-xs font-medium">
+                                Empleado
+                            </Label>
                             <Select
                                 value={data.employee_id}
                                 onValueChange={(value) => {
-                                    const employee = availableEmployees.find((item) => String(item.id) === value);
-                                    const timeZone = employee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+                                    const employee = availableEmployees.find(
+                                        (item) => String(item.id) === value,
+                                    );
+                                    const timeZone =
+                                        employee?.work_center?.timezone ??
+                                        DEFAULT_WORK_CENTER_TIMEZONE;
                                     setData((prev) => ({
                                         ...prev,
                                         employee_id: value,
-                                        fecha: getCurrentDateKeyInTimeZone(timeZone),
+                                        fecha: getCurrentDateKeyInTimeZone(
+                                            timeZone,
+                                        ),
                                     }));
                                 }}
                             >
@@ -493,24 +694,41 @@ function NuevoFichajeModal({
                                 </SelectTrigger>
                                 <SelectContent>
                                     {availableEmployees.map((e) => (
-                                        <SelectItem key={e.id} value={String(e.id)}>
+                                        <SelectItem
+                                            key={e.id}
+                                            value={String(e.id)}
+                                        >
                                             {e.name} {e.apellido}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {errors.employee_id && <p className="text-xs text-destructive">{errors.employee_id}</p>}
+                            {errors.employee_id && (
+                                <p className="text-xs text-destructive">
+                                    {errors.employee_id}
+                                </p>
+                            )}
                             <p className="text-xs text-muted-foreground">
-                                Hora oficial del centro: {getTimeZoneLabel(selectedTimeZone)}
+                                Hora oficial del centro:{' '}
+                                {getTimeZoneLabel(selectedTimeZone)}
                             </p>
                         </div>
 
                         {selectedEmployee && (
-                            <div className="sm:col-span-2 flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm">
+                            <div className="flex items-center gap-2 rounded-lg bg-primary/5 px-3 py-2 text-sm sm:col-span-2">
                                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                                    {[selectedEmployee.name, selectedEmployee.apellido].map((value) => value?.[0] ?? '').join('').toUpperCase()}
+                                    {[
+                                        selectedEmployee.name,
+                                        selectedEmployee.apellido,
+                                    ]
+                                        .map((value) => value?.[0] ?? '')
+                                        .join('')
+                                        .toUpperCase()}
                                 </div>
-                                <span className="font-medium text-foreground">{selectedEmployee.name} {selectedEmployee.apellido}</span>
+                                <span className="font-medium text-foreground">
+                                    {selectedEmployee.name}{' '}
+                                    {selectedEmployee.apellido}
+                                </span>
                                 {selectedEmployee.work_center && (
                                     <span className="text-xs text-muted-foreground">
                                         {selectedEmployee.work_center.nombre}
@@ -525,7 +743,10 @@ function NuevoFichajeModal({
                         )}
 
                         <div className="grid gap-1.5 sm:col-span-2">
-                            <Label htmlFor="modal-fecha" className="flex items-center gap-1.5 text-xs font-medium">
+                            <Label
+                                htmlFor="modal-fecha"
+                                className="flex items-center gap-1.5 text-xs font-medium"
+                            >
                                 <Calendar className="h-3 w-3 text-muted-foreground" />
                                 Fecha
                             </Label>
@@ -533,13 +754,20 @@ function NuevoFichajeModal({
                                 id="modal-fecha"
                                 type="date"
                                 value={data.fecha}
-                                onChange={(e) => update('fecha', e.target.value)}
+                                onChange={(e) =>
+                                    update('fecha', e.target.value)
+                                }
                                 className="h-9"
                                 required
                             />
-                            {errors.fecha && <p className="text-xs text-destructive">{errors.fecha}</p>}
+                            {errors.fecha && (
+                                <p className="text-xs text-destructive">
+                                    {errors.fecha}
+                                </p>
+                            )}
                             <p className="text-xs text-muted-foreground">
-                                La fecha y las horas se interpretan con la zona del centro seleccionado.
+                                La fecha y las horas se interpretan con la zona
+                                del centro seleccionado.
                             </p>
                         </div>
                     </div>
@@ -549,31 +777,51 @@ function NuevoFichajeModal({
                 <div className="overflow-hidden rounded-xl border">
                     <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                         <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horario de jornada</span>
+                        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                            Horario de jornada
+                        </span>
                     </div>
                     <div className="grid grid-cols-2 gap-4 p-4">
                         <div className="grid gap-1.5">
                             <Label className="text-xs font-medium">
-                                Entrada <span className="text-destructive">*</span>
+                                Entrada{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 type="time"
                                 value={data.inicio_jornada}
-                                onChange={(e) => update('inicio_jornada', e.target.value)}
+                                onChange={(e) =>
+                                    update('inicio_jornada', e.target.value)
+                                }
                                 className="h-9"
                                 required
                             />
-                            {errors.inicio_jornada && <p className="text-xs text-destructive">{errors.inicio_jornada}</p>}
+                            {errors.inicio_jornada && (
+                                <p className="text-xs text-destructive">
+                                    {errors.inicio_jornada}
+                                </p>
+                            )}
                         </div>
                         <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium text-muted-foreground">Salida <span className="text-xs font-normal">(opcional)</span></Label>
+                            <Label className="text-xs font-medium text-muted-foreground">
+                                Salida{' '}
+                                <span className="text-xs font-normal">
+                                    (opcional)
+                                </span>
+                            </Label>
                             <Input
                                 type="time"
                                 value={data.fin_jornada}
-                                onChange={(e) => update('fin_jornada', e.target.value)}
+                                onChange={(e) =>
+                                    update('fin_jornada', e.target.value)
+                                }
                                 className="h-9"
                             />
-                            {errors.fin_jornada && <p className="text-xs text-destructive">{errors.fin_jornada}</p>}
+                            {errors.fin_jornada && (
+                                <p className="text-xs text-destructive">
+                                    {errors.fin_jornada}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -583,44 +831,91 @@ function NuevoFichajeModal({
                     <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
                         <div className="flex items-center gap-2">
                             <Coffee className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pausas</span>
+                            <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                Pausas
+                            </span>
                             {pausas.length > 0 && (
-                                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">{pausas.length}</span>
+                                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium">
+                                    {pausas.length}
+                                </span>
                             )}
                         </div>
-                        <Button type="button" size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={addPausa}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 text-xs"
+                            onClick={addPausa}
+                        >
                             <Plus className="h-3 w-3" />
                             Añadir
                         </Button>
                     </div>
                     {pausas.length === 0 ? (
-                        <p className="px-4 py-3 text-xs text-muted-foreground">Sin pausas. Pulsa "Añadir" para incluir una.</p>
+                        <p className="px-4 py-3 text-xs text-muted-foreground">
+                            Sin pausas. Pulsa "Añadir" para incluir una.
+                        </p>
                     ) : (
                         <div className="flex flex-col divide-y">
                             {pausas.map((p, idx) => (
-                                <div key={idx} className="grid grid-cols-[1fr_1fr_auto] items-end gap-3 px-4 py-3">
+                                <div
+                                    key={idx}
+                                    className="grid grid-cols-[1fr_1fr_auto] items-end gap-3 px-4 py-3"
+                                >
                                     <div className="grid gap-1.5">
                                         <Label className="text-xs font-medium">
-                                            <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[10px] font-bold">{idx + 1}</span>
+                                            <span className="mr-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-muted text-[10px] font-bold">
+                                                {idx + 1}
+                                            </span>
                                             Inicio
                                         </Label>
                                         <Input
                                             type="time"
                                             value={p.inicio_pausa}
-                                            onChange={(e) => updatePausa(idx, 'inicio_pausa', e.target.value)}
+                                            onChange={(e) =>
+                                                updatePausa(
+                                                    idx,
+                                                    'inicio_pausa',
+                                                    e.target.value,
+                                                )
+                                            }
                                             required
                                             className="h-8 text-sm"
                                         />
-                                        {(errors as Record<string, string>)[`pausas.${idx}.inicio_pausa`] && (
-                                            <p className="text-xs text-destructive">{(errors as Record<string, string>)[`pausas.${idx}.inicio_pausa`]}</p>
+                                        {(errors as Record<string, string>)[
+                                            `pausas.${idx}.inicio_pausa`
+                                        ] && (
+                                            <p className="text-xs text-destructive">
+                                                {
+                                                    (
+                                                        errors as Record<
+                                                            string,
+                                                            string
+                                                        >
+                                                    )[
+                                                        `pausas.${idx}.inicio_pausa`
+                                                    ]
+                                                }
+                                            </p>
                                         )}
                                     </div>
                                     <div className="grid gap-1.5">
-                                        <Label className="text-xs text-muted-foreground">Fin <span className="text-xs">(opcional)</span></Label>
+                                        <Label className="text-xs text-muted-foreground">
+                                            Fin{' '}
+                                            <span className="text-xs">
+                                                (opcional)
+                                            </span>
+                                        </Label>
                                         <Input
                                             type="time"
                                             value={p.fin_pausa}
-                                            onChange={(e) => updatePausa(idx, 'fin_pausa', e.target.value)}
+                                            onChange={(e) =>
+                                                updatePausa(
+                                                    idx,
+                                                    'fin_pausa',
+                                                    e.target.value,
+                                                )
+                                            }
                                             className="h-8 text-sm"
                                         />
                                     </div>
@@ -643,26 +938,45 @@ function NuevoFichajeModal({
                 <div className="overflow-hidden rounded-xl border">
                     <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                         <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Motivo de creación</span>
+                        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                            Motivo de creación
+                        </span>
                     </div>
                     <div className="p-4">
                         <textarea
                             value={data.motivo}
                             onChange={(e) => update('motivo', e.target.value)}
-                            className="min-h-[72px] w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                            className="min-h-[72px] w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:outline-none"
                             placeholder="Indica el motivo por el que se crea este fichaje manualmente..."
                             required
                         />
-                        {errors.motivo && <p className="mt-1 text-xs text-destructive">{errors.motivo}</p>}
+                        {errors.motivo && (
+                            <p className="mt-1 text-xs text-destructive">
+                                {errors.motivo}
+                            </p>
+                        )}
                     </div>
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                    <Button type="submit" disabled={processing} className="flex-1 gap-2 sm:flex-none">
-                        {processing ? <Spinner /> : <Plus className="h-4 w-4" />}
+                    <Button
+                        type="submit"
+                        disabled={processing}
+                        className="flex-1 gap-2 sm:flex-none"
+                    >
+                        {processing ? (
+                            <Spinner />
+                        ) : (
+                            <Plus className="h-4 w-4" />
+                        )}
                         Crear fichaje
                     </Button>
-                    <Button type="button" variant="outline" onClick={onClose} className="flex-1 sm:flex-none">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onClose}
+                        className="flex-1 sm:flex-none"
+                    >
                         Cancelar
                     </Button>
                 </div>
@@ -671,7 +985,15 @@ function NuevoFichajeModal({
     );
 }
 
-function EliminarPausaButton({ fichaje, pausa, onSuccess }: { fichaje: FichajeConRelaciones; pausa: Pausa; onSuccess: () => void }) {
+function EliminarPausaButton({
+    fichaje,
+    pausa,
+    onSuccess,
+}: {
+    fichaje: FichajeConRelaciones;
+    pausa: Pausa;
+    onSuccess: () => void;
+}) {
     const [open, setOpen] = useState(false);
     const [motivo, setMotivo] = useState('');
     const [processing, setProcessing] = useState(false);
@@ -710,8 +1032,13 @@ function EliminarPausaButton({ fichaje, pausa, onSuccess }: { fichaje: FichajeCo
     }
 
     return (
-        <form onSubmit={handleEliminar} className="col-span-2 flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
-            <p className="text-xs font-medium text-destructive">Confirmar eliminación de pausa</p>
+        <form
+            onSubmit={handleEliminar}
+            className="col-span-2 flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3"
+        >
+            <p className="text-xs font-medium text-destructive">
+                Confirmar eliminación de pausa
+            </p>
             <div className="grid gap-1">
                 <Label className="text-xs">Motivo (obligatorio)</Label>
                 <textarea
@@ -721,14 +1048,31 @@ function EliminarPausaButton({ fichaje, pausa, onSuccess }: { fichaje: FichajeCo
                     placeholder="Indica el motivo de la eliminación..."
                     required
                 />
-                {errors.motivo && <p className="text-xs text-destructive">{errors.motivo}</p>}
+                {errors.motivo && (
+                    <p className="text-xs text-destructive">{errors.motivo}</p>
+                )}
             </div>
             <div className="flex gap-2">
-                <Button type="submit" size="sm" variant="destructive" disabled={processing} className="gap-2">
+                <Button
+                    type="submit"
+                    size="sm"
+                    variant="destructive"
+                    disabled={processing}
+                    className="gap-2"
+                >
                     {processing && <Spinner />}
                     Eliminar
                 </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => { setOpen(false); setMotivo(''); setErrors({}); }}>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                        setOpen(false);
+                        setMotivo('');
+                        setErrors({});
+                    }}
+                >
                     Cancelar
                 </Button>
             </div>
@@ -759,25 +1103,30 @@ function AnadirPausaSection({
         if (processing) return;
         setProcessing(true);
 
-        const toLocalIso = (time: string) => `${fecha.substring(0, 10)}T${time}:00`;
+        const toLocalIso = (time: string) =>
+            `${fecha.substring(0, 10)}T${time}:00`;
 
-        router.post(`/fichajes/${fichaje.id}/pausas`, {
-            inicio_pausa: toLocalIso(inicioPausa),
-            fin_pausa: finPausa ? toLocalIso(finPausa) : null,
-            motivo,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setInicioPausa('');
-                setFinPausa('');
-                setMotivo('');
-                setErrors({});
-                setOpen(false);
-                onSuccess();
+        router.post(
+            `/fichajes/${fichaje.id}/pausas`,
+            {
+                inicio_pausa: toLocalIso(inicioPausa),
+                fin_pausa: finPausa ? toLocalIso(finPausa) : null,
+                motivo,
             },
-            onError: (errs) => setErrors(errs),
-            onFinish: () => setProcessing(false),
-        });
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setInicioPausa('');
+                    setFinPausa('');
+                    setMotivo('');
+                    setErrors({});
+                    setOpen(false);
+                    onSuccess();
+                },
+                onError: (errs) => setErrors(errs),
+                onFinish: () => setProcessing(false),
+            },
+        );
     }
 
     return (
@@ -791,39 +1140,62 @@ function AnadirPausaSection({
                     <Plus className="h-3.5 w-3.5 text-primary" />
                     Añadir pausa
                 </span>
-                {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {open ? (
+                    <ChevronUp className="h-4 w-4" />
+                ) : (
+                    <ChevronDown className="h-4 w-4" />
+                )}
             </button>
             {open && (
                 <div className="border-t p-4">
                     <p className="mb-3 text-xs text-muted-foreground">
                         Hora oficial del centro: {getTimeZoneLabel(timeZone)}
                     </p>
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                    <form
+                        onSubmit={handleSubmit}
+                        className="flex flex-col gap-3"
+                    >
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-1">
                                 <Label className="text-xs">Inicio pausa</Label>
                                 <Input
                                     type="time"
                                     value={inicioPausa}
-                                    onChange={(e) => setInicioPausa(e.target.value)}
+                                    onChange={(e) =>
+                                        setInicioPausa(e.target.value)
+                                    }
                                     className="h-8 text-sm"
                                     required
                                 />
-                                {errors.inicio_pausa && <p className="text-xs text-destructive">{errors.inicio_pausa}</p>}
+                                {errors.inicio_pausa && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.inicio_pausa}
+                                    </p>
+                                )}
                             </div>
                             <div className="grid gap-1">
-                                <Label className="text-xs">Fin pausa (opcional)</Label>
+                                <Label className="text-xs">
+                                    Fin pausa (opcional)
+                                </Label>
                                 <Input
                                     type="time"
                                     value={finPausa}
-                                    onChange={(e) => setFinPausa(e.target.value)}
+                                    onChange={(e) =>
+                                        setFinPausa(e.target.value)
+                                    }
                                     className="h-8 text-sm"
                                 />
-                                {errors.fin_pausa && <p className="text-xs text-destructive">{errors.fin_pausa}</p>}
+                                {errors.fin_pausa && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.fin_pausa}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         <div className="grid gap-1">
-                            <Label className="text-xs">Motivo (obligatorio)</Label>
+                            <Label className="text-xs">
+                                Motivo (obligatorio)
+                            </Label>
                             <textarea
                                 value={motivo}
                                 onChange={(e) => setMotivo(e.target.value)}
@@ -831,14 +1203,28 @@ function AnadirPausaSection({
                                 placeholder="Indica el motivo por el que se añade esta pausa..."
                                 required
                             />
-                            {errors.motivo && <p className="text-xs text-destructive">{errors.motivo}</p>}
+                            {errors.motivo && (
+                                <p className="text-xs text-destructive">
+                                    {errors.motivo}
+                                </p>
+                            )}
                         </div>
                         <div className="flex gap-2">
-                            <Button type="submit" size="sm" disabled={processing} className="gap-2">
+                            <Button
+                                type="submit"
+                                size="sm"
+                                disabled={processing}
+                                className="gap-2"
+                            >
                                 {processing && <Spinner />}
                                 Guardar pausa
                             </Button>
-                            <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setOpen(false)}
+                            >
                                 Cancelar
                             </Button>
                         </div>
@@ -849,16 +1235,39 @@ function AnadirPausaSection({
     );
 }
 
-function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onClose: () => void }) {
+function FichajeModal({
+    fichaje,
+    onClose,
+}: {
+    fichaje: FichajeConRelaciones;
+    onClose: () => void;
+}) {
     const estadoBadge = {
-        activa: { label: 'Activa', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', dotClass: 'bg-green-500' },
-        pausa: { label: 'En pausa', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300', dotClass: 'bg-yellow-500' },
-        finalizada: { label: 'Finalizada', className: 'bg-muted text-muted-foreground', dotClass: 'bg-muted-foreground/50' },
+        activa: {
+            label: 'Activa',
+            className:
+                'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+            dotClass: 'bg-green-500',
+        },
+        pausa: {
+            label: 'En pausa',
+            className:
+                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+            dotClass: 'bg-yellow-500',
+        },
+        finalizada: {
+            label: 'Finalizada',
+            className: 'bg-muted text-muted-foreground',
+            dotClass: 'bg-muted-foreground/50',
+        },
     } as const;
 
     const estado = estadoBadge[fichaje.estado];
     const urlJornada = `/fichajes/${fichaje.id}/jornada`;
-    const timeZone = fichaje.timezone ?? fichaje.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+    const timeZone =
+        fichaje.timezone ??
+        fichaje.work_center?.timezone ??
+        DEFAULT_WORK_CENTER_TIMEZONE;
 
     function reload() {
         router.reload({ only: ['fichajes'] });
@@ -879,20 +1288,28 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
         <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
                 <div className="-mx-6 -mt-6 mb-4 flex items-center justify-between gap-3 rounded-t-lg border-b bg-muted/40 px-6 py-4">
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                             {initials}
                         </div>
                         <div className="min-w-0">
-                            <DialogTitle className="text-lg font-semibold leading-tight">
+                            <DialogTitle className="text-lg leading-tight font-semibold">
                                 {fichaje.user?.name} {fichaje.user?.apellido}
                             </DialogTitle>
-                            <p className="text-sm text-muted-foreground">{formatDateValue(fichaje.fecha)}</p>
-                            <p className="text-xs text-muted-foreground">{getTimeZoneLabel(timeZone)}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {formatDateValue(fichaje.fecha)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {getTimeZoneLabel(timeZone)}
+                            </p>
                         </div>
                     </div>
-                    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${estado.className}`}>
-                        <span className={`h-2 w-2 rounded-full ${estado.dotClass}`} />
+                    <span
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${estado.className}`}
+                    >
+                        <span
+                            className={`h-2 w-2 rounded-full ${estado.dotClass}`}
+                        />
                         {estado.label}
                     </span>
                 </div>
@@ -930,17 +1347,28 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                             <div className="mt-4">
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                                     <Clock className="h-3 w-3" />
-                                    {formatSeconds(fichaje.duracion_jornada)} trabajados
+                                    {formatSeconds(
+                                        fichaje.duracion_jornada,
+                                    )}{' '}
+                                    trabajados
                                 </span>
                             </div>
                         )}
                         {fichaje.user?.remoto && (
                             <div className="mt-3 flex gap-3">
                                 {fichaje.lat_inicio && fichaje.lng_inicio && (
-                                    <MapLink lat={fichaje.lat_inicio} lng={fichaje.lng_inicio} label="Ubicación entrada" />
+                                    <MapLink
+                                        lat={fichaje.lat_inicio}
+                                        lng={fichaje.lng_inicio}
+                                        label="Ubicación entrada"
+                                    />
                                 )}
                                 {fichaje.lat_fin && fichaje.lng_fin && (
-                                    <MapLink lat={fichaje.lat_fin} lng={fichaje.lng_fin} label="Ubicación salida" />
+                                    <MapLink
+                                        lat={fichaje.lat_fin}
+                                        lng={fichaje.lng_fin}
+                                        label="Ubicación salida"
+                                    />
                                 )}
                             </div>
                         )}
@@ -958,19 +1386,29 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                             {fichaje.pausas.map((pausa, idx) => {
                                 const urlPausa = `/fichajes/${fichaje.id}/pausas/${pausa.id}`;
                                 return (
-                                    <div key={pausa.id} className="rounded-lg border bg-muted/20 p-3">
+                                    <div
+                                        key={pausa.id}
+                                        className="rounded-lg border bg-muted/20 p-3"
+                                    >
                                         <div className="mb-2 flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-medium">
                                                     {idx + 1}
                                                 </span>
-                                                {pausa.duracion_pausa != null && (
+                                                {pausa.duracion_pausa !=
+                                                    null && (
                                                     <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs">
-                                                        {formatSeconds(pausa.duracion_pausa)}
+                                                        {formatSeconds(
+                                                            pausa.duracion_pausa,
+                                                        )}
                                                     </span>
                                                 )}
                                             </div>
-                                            <EliminarPausaButton fichaje={fichaje} pausa={pausa} onSuccess={reload} />
+                                            <EliminarPausaButton
+                                                fichaje={fichaje}
+                                                pausa={pausa}
+                                                onSuccess={reload}
+                                            />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <HoraEditable
@@ -984,7 +1422,9 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                                             />
                                             <HoraEditable
                                                 label="Fin"
-                                                valor={pausa.fin_pausa ?? undefined}
+                                                valor={
+                                                    pausa.fin_pausa ?? undefined
+                                                }
                                                 urlPut={urlPausa}
                                                 campo="fin_pausa"
                                                 fecha={fichaje.fecha}
@@ -992,14 +1432,32 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                                                 onSuccess={reload}
                                             />
                                         </div>
-                                        {(pausa.lat_inicio != null && pausa.lng_inicio != null) || (pausa.lat_fin != null && pausa.lng_fin != null) ? (
+                                        {(pausa.lat_inicio != null &&
+                                            pausa.lng_inicio != null) ||
+                                        (pausa.lat_fin != null &&
+                                            pausa.lng_fin != null) ? (
                                             <div className="mt-3 flex flex-wrap gap-3">
-                                                {pausa.lat_inicio != null && pausa.lng_inicio != null && (
-                                                    <MapLink lat={pausa.lat_inicio} lng={pausa.lng_inicio} label="Ubicación inicio pausa" />
-                                                )}
-                                                {pausa.lat_fin != null && pausa.lng_fin != null && (
-                                                    <MapLink lat={pausa.lat_fin} lng={pausa.lng_fin} label="Ubicación fin pausa" />
-                                                )}
+                                                {pausa.lat_inicio != null &&
+                                                    pausa.lng_inicio !=
+                                                        null && (
+                                                        <MapLink
+                                                            lat={
+                                                                pausa.lat_inicio
+                                                            }
+                                                            lng={
+                                                                pausa.lng_inicio
+                                                            }
+                                                            label="Ubicación inicio pausa"
+                                                        />
+                                                    )}
+                                                {pausa.lat_fin != null &&
+                                                    pausa.lng_fin != null && (
+                                                        <MapLink
+                                                            lat={pausa.lat_fin}
+                                                            lng={pausa.lng_fin}
+                                                            label="Ubicación fin pausa"
+                                                        />
+                                                    )}
                                             </div>
                                         ) : null}
                                     </div>
@@ -1010,7 +1468,12 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                 )}
 
                 {/* Añadir pausa */}
-                <AnadirPausaSection fichaje={fichaje} fecha={fichaje.fecha} timeZone={timeZone} onSuccess={reload} />
+                <AnadirPausaSection
+                    fichaje={fichaje}
+                    fecha={fichaje.fecha}
+                    timeZone={timeZone}
+                    onSuccess={reload}
+                />
 
                 {/* Finalizar */}
                 {fichaje.estado !== 'finalizada' && (
@@ -1018,7 +1481,10 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
                 )}
 
                 {/* Trazabilidad */}
-                <TrazabilidadSection ediciones={fichaje.ediciones ?? []} timeZone={timeZone} />
+                <TrazabilidadSection
+                    ediciones={fichaje.ediciones ?? []}
+                    timeZone={timeZone}
+                />
 
                 {/* Eliminar */}
                 <EliminarSection fichaje={fichaje} onDeleted={reloadAndClose} />
@@ -1029,28 +1495,42 @@ function FichajeModal({ fichaje, onClose }: { fichaje: FichajeConRelaciones; onC
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
-export default function FichajesIndex({ fichajes, companies, workCenters, employees, filters }: Props) {
+export default function FichajesIndex({
+    fichajes,
+    companies,
+    workCenters,
+    employees,
+    filters,
+}: Props) {
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
     const skipAutoFilterRef = useRef(true);
     const initialEmpleado = filters.empleado_id
-        ? employees.find((employee) => employee.id === Number(filters.empleado_id))
+        ? employees.find(
+              (employee) => employee.id === Number(filters.empleado_id),
+          )
         : null;
     const [empleadoSearch, setEmpleadoSearch] = useState(
-        initialEmpleado ? `${initialEmpleado.name} ${initialEmpleado.apellido}` : '',
+        initialEmpleado
+            ? `${initialEmpleado.name} ${initialEmpleado.apellido}`
+            : '',
     );
     const [showEmpleadoDropdown, setShowEmpleadoDropdown] = useState(false);
     const empleadoRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
-            if (empleadoRef.current && !empleadoRef.current.contains(e.target as Node)) {
+            if (
+                empleadoRef.current &&
+                !empleadoRef.current.contains(e.target as Node)
+            ) {
                 setShowEmpleadoDropdown(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () =>
+            document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const today = getCurrentDateKeyInTimeZone(DEFAULT_WORK_CENTER_TIMEZONE);
@@ -1059,19 +1539,26 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [nuevoOpen, setNuevoOpen] = useState(false);
 
-    const availableWorkCenters = empresaId === 'all'
-        ? workCenters
-        : workCenters.filter((wc) => wc.company_id === Number(empresaId));
+    const availableWorkCenters =
+        empresaId === 'all'
+            ? workCenters
+            : workCenters.filter((wc) => wc.company_id === Number(empresaId));
 
-    const availableEmployees = empresaId === 'all'
-        ? employees
-        : employees.filter((e) => e.company_id === Number(empresaId));
-    const normalizedEmpleadoSearch = empleadoSearch.trim().toLocaleLowerCase('es-ES');
-    const filteredEmployees = normalizedEmpleadoSearch.length === 0
-        ? availableEmployees
-        : availableEmployees.filter((employee) =>
-            `${employee.name} ${employee.apellido}`.toLocaleLowerCase('es-ES').includes(normalizedEmpleadoSearch),
-        );
+    const availableEmployees =
+        empresaId === 'all'
+            ? employees
+            : employees.filter((e) => e.company_id === Number(empresaId));
+    const normalizedEmpleadoSearch = empleadoSearch
+        .trim()
+        .toLocaleLowerCase('es-ES');
+    const filteredEmployees =
+        normalizedEmpleadoSearch.length === 0
+            ? availableEmployees
+            : availableEmployees.filter((employee) =>
+                  `${employee.name} ${employee.apellido}`
+                      .toLocaleLowerCase('es-ES')
+                      .includes(normalizedEmpleadoSearch),
+              );
 
     function handleEmpresaChange(value: string) {
         setEmpresaId(value);
@@ -1114,17 +1601,37 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
         });
     }, [empresaId, centroId, empleadoId, fechaDesde, fechaHasta]);
 
-    const fichajeSeleccionado = selectedId != null
-        ? (fichajes.find((f) => f.id === selectedId) ?? null)
-        : null;
+    const fichajeSeleccionado =
+        selectedId != null
+            ? (fichajes.find((f) => f.id === selectedId) ?? null)
+            : null;
 
     const estadoBadge = {
-        activa: { label: 'Activa', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', dot: 'bg-green-500' },
-        pausa: { label: 'En pausa', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300', dot: 'bg-yellow-500' },
-        finalizada: { label: 'Finalizada', className: 'bg-muted text-muted-foreground', dot: 'bg-muted-foreground/50' },
+        activa: {
+            label: 'Activa',
+            className:
+                'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+            dot: 'bg-green-500',
+        },
+        pausa: {
+            label: 'En pausa',
+            className:
+                'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+            dot: 'bg-yellow-500',
+        },
+        finalizada: {
+            label: 'Finalizada',
+            className: 'bg-muted text-muted-foreground',
+            dot: 'bg-muted-foreground/50',
+        },
     } as const;
 
-    const hasActiveFilters = empresaId !== 'all' || centroId !== 'all' || empleadoId !== 'all' || fechaDesde !== '' || fechaHasta !== '';
+    const hasActiveFilters =
+        empresaId !== 'all' ||
+        centroId !== 'all' ||
+        empleadoId !== 'all' ||
+        fechaDesde !== '' ||
+        fechaHasta !== '';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -1134,175 +1641,266 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Registros de fichajes</h1>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            Registros de fichajes
+                        </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
                             Consulta y edita los fichajes de tus empleados
                         </p>
                     </div>
-                    <Button className="shrink-0 gap-2" onClick={() => setNuevoOpen(true)}>
+                    <Button
+                        className="shrink-0 gap-2"
+                        onClick={() => setNuevoOpen(true)}
+                    >
                         <Plus className="h-4 w-4" />
                         Nuevo fichaje
                     </Button>
                 </div>
 
                 {/* Filtros */}
-                <div className="rounded-xl border bg-card shadow-sm">
-                    <div className="flex items-center gap-2 border-b px-4 py-3">
-                        <Filter className="h-4 w-4 text-muted-foreground" />
-                        <h2 className="text-sm font-semibold">Filtros</h2>
-                        {hasActiveFilters && (
-                            <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                                Activos
-                            </span>
-                        )}
-                    </div>
-                    <div className="p-4">
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                            {/* Empresa */}
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="empresa_filter" className="flex items-center gap-1.5 text-xs font-medium">
-                                    <Building2 className="h-3 w-3 text-muted-foreground" />
-                                    Empresa
-                                </Label>
-                                <Select value={empresaId} onValueChange={handleEmpresaChange}>
-                                    <SelectTrigger id="empresa_filter" className="h-9">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todas las empresas</SelectItem>
-                                        {companies.map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)}>
-                                                {c.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Centro */}
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="centro_filter" className="text-xs font-medium">Centro de trabajo</Label>
-                                <Select
-                                    value={centroId}
-                                    onValueChange={setCentroId}
-                                    disabled={availableWorkCenters.length === 0}
+                <FilterPanel
+                    title="Filtros de registros"
+                    description="Ajusta empresa, centro, empleado y rango de fechas. Los cambios se aplican al instante."
+                    icon={Filter}
+                    tone="sky"
+                    meta={
+                        <>
+                            <FilterPill active={hasActiveFilters}>
+                                {hasActiveFilters
+                                    ? 'Filtros activos'
+                                    : 'Sin filtros'}
+                            </FilterPill>
+                            <FilterPill>{`${fichajes.length} ${fichajes.length === 1 ? 'registro' : 'registros'}`}</FilterPill>
+                        </>
+                    }
+                    footer={
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleReset}
+                                    className="gap-2 rounded-xl"
                                 >
-                                    <SelectTrigger id="centro_filter" className="h-9">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Todos los centros</SelectItem>
-                                        {availableWorkCenters.map((wc) => (
-                                            <SelectItem key={wc.id} value={String(wc.id)}>
-                                                {wc.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    <X className="h-3.5 w-3.5" />
+                                    Limpiar
+                                </Button>
+                                <span className="text-xs text-muted-foreground">
+                                    Los filtros se aplican automáticamente.
+                                </span>
                             </div>
+                            <FilterPill>
+                                {fechaDesde && fechaHasta
+                                    ? `${formatDateValue(fechaDesde)} - ${formatDateValue(fechaHasta)}`
+                                    : 'Periodo abierto'}
+                            </FilterPill>
+                        </div>
+                    }
+                >
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                        <FilterField
+                            label="Empresa"
+                            htmlFor="empresa_filter"
+                            icon={Building2}
+                        >
+                            <Select
+                                value={empresaId}
+                                onValueChange={handleEmpresaChange}
+                            >
+                                <FilterSelectTrigger id="empresa_filter">
+                                    <SelectValue />
+                                </FilterSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Todas las empresas
+                                    </SelectItem>
+                                    {companies.map((c) => (
+                                        <SelectItem
+                                            key={c.id}
+                                            value={String(c.id)}
+                                        >
+                                            {c.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </FilterField>
 
-                            {/* Empleado — combobox con dropdown flotante */}
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="empleado_filter" className="flex items-center gap-1.5 text-xs font-medium">
-                                    <Users className="h-3 w-3 text-muted-foreground" />
-                                    Empleado
-                                </Label>
-                                <div className="relative" ref={empleadoRef}>
-                                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                                    <Input
-                                        id="empleado_filter"
-                                        type="text"
-                                        value={empleadoSearch}
-                                        onChange={(e) => handleEmpleadoSearchChange(e.target.value)}
-                                        placeholder={empleadoId === 'all' ? 'Todos los empleados' : 'Buscar empleado...'}
-                                        disabled={availableEmployees.length === 0}
-                                        className="h-9 pl-8"
-                                        onFocus={() => setShowEmpleadoDropdown(true)}
-                                    />
-                                    {showEmpleadoDropdown && (
-                                        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
-                                            <div className="max-h-44 overflow-y-auto">
-                                                <button
-                                                    type="button"
-                                                    className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
-                                                        empleadoId === 'all' ? 'bg-muted font-medium' : ''
-                                                    }`}
-                                                    onClick={() => {
-                                                        setEmpleadoId('all');
-                                                        setEmpleadoSearch('');
-                                                        setShowEmpleadoDropdown(false);
-                                                    }}
+                        <FilterField
+                            label="Centro de trabajo"
+                            htmlFor="centro_filter"
+                            icon={Building2}
+                            hint={
+                                availableWorkCenters.length === 0
+                                    ? 'Selecciona una empresa con centros disponibles.'
+                                    : undefined
+                            }
+                        >
+                            <Select
+                                value={centroId}
+                                onValueChange={setCentroId}
+                                disabled={availableWorkCenters.length === 0}
+                            >
+                                <FilterSelectTrigger id="centro_filter">
+                                    <SelectValue />
+                                </FilterSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Todos los centros
+                                    </SelectItem>
+                                    {availableWorkCenters.map((wc) => (
+                                        <SelectItem
+                                            key={wc.id}
+                                            value={String(wc.id)}
+                                        >
+                                            {wc.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </FilterField>
+
+                        <FilterField
+                            label="Empleado"
+                            htmlFor="empleado_filter"
+                            icon={Users}
+                            hint={
+                                availableEmployees.length === 0
+                                    ? 'No hay empleados disponibles para esta selección.'
+                                    : undefined
+                            }
+                        >
+                            <div className="relative" ref={empleadoRef}>
+                                <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                <FilterInput
+                                    id="empleado_filter"
+                                    type="text"
+                                    value={empleadoSearch}
+                                    onChange={(e) =>
+                                        handleEmpleadoSearchChange(
+                                            e.target.value,
+                                        )
+                                    }
+                                    placeholder={
+                                        empleadoId === 'all'
+                                            ? 'Todos los empleados'
+                                            : 'Buscar empleado...'
+                                    }
+                                    disabled={availableEmployees.length === 0}
+                                    className="pl-9"
+                                    onFocus={() =>
+                                        setShowEmpleadoDropdown(true)
+                                    }
+                                />
+                                {showEmpleadoDropdown && (
+                                    <div className={filterDropdownClassName}>
+                                        <div
+                                            className={
+                                                filterDropdownListClassName
+                                            }
+                                        >
+                                            <button
+                                                type="button"
+                                                className={filterDropdownOptionClassName(
+                                                    empleadoId === 'all',
+                                                    'sky',
+                                                )}
+                                                onClick={() => {
+                                                    setEmpleadoId('all');
+                                                    setEmpleadoSearch('');
+                                                    setShowEmpleadoDropdown(
+                                                        false,
+                                                    );
+                                                }}
+                                            >
+                                                Todos los empleados
+                                            </button>
+                                            {availableEmployees.length ===
+                                                0 && (
+                                                <p
+                                                    className={
+                                                        filterDropdownEmptyClassName
+                                                    }
                                                 >
-                                                    Todos los empleados
-                                                </button>
-                                                {availableEmployees.length === 0 && (
-                                                    <p className="px-3 py-2 text-sm text-muted-foreground">No hay empleados disponibles</p>
+                                                    No hay empleados disponibles
+                                                </p>
+                                            )}
+                                            {availableEmployees.length > 0 &&
+                                                filteredEmployees.length ===
+                                                    0 && (
+                                                    <p
+                                                        className={
+                                                            filterDropdownEmptyClassName
+                                                        }
+                                                    >
+                                                        Sin resultados
+                                                    </p>
                                                 )}
-                                                {availableEmployees.length > 0 && filteredEmployees.length === 0 && (
-                                                    <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</p>
-                                                )}
-                                                {filteredEmployees.map((employee) => {
-                                                    const employeeId = String(employee.id);
+                                            {filteredEmployees.map(
+                                                (employee) => {
+                                                    const employeeId = String(
+                                                        employee.id,
+                                                    );
                                                     return (
                                                         <button
                                                             key={employee.id}
                                                             type="button"
-                                                            className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
-                                                                empleadoId === employeeId ? 'bg-muted font-medium' : ''
-                                                            }`}
+                                                            className={filterDropdownOptionClassName(
+                                                                empleadoId ===
+                                                                    employeeId,
+                                                                'sky',
+                                                            )}
                                                             onClick={() => {
-                                                                setEmpleadoId(employeeId);
-                                                                setEmpleadoSearch(`${employee.name} ${employee.apellido}`);
-                                                                setShowEmpleadoDropdown(false);
+                                                                setEmpleadoId(
+                                                                    employeeId,
+                                                                );
+                                                                setEmpleadoSearch(
+                                                                    `${employee.name} ${employee.apellido}`,
+                                                                );
+                                                                setShowEmpleadoDropdown(
+                                                                    false,
+                                                                );
                                                             }}
                                                         >
-                                                            {employee.name} {employee.apellido}
+                                                            {employee.name}{' '}
+                                                            {employee.apellido}
                                                         </button>
                                                     );
-                                                })}
-                                            </div>
+                                                },
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
+                        </FilterField>
 
-                            {/* Fecha desde */}
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="fecha_desde" className="flex items-center gap-1.5 text-xs font-medium">
-                                    <Calendar className="h-3 w-3 text-muted-foreground" />
-                                    Desde
-                                </Label>
-                                <Input
-                                    id="fecha_desde"
-                                    type="date"
-                                    value={fechaDesde}
-                                    onChange={(e) => setFechaDesde(e.target.value)}
-                                    className="h-9"
-                                />
-                            </div>
+                        <FilterField
+                            label="Desde"
+                            htmlFor="fecha_desde"
+                            icon={Calendar}
+                        >
+                            <FilterInput
+                                id="fecha_desde"
+                                type="date"
+                                value={fechaDesde}
+                                onChange={(e) => setFechaDesde(e.target.value)}
+                            />
+                        </FilterField>
 
-                            {/* Fecha hasta */}
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="fecha_hasta" className="text-xs font-medium">Hasta</Label>
-                                <Input
-                                    id="fecha_hasta"
-                                    type="date"
-                                    value={fechaHasta}
-                                    onChange={(e) => setFechaHasta(e.target.value)}
-                                    className="h-9"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mt-4 flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={handleReset} className="gap-2">
-                                <X className="h-3.5 w-3.5" />
-                                Limpiar
-                            </Button>
-                            <span className="text-xs text-muted-foreground">Los filtros se aplican automáticamente.</span>
-                        </div>
+                        <FilterField
+                            label="Hasta"
+                            htmlFor="fecha_hasta"
+                            icon={Calendar}
+                        >
+                            <FilterInput
+                                id="fecha_hasta"
+                                type="date"
+                                value={fechaHasta}
+                                onChange={(e) => setFechaHasta(e.target.value)}
+                            />
+                        </FilterField>
                     </div>
-                </div>
+                </FilterPanel>
 
                 {/* Tabla */}
                 <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -1317,92 +1915,193 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b bg-muted/30">
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fecha</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Empleado</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entrada</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Salida</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pausas</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Trabajado</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estado</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ubicación</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Fecha
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Empleado
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Entrada
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Salida
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Pausas
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Trabajado
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Estado
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                        Ubicación
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {fichajes.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-16 text-center">
+                                        <td
+                                            colSpan={8}
+                                            className="px-4 py-16 text-center"
+                                        >
                                             <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                                 <Clock className="h-8 w-8 opacity-30" />
-                                                <p className="text-sm font-medium">No hay registros</p>
-                                                <p className="text-xs">No hay fichajes para los filtros seleccionados</p>
+                                                <p className="text-sm font-medium">
+                                                    No hay registros
+                                                </p>
+                                                <p className="text-xs">
+                                                    No hay fichajes para los
+                                                    filtros seleccionados
+                                                </p>
                                             </div>
                                         </td>
                                     </tr>
                                 ) : (
                                     fichajes.map((f) => {
-                                        const totalPausas = f.pausas.reduce((acc, p) => acc + (p.duracion_pausa ?? 0), 0);
-                                        const estado = estadoBadge[f.estado] ?? estadoBadge.finalizada;
-                                        const timeZone = f.timezone ?? f.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+                                        const totalPausas = f.pausas.reduce(
+                                            (acc, p) =>
+                                                acc + (p.duracion_pausa ?? 0),
+                                            0,
+                                        );
+                                        const estado =
+                                            estadoBadge[f.estado] ??
+                                            estadoBadge.finalizada;
+                                        const timeZone =
+                                            f.timezone ??
+                                            f.work_center?.timezone ??
+                                            DEFAULT_WORK_CENTER_TIMEZONE;
 
                                         return (
                                             <tr
                                                 key={f.id}
                                                 className="cursor-pointer transition-colors hover:bg-muted/40"
-                                                onClick={() => setSelectedId(f.id)}
+                                                onClick={() =>
+                                                    setSelectedId(f.id)
+                                                }
                                             >
-                                                <td className="px-4 py-3 font-medium">{formatDateValue(f.fecha)}</td>
+                                                <td className="px-4 py-3 font-medium">
+                                                    {formatDateValue(f.fecha)}
+                                                </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
                                                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                                                            {[f.user?.name, f.user?.apellido]
+                                                            {[
+                                                                f.user?.name,
+                                                                f.user
+                                                                    ?.apellido,
+                                                            ]
                                                                 .filter(Boolean)
-                                                                .map((s) => s![0])
+                                                                .map(
+                                                                    (s) =>
+                                                                        s![0],
+                                                                )
                                                                 .join('')
                                                                 .toUpperCase()}
                                                         </div>
                                                         <span className="font-medium">
-                                                            {f.user?.name} {f.user?.apellido}
+                                                            {f.user?.name}{' '}
+                                                            {f.user?.apellido}
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 font-mono text-sm">{formatTimeInTimeZone(f.inicio_jornada, timeZone)}</td>
                                                 <td className="px-4 py-3 font-mono text-sm">
-                                                    {f.fin_jornada ? formatTimeInTimeZone(f.fin_jornada, timeZone) : <span className="text-muted-foreground">—</span>}
+                                                    {formatTimeInTimeZone(
+                                                        f.inicio_jornada,
+                                                        timeZone,
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 font-mono text-sm">
+                                                    {f.fin_jornada ? (
+                                                        formatTimeInTimeZone(
+                                                            f.fin_jornada,
+                                                            timeZone,
+                                                        )
+                                                    ) : (
+                                                        <span className="text-muted-foreground">
+                                                            —
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {f.pausas.length > 0 ? (
                                                         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
                                                             <Coffee className="h-3 w-3" />
-                                                            {f.pausas.length} ({formatSeconds(totalPausas)})
+                                                            {f.pausas.length} (
+                                                            {formatSeconds(
+                                                                totalPausas,
+                                                            )}
+                                                            )
                                                         </span>
                                                     ) : (
-                                                        <span className="text-muted-foreground">—</span>
+                                                        <span className="text-muted-foreground">
+                                                            —
+                                                        </span>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 font-mono text-sm font-medium">
-                                                    {f.duracion_jornada != null ? formatSeconds(f.duracion_jornada) : <span className="text-muted-foreground font-normal">—</span>}
+                                                    {f.duracion_jornada !=
+                                                    null ? (
+                                                        formatSeconds(
+                                                            f.duracion_jornada,
+                                                        )
+                                                    ) : (
+                                                        <span className="font-normal text-muted-foreground">
+                                                            —
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${estado.className}`}>
-                                                        <span className={`h-1.5 w-1.5 rounded-full ${estado.dot}`} />
+                                                    <span
+                                                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${estado.className}`}
+                                                    >
+                                                        <span
+                                                            className={`h-1.5 w-1.5 rounded-full ${estado.dot}`}
+                                                        />
                                                         {estado.label}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {f.user?.remoto ? (
                                                         <div className="flex flex-col gap-1">
-                                                            {f.lat_inicio && f.lng_inicio
-                                                                ? <MapLink lat={f.lat_inicio} lng={f.lng_inicio} label="Entrada" />
-                                                                : null}
-                                                            {f.lat_fin && f.lng_fin
-                                                                ? <MapLink lat={f.lat_fin} lng={f.lng_fin} label="Salida" />
-                                                                : null}
-                                                            {!f.lat_inicio && !f.lat_fin && (
-                                                                <span className="text-xs text-muted-foreground">—</span>
-                                                            )}
+                                                            {f.lat_inicio &&
+                                                            f.lng_inicio ? (
+                                                                <MapLink
+                                                                    lat={
+                                                                        f.lat_inicio
+                                                                    }
+                                                                    lng={
+                                                                        f.lng_inicio
+                                                                    }
+                                                                    label="Entrada"
+                                                                />
+                                                            ) : null}
+                                                            {f.lat_fin &&
+                                                            f.lng_fin ? (
+                                                                <MapLink
+                                                                    lat={
+                                                                        f.lat_fin
+                                                                    }
+                                                                    lng={
+                                                                        f.lng_fin
+                                                                    }
+                                                                    label="Salida"
+                                                                />
+                                                            ) : null}
+                                                            {!f.lat_inicio &&
+                                                                !f.lat_fin && (
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        —
+                                                                    </span>
+                                                                )}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-xs text-muted-foreground">—</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            —
+                                                        </span>
                                                     )}
                                                 </td>
                                             </tr>
@@ -1418,7 +2117,9 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
             {/* Modal de detalle */}
             <Dialog
                 open={fichajeSeleccionado !== null}
-                onOpenChange={(open) => { if (!open) setSelectedId(null); }}
+                onOpenChange={(open) => {
+                    if (!open) setSelectedId(null);
+                }}
             >
                 {fichajeSeleccionado && (
                     <FichajeModal
@@ -1429,7 +2130,12 @@ export default function FichajesIndex({ fichajes, companies, workCenters, employ
             </Dialog>
 
             {/* Modal nuevo fichaje */}
-            <Dialog open={nuevoOpen} onOpenChange={(open) => { if (!open) setNuevoOpen(false); }}>
+            <Dialog
+                open={nuevoOpen}
+                onOpenChange={(open) => {
+                    if (!open) setNuevoOpen(false);
+                }}
+            >
                 {nuevoOpen && (
                     <NuevoFichajeModal
                         employees={employees}

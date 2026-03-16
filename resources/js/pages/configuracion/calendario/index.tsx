@@ -1,9 +1,26 @@
 import { Head, router } from '@inertiajs/react';
-import { Building2, CalendarDays, Download, Search, Trash2, Users, X } from 'lucide-react';
+import {
+    Building2,
+    CalendarDays,
+    Download,
+    Search,
+    Trash2,
+    Users,
+    X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import {
+    FilterField,
+    FilterInput,
+    FilterPanel,
+    FilterPill,
+    FilterSelectTrigger,
+    filterDropdownClassName,
+    filterDropdownEmptyClassName,
+    filterDropdownListClassName,
+    filterDropdownOptionClassName,
+} from '@/components/filter-panel';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
@@ -11,6 +28,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -30,8 +49,18 @@ const breadcrumbs: BreadcrumbItem[] = [
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const MESES_LABEL = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
 ];
 const DIAS_SEMANA = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const currentYear = new Date().getFullYear();
@@ -98,14 +127,15 @@ function getCsrfToken(): string {
 
 const TIPO_COLORS: Record<TipoEvento, string> = {
     vacacion: 'bg-blue-100 border-blue-400 text-blue-800 hover:bg-blue-200',
-    ausencia:  'bg-yellow-100 border-yellow-400 text-yellow-800 hover:bg-yellow-200',
-    festivo:   'bg-pink-100 border-pink-400 text-pink-800 hover:bg-pink-200',
+    ausencia:
+        'bg-yellow-100 border-yellow-400 text-yellow-800 hover:bg-yellow-200',
+    festivo: 'bg-pink-100 border-pink-400 text-pink-800 hover:bg-pink-200',
 };
 
 const TIPO_LABELS: Record<TipoEvento, string> = {
     vacacion: 'Vacación',
-    ausencia:  'Ausencia',
-    festivo:   'Festivo',
+    ausencia: 'Ausencia',
+    festivo: 'Festivo',
 };
 
 // ─── Componente mini-mes ──────────────────────────────────────────────────────
@@ -118,39 +148,53 @@ interface MiniMesProps {
     onDayClick: (dateStr: string) => void;
 }
 
-function MiniMes({ mes, anio, eventosPorFecha, fichajesSet, onDayClick }: MiniMesProps) {
+function MiniMes({
+    mes,
+    anio,
+    eventosPorFecha,
+    fichajesSet,
+    onDayClick,
+}: MiniMesProps) {
     const days = getDaysInMonth(mes, anio);
     const offset = getISODay(days[0]);
     const todayStr = toDateStr(new Date());
 
     return (
         <div>
-            <div className="mb-1.5 text-center text-xs font-bold uppercase tracking-wide text-foreground">
+            <div className="mb-1.5 text-center text-xs font-bold tracking-wide text-foreground uppercase">
                 {MESES_LABEL[mes - 1]}
             </div>
-            <div className="grid grid-cols-7 mb-0.5">
+            <div className="mb-0.5 grid grid-cols-7">
                 {DIAS_SEMANA.map((d) => (
-                    <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-0.5">
+                    <div
+                        key={d}
+                        className="py-0.5 text-center text-[10px] font-semibold text-muted-foreground"
+                    >
                         {d}
                     </div>
                 ))}
             </div>
             <div className="grid grid-cols-7 gap-px">
-                {Array.from({ length: offset }).map((_, i) => <div key={`b${i}`} />)}
+                {Array.from({ length: offset }).map((_, i) => (
+                    <div key={`b${i}`} />
+                ))}
                 {days.map((date) => {
                     const ds = toDateStr(date);
                     const evento = eventosPorFecha.get(ds);
                     const hasFichaje = fichajesSet.has(ds);
                     const isToday = ds === todayStr;
 
-                    let cls = 'relative flex items-center justify-center rounded text-[11px] font-medium h-6 w-full cursor-pointer select-none transition-colors border ';
+                    let cls =
+                        'relative flex items-center justify-center rounded text-[11px] font-medium h-6 w-full cursor-pointer select-none transition-colors border ';
 
                     if (evento) {
                         cls += TIPO_COLORS[evento.tipo];
                     } else if (hasFichaje) {
-                        cls += 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200';
+                        cls +=
+                            'bg-green-100 border-green-400 text-green-800 hover:bg-green-200';
                     } else {
-                        cls += 'bg-transparent border-transparent text-foreground hover:bg-muted/60';
+                        cls +=
+                            'bg-transparent border-transparent text-foreground hover:bg-muted/60';
                     }
 
                     if (isToday) {
@@ -167,8 +211,8 @@ function MiniMes({ mes, anio, eventosPorFecha, fichajesSet, onDayClick }: MiniMe
                                 evento
                                     ? `${TIPO_LABELS[evento.tipo]}${evento.motivo ? ': ' + evento.motivo : ''}`
                                     : hasFichaje
-                                    ? 'Día trabajado'
-                                    : ds
+                                      ? 'Día trabajado'
+                                      : ds
                             }
                         >
                             {date.getDate()}
@@ -197,7 +241,17 @@ interface EventoDialogProps {
     onRangoSaved: (eventos: Evento[]) => void;
 }
 
-function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasFichaje, onSaved, onDeleted, onRangoSaved }: EventoDialogProps) {
+function EventoDialog({
+    open,
+    onClose,
+    dateStr,
+    empleadoId,
+    existingEvento,
+    hasFichaje,
+    onSaved,
+    onDeleted,
+    onRangoSaved,
+}: EventoDialogProps) {
     const [tipo, setTipo] = useState<TipoEvento>('vacacion');
     const [motivo, setMotivo] = useState('');
     const [diaCompleto, setDiaCompleto] = useState(true);
@@ -239,7 +293,9 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
         // Vacación en rango
         if (tipo === 'vacacion' && usarRango) {
             if (!fechaRangoFin || fechaRangoFin < (dateStr ?? '')) {
-                setError('La fecha de fin debe ser igual o posterior al día seleccionado.');
+                setError(
+                    'La fecha de fin debe ser igual o posterior al día seleccionado.',
+                );
                 return;
             }
             setSaving(true);
@@ -250,7 +306,7 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                     headers: {
                         'Content-Type': 'application/json',
                         'X-XSRF-TOKEN': getCsrfToken(),
-                        'Accept': 'application/json',
+                        Accept: 'application/json',
                     },
                     body: JSON.stringify({
                         user_id: empleadoId,
@@ -290,7 +346,7 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                 headers: {
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': getCsrfToken(),
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
                 body: JSON.stringify({
                     user_id: empleadoId,
@@ -325,7 +381,7 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                 method: 'DELETE',
                 headers: {
                     'X-XSRF-TOKEN': getCsrfToken(),
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
             });
             if (!res.ok) {
@@ -342,12 +398,17 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
     }
 
     const fechaLabel = dateStr
-        ? new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+        ? new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+          })
         : '';
 
     const diasRango = (() => {
         if (!usarRango || !fechaRangoFin || !dateStr) return 0;
-        const diff = new Date(fechaRangoFin).getTime() - new Date(dateStr).getTime();
+        const diff =
+            new Date(fechaRangoFin).getTime() - new Date(dateStr).getTime();
         return diff < 0 ? 0 : Math.round(diff / 86400000) + 1;
     })();
 
@@ -355,15 +416,25 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
             <DialogContent className="max-w-sm">
                 <DialogHeader>
-                    <DialogTitle className="capitalize">{fechaLabel}</DialogTitle>
+                    <DialogTitle className="capitalize">
+                        {fechaLabel}
+                    </DialogTitle>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4 pt-1">
                     {/* Tipo */}
                     <div className="grid gap-1.5">
-                        <Label className="text-xs font-medium">Tipo de evento</Label>
+                        <Label className="text-xs font-medium">
+                            Tipo de evento
+                        </Label>
                         <div className="flex gap-1.5">
-                            {(['vacacion', 'ausencia', 'festivo'] as TipoEvento[]).map((t) => (
+                            {(
+                                [
+                                    'vacacion',
+                                    'ausencia',
+                                    'festivo',
+                                ] as TipoEvento[]
+                            ).map((t) => (
                                 <button
                                     key={t}
                                     type="button"
@@ -371,10 +442,10 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                                     className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
                                         tipo === t
                                             ? t === 'vacacion'
-                                                ? 'bg-blue-100 border-blue-400 text-blue-800'
+                                                ? 'border-blue-400 bg-blue-100 text-blue-800'
                                                 : t === 'ausencia'
-                                                ? 'bg-yellow-100 border-yellow-400 text-yellow-800'
-                                                : 'bg-pink-100 border-pink-400 text-pink-800'
+                                                  ? 'border-yellow-400 bg-yellow-100 text-yellow-800'
+                                                  : 'border-pink-400 bg-pink-100 text-pink-800'
                                             : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60'
                                     }`}
                                 >
@@ -387,13 +458,17 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                     {/* Periodo (solo vacación nueva) */}
                     {tipo === 'vacacion' && !existingEvento && (
                         <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium">Periodo</Label>
+                            <Label className="text-xs font-medium">
+                                Periodo
+                            </Label>
                             <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
                                 <button
                                     type="button"
                                     onClick={() => setUsarRango(false)}
                                     className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                                        !usarRango ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                                        !usarRango
+                                            ? 'bg-white text-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
                                     Solo este día
@@ -402,7 +477,9 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                                     type="button"
                                     onClick={() => setUsarRango(true)}
                                     className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                                        usarRango ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                                        usarRango
+                                            ? 'bg-white text-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:text-foreground'
                                     }`}
                                 >
                                     Rango de fechas
@@ -410,23 +487,29 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                             </div>
 
                             {usarRango && (
-                                <div className="grid grid-cols-2 gap-3 mt-1">
+                                <div className="mt-1 grid grid-cols-2 gap-3">
                                     <div className="grid gap-1">
-                                        <Label className="text-xs text-muted-foreground">Desde</Label>
+                                        <Label className="text-xs text-muted-foreground">
+                                            Desde
+                                        </Label>
                                         <Input
                                             type="date"
                                             value={dateStr ?? ''}
                                             readOnly
-                                            className="h-9 bg-muted/30 cursor-default"
+                                            className="h-9 cursor-default bg-muted/30"
                                         />
                                     </div>
                                     <div className="grid gap-1">
-                                        <Label className="text-xs text-muted-foreground">Hasta *</Label>
+                                        <Label className="text-xs text-muted-foreground">
+                                            Hasta *
+                                        </Label>
                                         <Input
                                             type="date"
                                             value={fechaRangoFin}
                                             min={dateStr ?? ''}
-                                            onChange={(e) => setFechaRangoFin(e.target.value)}
+                                            onChange={(e) =>
+                                                setFechaRangoFin(e.target.value)
+                                            }
                                             className="h-9"
                                         />
                                     </div>
@@ -443,14 +526,23 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                     {/* Motivo (ausencia / festivo) */}
                     {(tipo === 'ausencia' || tipo === 'festivo') && (
                         <div className="grid gap-1.5">
-                            <Label htmlFor="motivo" className="text-xs font-medium">
-                                {tipo === 'ausencia' ? 'Motivo *' : 'Nombre / descripción'}
+                            <Label
+                                htmlFor="motivo"
+                                className="text-xs font-medium"
+                            >
+                                {tipo === 'ausencia'
+                                    ? 'Motivo *'
+                                    : 'Nombre / descripción'}
                             </Label>
                             <Input
                                 id="motivo"
                                 value={motivo}
                                 onChange={(e) => setMotivo(e.target.value)}
-                                placeholder={tipo === 'ausencia' ? 'Ej: Médico, asuntos personales...' : 'Ej: Navidad, San José...'}
+                                placeholder={
+                                    tipo === 'ausencia'
+                                        ? 'Ej: Médico, asuntos personales...'
+                                        : 'Ej: Navidad, San José...'
+                                }
                                 className="h-9"
                             />
                         </div>
@@ -463,9 +555,14 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                                 <Checkbox
                                     id="dia_completo"
                                     checked={diaCompleto}
-                                    onCheckedChange={(v) => setDiaCompleto(v === true)}
+                                    onCheckedChange={(v) =>
+                                        setDiaCompleto(v === true)
+                                    }
                                 />
-                                <Label htmlFor="dia_completo" className="text-sm cursor-pointer">
+                                <Label
+                                    htmlFor="dia_completo"
+                                    className="cursor-pointer text-sm"
+                                >
                                     Día completo
                                 </Label>
                             </div>
@@ -473,22 +570,36 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                             {!diaCompleto && (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="grid gap-1.5">
-                                        <Label htmlFor="hora_inicio" className="text-xs font-medium">Hora inicio *</Label>
+                                        <Label
+                                            htmlFor="hora_inicio"
+                                            className="text-xs font-medium"
+                                        >
+                                            Hora inicio *
+                                        </Label>
                                         <Input
                                             id="hora_inicio"
                                             type="time"
                                             value={horaInicio}
-                                            onChange={(e) => setHoraInicio(e.target.value)}
+                                            onChange={(e) =>
+                                                setHoraInicio(e.target.value)
+                                            }
                                             className="h-9"
                                         />
                                     </div>
                                     <div className="grid gap-1.5">
-                                        <Label htmlFor="hora_fin" className="text-xs font-medium">Hora fin *</Label>
+                                        <Label
+                                            htmlFor="hora_fin"
+                                            className="text-xs font-medium"
+                                        >
+                                            Hora fin *
+                                        </Label>
                                         <Input
                                             id="hora_fin"
                                             type="time"
                                             value={horaFin}
-                                            onChange={(e) => setHoraFin(e.target.value)}
+                                            onChange={(e) =>
+                                                setHoraFin(e.target.value)
+                                            }
                                             className="h-9"
                                         />
                                     </div>
@@ -499,13 +610,14 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
 
                     {/* Info fichaje */}
                     {hasFichaje && (
-                        <p className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
-                            Este día tiene un fichaje registrado. El evento quedará anotado en las observaciones del PDF.
+                        <p className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
+                            Este día tiene un fichaje registrado. El evento
+                            quedará anotado en las observaciones del PDF.
                         </p>
                     )}
 
                     {error && (
-                        <p className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                             {error}
                         </p>
                     )}
@@ -518,24 +630,32 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
                                 size="sm"
                                 onClick={handleDelete}
                                 disabled={deleting}
-                                className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10"
                             >
                                 <Trash2 className="h-3.5 w-3.5" />
                                 {deleting ? 'Eliminando...' : 'Eliminar'}
                             </Button>
                         )}
                         <div className="ml-auto flex gap-2">
-                            <Button variant="outline" size="sm" onClick={onClose}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onClose}
+                            >
                                 Cancelar
                             </Button>
-                            <Button size="sm" onClick={handleSave} disabled={saving}>
+                            <Button
+                                size="sm"
+                                onClick={handleSave}
+                                disabled={saving}
+                            >
                                 {saving
                                     ? 'Guardando...'
                                     : existingEvento
-                                    ? 'Actualizar'
-                                    : usarRango && diasRango > 0
-                                    ? `Marcar ${diasRango} días`
-                                    : 'Guardar'}
+                                      ? 'Actualizar'
+                                      : usarRango && diasRango > 0
+                                        ? `Marcar ${diasRango} días`
+                                        : 'Guardar'}
                             </Button>
                         </div>
                     </div>
@@ -547,32 +667,51 @@ function EventoDialog({ open, onClose, dateStr, empleadoId, existingEvento, hasF
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
-export default function CalendarioIndex({ employees, centros, anio, empleadoId, eventos, fichajes }: Props) {
+export default function CalendarioIndex({
+    employees,
+    centros,
+    anio,
+    empleadoId,
+    eventos,
+    fichajes,
+}: Props) {
     const [anioSeleccionado, setAnioSeleccionado] = useState(String(anio));
-    const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<number | null>(empleadoId);
+    const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<number | null>(
+        empleadoId,
+    );
 
-    const initialEmpleado = empleadoId ? employees.find((e) => e.id === empleadoId) : null;
+    const initialEmpleado = empleadoId
+        ? employees.find((e) => e.id === empleadoId)
+        : null;
     const [empleadoSearch, setEmpleadoSearch] = useState(
-        initialEmpleado ? `${initialEmpleado.name} ${initialEmpleado.apellido}` : '',
+        initialEmpleado
+            ? `${initialEmpleado.name} ${initialEmpleado.apellido}`
+            : '',
     );
     const [showDropdown, setShowDropdown] = useState(false);
     const empleadoRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
-            if (empleadoRef.current && !empleadoRef.current.contains(e.target as Node)) {
+            if (
+                empleadoRef.current &&
+                !empleadoRef.current.contains(e.target as Node)
+            ) {
                 setShowDropdown(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () =>
+            document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const [eventosPorFecha, setEventosPorFecha] = useState<Map<string, Evento>>(() => {
-        const m = new Map<string, Evento>();
-        eventos.forEach((e) => m.set(e.fecha, e));
-        return m;
-    });
+    const [eventosPorFecha, setEventosPorFecha] = useState<Map<string, Evento>>(
+        () => {
+            const m = new Map<string, Evento>();
+            eventos.forEach((e) => m.set(e.fecha, e));
+            return m;
+        },
+    );
 
     useEffect(() => {
         const m = new Map<string, Evento>();
@@ -614,7 +753,9 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
     // ── Centro de trabajo bulk apply ──────────────────────────────────────────
     const [centroDialogOpen, setCentroDialogOpen] = useState(false);
     const [centroId, setCentroId] = useState<string>('');
-    const [centroTipo, setCentroTipo] = useState<'vacacion' | 'festivo'>('festivo');
+    const [centroTipo, setCentroTipo] = useState<'vacacion' | 'festivo'>(
+        'festivo',
+    );
     const [centroMotivo, setCentroMotivo] = useState('');
     const [centroDesde, setCentroDesde] = useState('');
     const [centroHasta, setCentroHasta] = useState('');
@@ -636,7 +777,7 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                 headers: {
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': getCsrfToken(),
-                    'Accept': 'application/json',
+                    Accept: 'application/json',
                 },
                 body: JSON.stringify({
                     centro_id: Number(centroId),
@@ -647,14 +788,22 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                 }),
             });
             const data = await res.json();
-            if (!res.ok) { setCentroError(data.message ?? 'Error al aplicar.'); return; }
+            if (!res.ok) {
+                setCentroError(data.message ?? 'Error al aplicar.');
+                return;
+            }
             setCentroDesde('');
             setCentroHasta('');
             setCentroMotivo('');
             setCentroDialogOpen(false);
-            setCentroResult(`Aplicado a ${data.total_empleados} empleado(s) durante ${data.total_dias} día(s).`);
-        } catch { setCentroError('Error de conexión.'); }
-        finally { setCentroSaving(false); }
+            setCentroResult(
+                `Aplicado a ${data.total_empleados} empleado(s) durante ${data.total_dias} día(s).`,
+            );
+        } catch {
+            setCentroError('Error de conexión.');
+        } finally {
+            setCentroSaving(false);
+        }
     }
 
     useEffect(() => {
@@ -664,11 +813,14 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
     }, [centroResult]);
 
     const normalizedSearch = empleadoSearch.trim().toLocaleLowerCase('es-ES');
-    const filteredEmployees = normalizedSearch.length === 0
-        ? employees
-        : employees.filter((e) =>
-            `${e.name} ${e.apellido}`.toLocaleLowerCase('es-ES').includes(normalizedSearch),
-        );
+    const filteredEmployees =
+        normalizedSearch.length === 0
+            ? employees
+            : employees.filter((e) =>
+                  `${e.name} ${e.apellido}`
+                      .toLocaleLowerCase('es-ES')
+                      .includes(normalizedSearch),
+              );
 
     function handleReset() {
         setSelectedEmpleadoId(null);
@@ -677,11 +829,19 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
         router.get('/calendario', {}, { preserveState: false });
     }
 
-    const empleadoActual = selectedEmpleadoId ? employees.find((e) => e.id === selectedEmpleadoId) : null;
+    const empleadoActual = selectedEmpleadoId
+        ? employees.find((e) => e.id === selectedEmpleadoId)
+        : null;
 
-    const totalVac = Array.from(eventosPorFecha.values()).filter((e) => e.tipo === 'vacacion').length;
-    const totalAus = Array.from(eventosPorFecha.values()).filter((e) => e.tipo === 'ausencia').length;
-    const totalFes = Array.from(eventosPorFecha.values()).filter((e) => e.tipo === 'festivo').length;
+    const totalVac = Array.from(eventosPorFecha.values()).filter(
+        (e) => e.tipo === 'vacacion',
+    ).length;
+    const totalAus = Array.from(eventosPorFecha.values()).filter(
+        (e) => e.tipo === 'ausencia',
+    ).length;
+    const totalFes = Array.from(eventosPorFecha.values()).filter(
+        (e) => e.tipo === 'festivo',
+    ).length;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -695,84 +855,177 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                         Calendario laboral
                     </h1>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Registra vacaciones, ausencias y festivos — se imprimirán en la columna Observaciones del PDF de jornada
+                        Registra vacaciones, ausencias y festivos — se
+                        imprimirán en la columna Observaciones del PDF de
+                        jornada
                     </p>
                 </div>
 
                 {/* Filtros */}
-                <div className="rounded-xl border bg-card shadow-sm">
-                    <div className="flex items-center gap-2 border-b px-4 py-3">
-                        <Search className="h-4 w-4 text-muted-foreground" />
-                        <h2 className="text-sm font-semibold">Selección</h2>
-                    </div>
-                    <div className="p-4">
-                        <div className="grid gap-4 sm:grid-cols-3">
-                            {/* Empleado */}
-                            <div className="grid gap-1.5 sm:col-span-2">
-                                <Label className="flex items-center gap-1.5 text-xs font-medium">
-                                    <Users className="h-3 w-3 text-muted-foreground" />
-                                    Empleado
-                                </Label>
-                                <div className="relative" ref={empleadoRef}>
-                                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                                    <Input
-                                        type="text"
-                                        value={empleadoSearch}
-                                        onChange={(e) => { setEmpleadoSearch(e.target.value); setSelectedEmpleadoId(null); }}
-                                        placeholder="Buscar empleado..."
-                                        className="h-9 pl-8"
-                                        onFocus={() => setShowDropdown(true)}
-                                    />
-                                    {showDropdown && (
-                                        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
-                                            <div className="max-h-44 overflow-y-auto">
-                                                {filteredEmployees.length === 0 && (
-                                                    <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</p>
-                                                )}
-                                                {filteredEmployees.map((emp) => (
-                                                    <button
-                                                        key={emp.id}
-                                                        type="button"
-                                                        className={`w-full px-3 py-2 text-left text-sm hover:bg-muted/50 ${selectedEmpleadoId === emp.id ? 'bg-muted font-medium' : ''}`}
-                                                        onClick={() => { setSelectedEmpleadoId(emp.id); setEmpleadoSearch(`${emp.name} ${emp.apellido}`); setShowDropdown(false); router.get('/calendario', { empleado_id: String(emp.id), anio: anioSeleccionado }, { preserveState: false }); }}
-                                                    >
-                                                        {emp.name} {emp.apellido}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Año */}
-                            <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">Año</Label>
-                                <Select value={anioSeleccionado} onValueChange={(v) => { setAnioSeleccionado(v); if (selectedEmpleadoId) { router.get('/calendario', { empleado_id: String(selectedEmpleadoId), anio: v }, { preserveState: false }); } }}>
-                                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {YEARS.map((y) => (
-                                            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={handleReset} className="gap-2">
-                                <X className="h-3.5 w-3.5" />
-                                Limpiar
-                            </Button>
-                            {centros.length > 0 && (
-                                <Button size="sm" variant="outline" onClick={() => { setCentroResult(null); setCentroError(''); setCentroDialogOpen(true); }} className="gap-2">
-                                    <Building2 className="h-3.5 w-3.5" />
-                                    Aplicar a centro de trabajo
+                <FilterPanel
+                    title="Selección de calendario"
+                    description="Busca un empleado y cambia el año de consulta desde un panel unificado."
+                    eyebrow="Planificación"
+                    icon={CalendarDays}
+                    tone="violet"
+                    meta={
+                        <>
+                            <FilterPill active={Boolean(selectedEmpleadoId)}>
+                                {selectedEmpleadoId
+                                    ? 'Empleado seleccionado'
+                                    : 'Sin empleado'}
+                            </FilterPill>
+                            <FilterPill>{`Año ${anioSeleccionado}`}</FilterPill>
+                        </>
+                    }
+                    footer={
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleReset}
+                                    className="gap-2 rounded-xl"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                    Limpiar
                                 </Button>
-                            )}
+                                {centros.length > 0 && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                            setCentroResult(null);
+                                            setCentroError('');
+                                            setCentroDialogOpen(true);
+                                        }}
+                                        className="gap-2 rounded-xl"
+                                    >
+                                        <Building2 className="h-3.5 w-3.5" />
+                                        Aplicar a centro de trabajo
+                                    </Button>
+                                )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                                La selección carga el calendario al momento.
+                            </span>
                         </div>
+                    }
+                >
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        <FilterField
+                            label="Empleado"
+                            htmlFor="empleado_filter"
+                            icon={Users}
+                            className="sm:col-span-2"
+                        >
+                            <div className="relative" ref={empleadoRef}>
+                                <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                <FilterInput
+                                    id="empleado_filter"
+                                    type="text"
+                                    value={empleadoSearch}
+                                    onChange={(e) => {
+                                        setEmpleadoSearch(e.target.value);
+                                        setSelectedEmpleadoId(null);
+                                    }}
+                                    placeholder="Buscar empleado..."
+                                    className="pl-9"
+                                    onFocus={() => setShowDropdown(true)}
+                                />
+                                {showDropdown && (
+                                    <div className={filterDropdownClassName}>
+                                        <div
+                                            className={
+                                                filterDropdownListClassName
+                                            }
+                                        >
+                                            {filteredEmployees.length === 0 && (
+                                                <p
+                                                    className={
+                                                        filterDropdownEmptyClassName
+                                                    }
+                                                >
+                                                    Sin resultados
+                                                </p>
+                                            )}
+                                            {filteredEmployees.map((emp) => (
+                                                <button
+                                                    key={emp.id}
+                                                    type="button"
+                                                    className={filterDropdownOptionClassName(
+                                                        selectedEmpleadoId ===
+                                                            emp.id,
+                                                        'violet',
+                                                    )}
+                                                    onClick={() => {
+                                                        setSelectedEmpleadoId(
+                                                            emp.id,
+                                                        );
+                                                        setEmpleadoSearch(
+                                                            `${emp.name} ${emp.apellido}`,
+                                                        );
+                                                        setShowDropdown(false);
+                                                        router.get(
+                                                            '/calendario',
+                                                            {
+                                                                empleado_id:
+                                                                    String(
+                                                                        emp.id,
+                                                                    ),
+                                                                anio: anioSeleccionado,
+                                                            },
+                                                            {
+                                                                preserveState: false,
+                                                            },
+                                                        );
+                                                    }}
+                                                >
+                                                    {emp.name} {emp.apellido}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </FilterField>
+
+                        <FilterField
+                            label="Año"
+                            htmlFor="anio_filter"
+                            icon={CalendarDays}
+                        >
+                            <Select
+                                value={anioSeleccionado}
+                                onValueChange={(v) => {
+                                    setAnioSeleccionado(v);
+                                    if (selectedEmpleadoId) {
+                                        router.get(
+                                            '/calendario',
+                                            {
+                                                empleado_id:
+                                                    String(selectedEmpleadoId),
+                                                anio: v,
+                                            },
+                                            { preserveState: false },
+                                        );
+                                    }
+                                }}
+                            >
+                                <FilterSelectTrigger id="anio_filter">
+                                    <SelectValue />
+                                </FilterSelectTrigger>
+                                <SelectContent>
+                                    {YEARS.map((y) => (
+                                        <SelectItem key={y} value={String(y)}>
+                                            {y}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </FilterField>
                     </div>
-                </div>
+                </FilterPanel>
 
                 {/* Calendario */}
                 {selectedEmpleadoId ? (
@@ -782,24 +1035,27 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                             <div className="flex items-center gap-2">
                                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                                 <h2 className="text-sm font-semibold">
-                                    {empleadoActual ? `${empleadoActual.name} ${empleadoActual.apellido} — ` : ''}{anioSeleccionado}
+                                    {empleadoActual
+                                        ? `${empleadoActual.name} ${empleadoActual.apellido} — `
+                                        : ''}
+                                    {anioSeleccionado}
                                 </h2>
                             </div>
                             {/* Resumen badges */}
                             <div className="flex flex-wrap gap-2 text-xs">
-                                <span className="flex items-center gap-1 rounded-full bg-green-100 border border-green-300 px-2 py-0.5 text-green-700">
+                                <span className="flex items-center gap-1 rounded-full border border-green-300 bg-green-100 px-2 py-0.5 text-green-700">
                                     <span className="h-2 w-2 rounded-full bg-green-500"></span>
                                     {fichajes.length} trabajados
                                 </span>
-                                <span className="flex items-center gap-1 rounded-full bg-blue-100 border border-blue-300 px-2 py-0.5 text-blue-700">
+                                <span className="flex items-center gap-1 rounded-full border border-blue-300 bg-blue-100 px-2 py-0.5 text-blue-700">
                                     <span className="h-2 w-2 rounded-full bg-blue-500"></span>
                                     {totalVac} vacaciones
                                 </span>
-                                <span className="flex items-center gap-1 rounded-full bg-yellow-100 border border-yellow-300 px-2 py-0.5 text-yellow-700">
+                                <span className="flex items-center gap-1 rounded-full border border-yellow-300 bg-yellow-100 px-2 py-0.5 text-yellow-700">
                                     <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
                                     {totalAus} ausencias
                                 </span>
-                                <span className="flex items-center gap-1 rounded-full bg-pink-100 border border-pink-300 px-2 py-0.5 text-pink-700">
+                                <span className="flex items-center gap-1 rounded-full border border-pink-300 bg-pink-100 px-2 py-0.5 text-pink-700">
                                     <span className="h-2 w-2 rounded-full bg-pink-500"></span>
                                     {totalFes} festivos
                                 </span>
@@ -810,7 +1066,11 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
-                                    <Button size="sm" variant="outline" className="gap-1.5">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-1.5"
+                                    >
                                         <Download className="h-3.5 w-3.5" />
                                         Descargar PDF
                                     </Button>
@@ -821,48 +1081,68 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                         {/* Leyenda */}
                         <div className="flex flex-wrap items-center gap-4 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1.5">
-                                <span className="inline-block h-3.5 w-5 rounded border bg-green-100 border-green-400"></span> Trabajado
+                                <span className="inline-block h-3.5 w-5 rounded border border-green-400 bg-green-100"></span>{' '}
+                                Trabajado
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <span className="inline-block h-3.5 w-5 rounded border bg-blue-100 border-blue-400"></span> Vacación
+                                <span className="inline-block h-3.5 w-5 rounded border border-blue-400 bg-blue-100"></span>{' '}
+                                Vacación
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <span className="inline-block h-3.5 w-5 rounded border bg-yellow-100 border-yellow-400"></span> Ausencia
+                                <span className="inline-block h-3.5 w-5 rounded border border-yellow-400 bg-yellow-100"></span>{' '}
+                                Ausencia
                             </span>
                             <span className="flex items-center gap-1.5">
-                                <span className="inline-block h-3.5 w-5 rounded border bg-pink-100 border-pink-400"></span> Festivo
+                                <span className="inline-block h-3.5 w-5 rounded border border-pink-400 bg-pink-100"></span>{' '}
+                                Festivo
                             </span>
-                            <span className="ml-auto text-[10px] italic">Click en cualquier día para añadir o editar</span>
+                            <span className="ml-auto text-[10px] italic">
+                                Click en cualquier día para añadir o editar
+                            </span>
                         </div>
 
                         {/* Grid 12 meses */}
                         <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3 lg:grid-cols-4">
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                                <div key={m} className="rounded-lg border bg-white p-2.5 shadow-sm">
-                                    <MiniMes
-                                        mes={m}
-                                        anio={Number(anioSeleccionado)}
-                                        eventosPorFecha={eventosPorFecha}
-                                        fichajesSet={fichajesSet}
-                                        onDayClick={handleDayClick}
-                                    />
-                                </div>
-                            ))}
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(
+                                (m) => (
+                                    <div
+                                        key={m}
+                                        className="rounded-lg border bg-white p-2.5 shadow-sm"
+                                    >
+                                        <MiniMes
+                                            mes={m}
+                                            anio={Number(anioSeleccionado)}
+                                            eventosPorFecha={eventosPorFecha}
+                                            fichajesSet={fichajesSet}
+                                            onDayClick={handleDayClick}
+                                        />
+                                    </div>
+                                ),
+                            )}
                         </div>
                     </div>
                 ) : (
                     <div className="rounded-xl border bg-card shadow-sm">
                         <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
                             <CalendarDays className="h-10 w-10 opacity-20" />
-                            <p className="text-sm font-medium">Selecciona un empleado para ver su calendario</p>
-                            <p className="text-xs">Elige también el año para cargar los datos</p>
+                            <p className="text-sm font-medium">
+                                Selecciona un empleado para ver su calendario
+                            </p>
+                            <p className="text-xs">
+                                Elige también el año para cargar los datos
+                            </p>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* ── Dialog: Aplicar a centro de trabajo ── */}
-            <Dialog open={centroDialogOpen} onOpenChange={(v) => { if (!v) setCentroDialogOpen(false); }}>
+            <Dialog
+                open={centroDialogOpen}
+                onOpenChange={(v) => {
+                    if (!v) setCentroDialogOpen(false);
+                }}
+            >
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -874,12 +1154,27 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                     <div className="flex flex-col gap-4 pt-1">
                         {/* Centro */}
                         <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium">Centro de trabajo</Label>
-                            <Select value={centroId} onValueChange={(v) => { setCentroId(v); setCentroError(''); }}>
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar centro..." /></SelectTrigger>
+                            <Label className="text-xs font-medium">
+                                Centro de trabajo
+                            </Label>
+                            <Select
+                                value={centroId}
+                                onValueChange={(v) => {
+                                    setCentroId(v);
+                                    setCentroError('');
+                                }}
+                            >
+                                <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Seleccionar centro..." />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {centros.map((c) => (
-                                        <SelectItem key={c.id} value={String(c.id)}>{c.nombre}</SelectItem>
+                                        <SelectItem
+                                            key={c.id}
+                                            value={String(c.id)}
+                                        >
+                                            {c.nombre}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -909,10 +1204,14 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                         {/* Motivo (festivo) */}
                         {centroTipo === 'festivo' && (
                             <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">Nombre del festivo (opcional)</Label>
+                                <Label className="text-xs font-medium">
+                                    Nombre del festivo (opcional)
+                                </Label>
                                 <Input
                                     value={centroMotivo}
-                                    onChange={(e) => setCentroMotivo(e.target.value)}
+                                    onChange={(e) =>
+                                        setCentroMotivo(e.target.value)
+                                    }
                                     placeholder="Ej: Navidad, Día de la Comunidad..."
                                     className="h-9"
                                 />
@@ -922,28 +1221,58 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                         {/* Fechas */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">Desde *</Label>
-                                <Input type="date" value={centroDesde} onChange={(e) => setCentroDesde(e.target.value)} className="h-9" />
+                                <Label className="text-xs font-medium">
+                                    Desde *
+                                </Label>
+                                <Input
+                                    type="date"
+                                    value={centroDesde}
+                                    onChange={(e) =>
+                                        setCentroDesde(e.target.value)
+                                    }
+                                    className="h-9"
+                                />
                             </div>
                             <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">Hasta *</Label>
-                                <Input type="date" value={centroHasta} min={centroDesde} onChange={(e) => setCentroHasta(e.target.value)} className="h-9" />
+                                <Label className="text-xs font-medium">
+                                    Hasta *
+                                </Label>
+                                <Input
+                                    type="date"
+                                    value={centroHasta}
+                                    min={centroDesde}
+                                    onChange={(e) =>
+                                        setCentroHasta(e.target.value)
+                                    }
+                                    className="h-9"
+                                />
                             </div>
                         </div>
 
                         {centroError && (
-                            <p className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+                            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                                 {centroError}
                             </p>
                         )}
 
                         <div className="flex justify-end gap-2 pt-1">
-                            <Button variant="outline" size="sm" onClick={() => setCentroDialogOpen(false)}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCentroDialogOpen(false)}
+                            >
                                 Cancelar
                             </Button>
-                            <Button size="sm" onClick={handleStoreCentro} disabled={centroSaving} className="gap-1.5">
+                            <Button
+                                size="sm"
+                                onClick={handleStoreCentro}
+                                disabled={centroSaving}
+                                className="gap-1.5"
+                            >
                                 <Building2 className="h-3.5 w-3.5" />
-                                {centroSaving ? 'Aplicando...' : 'Aplicar a todos'}
+                                {centroSaving
+                                    ? 'Aplicando...'
+                                    : 'Aplicar a todos'}
                             </Button>
                         </div>
                     </div>
@@ -951,7 +1280,7 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
             </Dialog>
 
             {centroResult && (
-                <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
+                <div className="fixed right-6 bottom-6 z-50 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
                     {centroResult}
                 </div>
             )}
@@ -962,8 +1291,14 @@ export default function CalendarioIndex({ employees, centros, anio, empleadoId, 
                     onClose={() => setDialogOpen(false)}
                     dateStr={selectedDate}
                     empleadoId={selectedEmpleadoId}
-                    existingEvento={selectedDate ? (eventosPorFecha.get(selectedDate) ?? null) : null}
-                    hasFichaje={selectedDate ? fichajesSet.has(selectedDate) : false}
+                    existingEvento={
+                        selectedDate
+                            ? (eventosPorFecha.get(selectedDate) ?? null)
+                            : null
+                    }
+                    hasFichaje={
+                        selectedDate ? fichajesSet.has(selectedDate) : false
+                    }
                     onSaved={handleSaved}
                     onDeleted={handleDeleted}
                     onRangoSaved={handleRangoSaved}

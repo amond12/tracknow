@@ -1,6 +1,23 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Building2, Clock, IdCard, Pencil, Plus, Shield, Trash2, User, Wifi } from 'lucide-react';
+import {
+    Building2,
+    Clock,
+    IdCard,
+    Pencil,
+    Plus,
+    Shield,
+    Trash2,
+    User,
+    Wifi,
+    X,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
+import {
+    FilterField,
+    FilterPanel,
+    FilterPill,
+    FilterSelectTrigger,
+} from '@/components/filter-panel';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +40,12 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
-import type { BreadcrumbItem, Company, User as UserType, WorkCenter } from '@/types';
+import type {
+    BreadcrumbItem,
+    Company,
+    User as UserType,
+    WorkCenter,
+} from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
@@ -124,8 +146,14 @@ function EmpleadoForm({
                         {initials}
                     </div>
                     <div className="min-w-0">
-                        <p className="font-semibold leading-tight">{data.nombre} {data.apellido}</p>
-                        {data.email && <p className="truncate text-xs text-muted-foreground">{data.email}</p>}
+                        <p className="leading-tight font-semibold">
+                            {data.nombre} {data.apellido}
+                        </p>
+                        {data.email && (
+                            <p className="truncate text-xs text-muted-foreground">
+                                {data.email}
+                            </p>
+                        )}
                     </div>
                     {data.remoto && (
                         <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
@@ -140,16 +168,26 @@ function EmpleadoForm({
             <div className="overflow-hidden rounded-xl border">
                 <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                     <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Datos personales</span>
+                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        Datos personales
+                    </span>
                 </div>
                 <div className="grid gap-3 p-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="nombre" className="text-xs font-medium">Nombre <span className="text-destructive">*</span></Label>
+                            <Label
+                                htmlFor="nombre"
+                                className="text-xs font-medium"
+                            >
+                                Nombre{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                                 id="nombre"
                                 value={data.nombre}
-                                onChange={(e) => setData('nombre', e.target.value)}
+                                onChange={(e) =>
+                                    setData('nombre', e.target.value)
+                                }
                                 className="h-9"
                                 required
                                 autoFocus
@@ -157,11 +195,19 @@ function EmpleadoForm({
                             <InputError message={errors.nombre} />
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="apellido" className="text-xs font-medium">Apellido <span className="text-destructive">*</span></Label>
+                            <Label
+                                htmlFor="apellido"
+                                className="text-xs font-medium"
+                            >
+                                Apellido{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                                 id="apellido"
                                 value={data.apellido}
-                                onChange={(e) => setData('apellido', e.target.value)}
+                                onChange={(e) =>
+                                    setData('apellido', e.target.value)
+                                }
                                 className="h-9"
                                 required
                             />
@@ -170,23 +216,39 @@ function EmpleadoForm({
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="email" className="text-xs font-medium">Correo electrónico <span className="text-destructive">*</span></Label>
+                            <Label
+                                htmlFor="email"
+                                className="text-xs font-medium"
+                            >
+                                Correo electrónico{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                                 id="email"
                                 type="email"
                                 value={data.email}
-                                onChange={(e) => setData('email', e.target.value)}
+                                onChange={(e) =>
+                                    setData('email', e.target.value)
+                                }
                                 className="h-9"
                                 required
                             />
                             <InputError message={errors.email} />
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="telefono" className="text-xs font-medium">Teléfono <span className="text-destructive">*</span></Label>
+                            <Label
+                                htmlFor="telefono"
+                                className="text-xs font-medium"
+                            >
+                                Teléfono{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                                 id="telefono"
                                 value={data.telefono}
-                                onChange={(e) => setData('telefono', e.target.value)}
+                                onChange={(e) =>
+                                    setData('telefono', e.target.value)
+                                }
                                 className="h-9"
                                 required
                             />
@@ -200,12 +262,20 @@ function EmpleadoForm({
             <div className="overflow-hidden rounded-xl border">
                 <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                     <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Identificación</span>
+                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        Identificación
+                    </span>
                 </div>
                 <div className="grid gap-3 p-4">
                     <div className="grid grid-cols-2 gap-3">
                         <div className="grid gap-1.5">
-                            <Label htmlFor="dni" className="text-xs font-medium">DNI / NIE <span className="text-destructive">*</span></Label>
+                            <Label
+                                htmlFor="dni"
+                                className="text-xs font-medium"
+                            >
+                                DNI / NIE{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                                 id="dni"
                                 value={data.dni}
@@ -216,7 +286,13 @@ function EmpleadoForm({
                             <InputError message={errors.dni} />
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="nss" className="text-xs font-medium">Núm. Seg. Social <span className="text-destructive">*</span></Label>
+                            <Label
+                                htmlFor="nss"
+                                className="text-xs font-medium"
+                            >
+                                Núm. Seg. Social{' '}
+                                <span className="text-destructive">*</span>
+                            </Label>
                             <Input
                                 id="nss"
                                 value={data.nss}
@@ -240,33 +316,51 @@ function EmpleadoForm({
             <div className="overflow-hidden rounded-xl border">
                 <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                     <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rol y modalidad</span>
+                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        Rol y modalidad
+                    </span>
                 </div>
                 <div className="grid gap-3 p-4 sm:grid-cols-2">
                     <div className="grid gap-1.5">
-                        <Label htmlFor="rol" className="text-xs font-medium">Rol <span className="text-destructive">*</span></Label>
-                        <Select value={data.rol} onValueChange={(v) => setData('rol', v)} required>
+                        <Label htmlFor="rol" className="text-xs font-medium">
+                            Rol <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                            value={data.rol}
+                            onValueChange={(v) => setData('rol', v)}
+                            required
+                        >
                             <SelectTrigger id="rol" className="h-9">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="empleado">Empleado</SelectItem>
-                                <SelectItem value="encargado">Encargado</SelectItem>
+                                <SelectItem value="empleado">
+                                    Empleado
+                                </SelectItem>
+                                <SelectItem value="encargado">
+                                    Encargado
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <InputError message={errors.rol} />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        <Label className="text-xs font-medium">Trabajo remoto</Label>
+                        <Label className="text-xs font-medium">
+                            Trabajo remoto
+                        </Label>
                         <div className="flex h-9 items-center justify-between rounded-lg border bg-muted/20 px-3">
                             <div className="flex items-center gap-1.5 text-sm">
                                 <Wifi className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span>{data.remoto ? 'Activo' : 'No activo'}</span>
+                                <span>
+                                    {data.remoto ? 'Activo' : 'No activo'}
+                                </span>
                             </div>
                             <Switch
                                 id="remoto"
                                 checked={data.remoto}
-                                onCheckedChange={(checked) => setData('remoto', checked)}
+                                onCheckedChange={(checked) =>
+                                    setData('remoto', checked)
+                                }
                             />
                         </div>
                         <InputError message={errors.remoto} />
@@ -278,12 +372,23 @@ function EmpleadoForm({
             <div className="overflow-hidden rounded-xl border">
                 <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                     <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Empresa y centro</span>
+                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        Empresa y centro
+                    </span>
                 </div>
                 <div className="grid gap-3 p-4 sm:grid-cols-2">
                     <div className="grid gap-1.5">
-                        <Label htmlFor="company_id" className="text-xs font-medium">Empresa <span className="text-destructive">*</span></Label>
-                        <Select value={data.company_id} onValueChange={handleCompanyChange} required>
+                        <Label
+                            htmlFor="company_id"
+                            className="text-xs font-medium"
+                        >
+                            Empresa <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                            value={data.company_id}
+                            onValueChange={handleCompanyChange}
+                            required
+                        >
                             <SelectTrigger id="company_id" className="h-9">
                                 <SelectValue placeholder="Selecciona una empresa" />
                             </SelectTrigger>
@@ -298,7 +403,13 @@ function EmpleadoForm({
                         <InputError message={errors.company_id} />
                     </div>
                     <div className="grid gap-1.5">
-                        <Label htmlFor="work_center_id" className="text-xs font-medium">Centro de trabajo <span className="text-destructive">*</span></Label>
+                        <Label
+                            htmlFor="work_center_id"
+                            className="text-xs font-medium"
+                        >
+                            Centro de trabajo{' '}
+                            <span className="text-destructive">*</span>
+                        </Label>
                         <Select
                             value={data.work_center_id}
                             onValueChange={(v) => setData('work_center_id', v)}
@@ -316,7 +427,10 @@ function EmpleadoForm({
                             </SelectTrigger>
                             <SelectContent>
                                 {filteredCenters.map((wc) => (
-                                    <SelectItem key={wc.id} value={String(wc.id)}>
+                                    <SelectItem
+                                        key={wc.id}
+                                        value={String(wc.id)}
+                                    >
                                         {wc.nombre}
                                     </SelectItem>
                                 ))}
@@ -331,20 +445,26 @@ function EmpleadoForm({
             <div className="overflow-hidden rounded-xl border">
                 <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Horario semanal (horas por día)</span>
+                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        Horario semanal (horas por día)
+                    </span>
                 </div>
                 <div className="grid grid-cols-7 gap-2 p-4">
-                    {([
-                        { key: 'horario_lunes',     label: 'Lun' },
-                        { key: 'horario_martes',    label: 'Mar' },
-                        { key: 'horario_miercoles', label: 'Mié' },
-                        { key: 'horario_jueves',    label: 'Jue' },
-                        { key: 'horario_viernes',   label: 'Vie' },
-                        { key: 'horario_sabado',    label: 'Sáb' },
-                        { key: 'horario_domingo',   label: 'Dom' },
-                    ] as { key: keyof EmpleadoFormData; label: string }[]).map(({ key, label }) => (
+                    {(
+                        [
+                            { key: 'horario_lunes', label: 'Lun' },
+                            { key: 'horario_martes', label: 'Mar' },
+                            { key: 'horario_miercoles', label: 'Mié' },
+                            { key: 'horario_jueves', label: 'Jue' },
+                            { key: 'horario_viernes', label: 'Vie' },
+                            { key: 'horario_sabado', label: 'Sáb' },
+                            { key: 'horario_domingo', label: 'Dom' },
+                        ] as { key: keyof EmpleadoFormData; label: string }[]
+                    ).map(({ key, label }) => (
                         <div key={key} className="grid gap-1.5">
-                            <Label className="text-center text-xs font-medium">{label}</Label>
+                            <Label className="text-center text-xs font-medium">
+                                {label}
+                            </Label>
                             <Input
                                 type="number"
                                 min="0"
@@ -358,7 +478,8 @@ function EmpleadoForm({
                     ))}
                 </div>
                 <p className="px-4 pb-3 text-xs text-muted-foreground">
-                    Usa decimales para medias horas: 7.5 = 7 h 30 min. Introduce 0 para días no laborables.
+                    Usa decimales para medias horas: 7.5 = 7 h 30 min. Introduce
+                    0 para días no laborables.
                 </p>
             </div>
 
@@ -375,7 +496,11 @@ function EmpleadoForm({
     );
 }
 
-export default function EmpleadosIndex({ employees, companies, workCenters }: Props) {
+export default function EmpleadosIndex({
+    employees,
+    companies,
+    workCenters,
+}: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<UserType | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UserType | null>(null);
@@ -390,13 +515,16 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
             return workCenters;
         }
 
-        return workCenters.filter((workCenter) => workCenter.company_id === Number(companyFilter));
+        return workCenters.filter(
+            (workCenter) => workCenter.company_id === Number(companyFilter),
+        );
     }, [companyFilter, workCenters]);
 
     const filteredEmployees = useMemo(() => {
         return employees.filter((employee) => {
             const matchesCompany =
-                companyFilter === 'all' || employee.company_id === Number(companyFilter);
+                companyFilter === 'all' ||
+                employee.company_id === Number(companyFilter);
             const matchesWorkCenter =
                 workCenterFilter === 'all' ||
                 employee.work_center_id === Number(workCenterFilter);
@@ -404,6 +532,9 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
             return matchesCompany && matchesWorkCenter;
         });
     }, [employees, companyFilter, workCenterFilter]);
+
+    const hasActiveFilters =
+        companyFilter !== 'all' || workCenterFilter !== 'all';
 
     function openEdit(emp: UserType) {
         editForm.setData({
@@ -413,17 +544,18 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
             telefono: emp.telefono ?? '',
             dni: emp.dni ?? '',
             nss: emp.nss ?? '',
-            rol: (emp.role as string) === 'encargado' ? 'encargado' : 'empleado',
+            rol:
+                (emp.role as string) === 'encargado' ? 'encargado' : 'empleado',
             remoto: emp.remoto ?? false,
             company_id: String(emp.company_id ?? ''),
             work_center_id: String(emp.work_center_id ?? ''),
-            horario_lunes:     String(emp.horario_lunes     ?? 8),
-            horario_martes:    String(emp.horario_martes    ?? 8),
+            horario_lunes: String(emp.horario_lunes ?? 8),
+            horario_martes: String(emp.horario_martes ?? 8),
             horario_miercoles: String(emp.horario_miercoles ?? 8),
-            horario_jueves:    String(emp.horario_jueves    ?? 8),
-            horario_viernes:   String(emp.horario_viernes   ?? 8),
-            horario_sabado:    String(emp.horario_sabado    ?? 0),
-            horario_domingo:   String(emp.horario_domingo   ?? 0),
+            horario_jueves: String(emp.horario_jueves ?? 8),
+            horario_viernes: String(emp.horario_viernes ?? 8),
+            horario_sabado: String(emp.horario_sabado ?? 0),
+            horario_domingo: String(emp.horario_domingo ?? 0),
         });
         setEditTarget(emp);
     }
@@ -465,71 +597,151 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
                             Gestiona los empleados de tus empresas
                         </p>
                     </div>
-                    <Button onClick={() => setCreateOpen(true)} disabled={companies.length === 0}>
+                    <Button
+                        onClick={() => setCreateOpen(true)}
+                        disabled={companies.length === 0}
+                    >
                         <Plus className="mr-2 h-4 w-4" />
                         Nuevo empleado
                     </Button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor="empresa_filter">Filtrar por empresa</Label>
-                        <Select
-                            value={companyFilter}
-                            onValueChange={(value) => {
-                                setCompanyFilter(value);
-                                setWorkCenterFilter('all');
-                            }}
+                <FilterPanel
+                    title="Filtros de plantilla"
+                    description="Acota la lista por empresa y centro de trabajo para revisar la plantilla con más contexto."
+                    eyebrow="Organización"
+                    icon={Building2}
+                    tone="blue"
+                    meta={
+                        <>
+                            <FilterPill active={hasActiveFilters}>
+                                {hasActiveFilters
+                                    ? 'Filtros activos'
+                                    : 'Sin filtros'}
+                            </FilterPill>
+                            <FilterPill>{`${filteredEmployees.length} ${filteredEmployees.length === 1 ? 'empleado' : 'empleados'}`}</FilterPill>
+                        </>
+                    }
+                    footer={
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <span className="text-xs text-muted-foreground">
+                                La tabla se actualiza en tiempo real al cambiar
+                                los selectores.
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-2 rounded-xl"
+                                onClick={() => {
+                                    setCompanyFilter('all');
+                                    setWorkCenterFilter('all');
+                                }}
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar
+                            </Button>
+                        </div>
+                    }
+                >
+                    <div className="grid gap-3 md:grid-cols-2">
+                        <FilterField
+                            label="Empresa"
+                            htmlFor="empresa_filter"
+                            icon={Building2}
                         >
-                            <SelectTrigger id="empresa_filter">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todas las empresas</SelectItem>
-                                {companies.map((company) => (
-                                    <SelectItem key={company.id} value={String(company.id)}>
-                                        {company.nombre}
+                            <Select
+                                value={companyFilter}
+                                onValueChange={(value) => {
+                                    setCompanyFilter(value);
+                                    setWorkCenterFilter('all');
+                                }}
+                            >
+                                <FilterSelectTrigger id="empresa_filter">
+                                    <SelectValue />
+                                </FilterSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Todas las empresas
                                     </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                                    {companies.map((company) => (
+                                        <SelectItem
+                                            key={company.id}
+                                            value={String(company.id)}
+                                        >
+                                            {company.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </FilterField>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="centro_filter">Filtrar por centro</Label>
-                        <Select
-                            value={workCenterFilter}
-                            onValueChange={setWorkCenterFilter}
-                            disabled={availableWorkCenters.length === 0}
+                        <FilterField
+                            label="Centro de trabajo"
+                            htmlFor="centro_filter"
+                            icon={Building2}
+                            hint={
+                                availableWorkCenters.length === 0
+                                    ? 'Selecciona una empresa con centros disponibles.'
+                                    : undefined
+                            }
                         >
-                            <SelectTrigger id="centro_filter">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Todos los centros</SelectItem>
-                                {availableWorkCenters.map((workCenter) => (
-                                    <SelectItem key={workCenter.id} value={String(workCenter.id)}>
-                                        {workCenter.nombre}
+                            <Select
+                                value={workCenterFilter}
+                                onValueChange={setWorkCenterFilter}
+                                disabled={availableWorkCenters.length === 0}
+                            >
+                                <FilterSelectTrigger id="centro_filter">
+                                    <SelectValue />
+                                </FilterSelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Todos los centros
                                     </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                    {availableWorkCenters.map((workCenter) => (
+                                        <SelectItem
+                                            key={workCenter.id}
+                                            value={String(workCenter.id)}
+                                        >
+                                            {workCenter.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </FilterField>
                     </div>
-                </div>
+                </FilterPanel>
 
                 <div className="overflow-hidden rounded-lg border">
                     <table className="w-full text-sm">
                         <thead className="bg-muted/50">
                             <tr>
-                                <th className="px-4 py-3 text-left font-medium">Nombre</th>
-                                <th className="px-4 py-3 text-left font-medium">Apellido</th>
-                                <th className="px-4 py-3 text-left font-medium">Email</th>
-                                <th className="px-4 py-3 text-left font-medium">Teléfono</th>
-                                <th className="px-4 py-3 text-left font-medium">DNI</th>
-                                <th className="px-4 py-3 text-left font-medium">NSS</th>
-                                <th className="px-4 py-3 text-left font-medium">Rol</th>
-                                <th className="px-4 py-3 text-left font-medium">Remoto</th>
-                                <th className="px-4 py-3 text-right font-medium">Acciones</th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Nombre
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Apellido
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Email
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Teléfono
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    DNI
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    NSS
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Rol
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Remoto
+                                </th>
+                                <th className="px-4 py-3 text-right font-medium">
+                                    Acciones
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -546,16 +758,27 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
                                 </tr>
                             ) : (
                                 filteredEmployees.map((emp) => (
-                                    <tr key={emp.id} className="hover:bg-muted/30">
-                                        <td className="px-4 py-3 font-medium">{emp.name}</td>
-                                        <td className="px-4 py-3">{emp.apellido}</td>
+                                    <tr
+                                        key={emp.id}
+                                        className="hover:bg-muted/30"
+                                    >
+                                        <td className="px-4 py-3 font-medium">
+                                            {emp.name}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {emp.apellido}
+                                        </td>
                                         <td className="px-4 py-3 text-muted-foreground">
                                             {emp.email}
                                         </td>
-                                        <td className="px-4 py-3">{emp.telefono}</td>
+                                        <td className="px-4 py-3">
+                                            {emp.telefono}
+                                        </td>
                                         <td className="px-4 py-3">{emp.dni}</td>
                                         <td className="px-4 py-3">{emp.nss}</td>
-                                        <td className="px-4 py-3 capitalize">{emp.role}</td>
+                                        <td className="px-4 py-3 capitalize">
+                                            {emp.role}
+                                        </td>
                                         <td className="px-4 py-3">
                                             {emp.remoto ? 'Sí' : 'No'}
                                         </td>
@@ -564,7 +787,9 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    onClick={() => openEdit(emp)}
+                                                    onClick={() =>
+                                                        openEdit(emp)
+                                                    }
                                                 >
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
@@ -572,7 +797,9 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
                                                     size="icon"
                                                     variant="ghost"
                                                     className="text-destructive hover:text-destructive"
-                                                    onClick={() => setDeleteTarget(emp)}
+                                                    onClick={() =>
+                                                        setDeleteTarget(emp)
+                                                    }
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -595,8 +822,13 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
                                 <Plus className="h-4 w-4 text-primary" />
                             </div>
                             <div>
-                                <DialogTitle className="text-base font-semibold">Nuevo empleado</DialogTitle>
-                                <p className="text-xs text-muted-foreground">Completa los datos para crear una cuenta de empleado</p>
+                                <DialogTitle className="text-base font-semibold">
+                                    Nuevo empleado
+                                </DialogTitle>
+                                <p className="text-xs text-muted-foreground">
+                                    Completa los datos para crear una cuenta de
+                                    empleado
+                                </p>
                             </div>
                         </div>
                     </DialogHeader>
@@ -615,7 +847,10 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
             </Dialog>
 
             {/* Dialog: Editar */}
-            <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+            <Dialog
+                open={!!editTarget}
+                onOpenChange={(open) => !open && setEditTarget(null)}
+            >
                 <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
                         <div className="-mx-6 -mt-6 mb-2 flex items-center gap-3 rounded-t-lg border-b bg-muted/40 px-6 py-4">
@@ -623,9 +858,13 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
                                 <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                             </div>
                             <div>
-                                <DialogTitle className="text-base font-semibold">Editar empleado</DialogTitle>
+                                <DialogTitle className="text-base font-semibold">
+                                    Editar empleado
+                                </DialogTitle>
                                 <p className="text-xs text-muted-foreground">
-                                    {editTarget ? `${editTarget.name} ${editTarget.apellido}` : 'Modifica los datos del empleado'}
+                                    {editTarget
+                                        ? `${editTarget.name} ${editTarget.apellido}`
+                                        : 'Modifica los datos del empleado'}
                                 </p>
                             </div>
                         </div>
@@ -646,7 +885,10 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
             </Dialog>
 
             {/* Dialog: Eliminar */}
-            <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+            <Dialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => !open && setDeleteTarget(null)}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Eliminar empleado</DialogTitle>
@@ -656,11 +898,14 @@ export default function EmpleadosIndex({ employees, companies, workCenters }: Pr
                         <strong>
                             {deleteTarget?.name} {deleteTarget?.apellido}
                         </strong>
-                        ? También se eliminará su cuenta de acceso. Esta acción no se puede
-                        deshacer.
+                        ? También se eliminará su cuenta de acceso. Esta acción
+                        no se puede deshacer.
                     </p>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteTarget(null)}
+                        >
                             Cancelar
                         </Button>
                         <Button variant="destructive" onClick={handleDelete}>

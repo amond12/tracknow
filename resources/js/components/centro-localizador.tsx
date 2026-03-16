@@ -167,21 +167,21 @@ export function CentroLocalizador({
     }
 
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="grid gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handlePosicionar}
                     disabled={geocoding}
-                    className="border-emerald-200 bg-emerald-50 text-emerald-700 transition-all hover:-translate-y-px hover:border-emerald-300 hover:bg-emerald-100"
+                    className="w-full rounded-xl border-blue-200 bg-blue-50 text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 sm:w-auto"
                 >
                     {geocoding
-                        ? 'Posicionando...'
+                        ? 'Buscando...'
                         : lat !== null && lng !== null
                           ? 'Reposicionar desde la direccion'
-                          : 'Posicionar desde la direccion'}
+                          : 'Usar direccion para posicionar'}
                 </Button>
                 {lat !== null && lng !== null && (
                     <Button
@@ -189,20 +189,20 @@ export function CentroLocalizador({
                         variant="outline"
                         size="sm"
                         onClick={handleLimpiar}
-                        className="border-red-200 bg-red-50 text-red-600 transition-all hover:-translate-y-px hover:border-red-300 hover:bg-red-100"
+                        className="w-full rounded-xl border-border bg-background text-muted-foreground transition-colors hover:bg-muted sm:w-auto"
                     >
-                        Quitar posicion
+                        Quitar ubicacion
                     </Button>
                 )}
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
 
             {lat !== null && lng !== null && (
                 <>
                     <div
-                        className="overflow-hidden rounded-lg border"
-                        style={{ height: 240 }}
+                        className="overflow-hidden rounded-xl border border-border/70"
+                        style={{ height: 190 }}
                     >
                         <MapContainer
                             key={`${lat},${lng}`}
@@ -226,14 +226,15 @@ export function CentroLocalizador({
                                 center={[lat, lng]}
                                 radius={radio}
                                 pathOptions={{
-                                    color: '#10b981',
+                                    color: '#2563eb',
+                                    fillColor: '#2563eb',
                                     fillOpacity: 0.12,
                                 }}
                             />
                         </MapContainer>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid gap-3 sm:grid-cols-2">
                         <div className="grid gap-1">
                             <Label className="text-xs text-muted-foreground">
                                 Latitud
@@ -241,7 +242,7 @@ export function CentroLocalizador({
                             <Input
                                 readOnly
                                 value={lat.toFixed(6)}
-                                className="h-8 font-mono text-sm"
+                                className="h-8 rounded-lg border-border/70 bg-background/70 font-mono text-sm"
                             />
                         </div>
                         <div className="grid gap-1">
@@ -251,21 +252,21 @@ export function CentroLocalizador({
                             <Input
                                 readOnly
                                 value={lng.toFixed(6)}
-                                className="h-8 font-mono text-sm"
+                                className="h-8 rounded-lg border-border/70 bg-background/70 font-mono text-sm"
                             />
                         </div>
                     </div>
                 </>
             )}
 
-            <div className="grid gap-1">
+            <div className="grid gap-2 rounded-xl border border-border/70 bg-background/70 p-3">
                 <Label
                     htmlFor="radio_geofence"
                     className="text-xs text-muted-foreground"
                 >
                     Radio de geofence (metros)
                 </Label>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <Input
                         id="radio_geofence"
                         type="number"
@@ -274,10 +275,10 @@ export function CentroLocalizador({
                         onChange={(e) =>
                             handleRadioChange(Number(e.target.value))
                         }
-                        className="h-8 w-24 text-center font-mono text-sm"
+                        className="h-8 w-24 rounded-lg border-border/70 text-center font-mono text-sm"
                     />
                     <span className="text-xs text-muted-foreground">
-                        metros de radio
+                        metros
                     </span>
                 </div>
                 <p className="text-xs text-muted-foreground/70">
