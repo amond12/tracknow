@@ -13,7 +13,6 @@ import {
     FilterField,
     FilterInput,
     FilterPanel,
-    FilterPill,
     FilterSelectTrigger,
     filterDropdownClassName,
     filterDropdownEmptyClassName,
@@ -867,29 +866,21 @@ export default function CalendarioIndex({
                     description="Busca un empleado y cambia el año de consulta desde un panel unificado."
                     eyebrow="Planificación"
                     icon={CalendarDays}
-                    tone="violet"
+                    tone="blue"
                     meta={
-                        <>
-                            <FilterPill active={Boolean(selectedEmpleadoId)}>
-                                {selectedEmpleadoId
-                                    ? 'Empleado seleccionado'
-                                    : 'Sin empleado'}
-                            </FilterPill>
-                            <FilterPill>{`Año ${anioSeleccionado}`}</FilterPill>
-                        </>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleReset}
+                            className="gap-2 rounded-xl"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Limpiar
+                        </Button>
                     }
                     footer={
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
                             <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleReset}
-                                    className="gap-2 rounded-xl"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Limpiar
-                                </Button>
                                 {centros.length > 0 && (
                                     <Button
                                         size="sm"
@@ -906,9 +897,6 @@ export default function CalendarioIndex({
                                     </Button>
                                 )}
                             </div>
-                            <span className="text-xs text-muted-foreground">
-                                La selección carga el calendario al momento.
-                            </span>
                         </div>
                     }
                 >

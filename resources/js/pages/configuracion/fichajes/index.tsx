@@ -22,7 +22,6 @@ import {
     FilterField,
     FilterInput,
     FilterPanel,
-    FilterPill,
     FilterSelectTrigger,
     filterDropdownClassName,
     filterDropdownEmptyClassName,
@@ -1626,13 +1625,6 @@ export default function FichajesIndex({
         },
     } as const;
 
-    const hasActiveFilters =
-        empresaId !== 'all' ||
-        centroId !== 'all' ||
-        empleadoId !== 'all' ||
-        fechaDesde !== '' ||
-        fechaHasta !== '';
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Registros de fichajes" />
@@ -1662,39 +1654,17 @@ export default function FichajesIndex({
                     title="Filtros de registros"
                     description="Ajusta empresa, centro, empleado y rango de fechas. Los cambios se aplican al instante."
                     icon={Filter}
-                    tone="sky"
+                    tone="blue"
                     meta={
-                        <>
-                            <FilterPill active={hasActiveFilters}>
-                                {hasActiveFilters
-                                    ? 'Filtros activos'
-                                    : 'Sin filtros'}
-                            </FilterPill>
-                            <FilterPill>{`${fichajes.length} ${fichajes.length === 1 ? 'registro' : 'registros'}`}</FilterPill>
-                        </>
-                    }
-                    footer={
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleReset}
-                                    className="gap-2 rounded-xl"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Limpiar
-                                </Button>
-                                <span className="text-xs text-muted-foreground">
-                                    Los filtros se aplican automáticamente.
-                                </span>
-                            </div>
-                            <FilterPill>
-                                {fechaDesde && fechaHasta
-                                    ? `${formatDateValue(fechaDesde)} - ${formatDateValue(fechaHasta)}`
-                                    : 'Periodo abierto'}
-                            </FilterPill>
-                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleReset}
+                            className="gap-2 rounded-xl"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Limpiar
+                        </Button>
                     }
                 >
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

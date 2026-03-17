@@ -50,15 +50,15 @@ interface FilterPanelContextValue {
 }
 
 export const filterControlClassName =
-    'w-full border-border/70 bg-background/90 shadow-none transition-colors disabled:bg-muted/40 disabled:text-muted-foreground';
+    'w-full border-border/60 bg-background shadow-none transition-colors disabled:bg-muted/30 disabled:text-muted-foreground';
 
 export const filterDropdownClassName =
-    'absolute z-50 mt-2 w-full overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-[0_24px_50px_-34px_rgba(15,23,42,0.5)] backdrop-blur';
+    'absolute z-[70] mt-1.5 w-full overflow-hidden rounded-xl border border-border/60 bg-popover shadow-[0_18px_36px_-28px_rgba(15,23,42,0.45)]';
 
-export const filterDropdownListClassName = 'max-h-48 overflow-y-auto p-1';
+export const filterDropdownListClassName = 'max-h-44 overflow-y-auto p-1';
 
 export const filterDropdownEmptyClassName =
-    'px-3 py-2 text-[13px] text-muted-foreground';
+    'px-2.5 py-2 text-xs text-muted-foreground';
 
 const COMPACT_FILTER_BREAKPOINT = 1680;
 
@@ -261,8 +261,7 @@ const filterToneStyles: Record<
 };
 
 function getFilterToneStyles(tone: FilterTone) {
-    void tone;
-    return filterToneStyles.blue;
+    return filterToneStyles[tone] ?? filterToneStyles.blue;
 }
 
 export function filterDropdownOptionClassName(
@@ -272,7 +271,7 @@ export function filterDropdownOptionClassName(
     const toneStyles = getFilterToneStyles(tone);
 
     return cn(
-        'w-full rounded-lg px-3 py-2 text-left text-[13px] transition-colors hover:bg-muted/70',
+        'w-full rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors hover:bg-muted/70',
         active && ['font-medium', toneStyles.optionActive],
     );
 }
@@ -290,61 +289,39 @@ export function FilterPanel({
     children,
     ...props
 }: FilterPanelProps) {
-    const { isMobile, state } = useSidebar();
+    const { isMobile } = useSidebar();
     const compactViewport = useCompactFilterViewport();
     const toneStyles = getFilterToneStyles(tone);
-    const compact = !isMobile && state === 'expanded' && compactViewport;
+    const compact = !isMobile && compactViewport;
 
     return (
         <filterPanelContext.Provider value={{ compact, tone }}>
             <section
                 className={cn(
-                    'relative overflow-hidden border shadow-[0_24px_60px_-42px_rgba(15,23,42,0.38)]',
-                    compact ? 'rounded-[1.5rem]' : 'rounded-[1.75rem]',
-                    toneStyles.panel,
+                    'relative overflow-visible border border-border/70 bg-card/95 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.22)]',
+                    compact ? 'rounded-[1.125rem]' : 'rounded-[1.375rem]',
                     className,
                 )}
                 {...props}
             >
                 <div
                     className={cn(
-                        'pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent',
-                        toneStyles.topLine,
-                    )}
-                />
-                <div
-                    className={cn(
-                        'pointer-events-none absolute top-0 -right-16 h-36 w-36 rounded-full blur-3xl',
-                        toneStyles.glowPrimary,
-                    )}
-                />
-                <div
-                    className={cn(
-                        'pointer-events-none absolute bottom-0 left-0 h-28 w-28 rounded-full blur-2xl',
-                        toneStyles.glowSecondary,
-                    )}
-                />
-
-                <div
-                    className={cn(
                         'relative',
-                        compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6',
+                        compact ? 'p-3.5 sm:p-4' : 'p-4 sm:p-5',
                     )}
                 >
                     <div
                         className={cn(
-                            'flex flex-col border-b border-border/70 lg:flex-row lg:items-start lg:justify-between',
-                            compact ? 'gap-3 pb-4' : 'gap-4 pb-5',
+                            'flex flex-col border-b border-border/60 lg:flex-row lg:items-center lg:justify-between',
+                            compact ? 'gap-2.5 pb-3' : 'gap-3 pb-4',
                         )}
                     >
-                        <div className="flex items-start gap-3">
+                        <div className="flex min-w-0 items-start gap-2.5">
                             {Icon && (
                                 <div
                                     className={cn(
-                                        'flex shrink-0 items-center justify-center border shadow-sm',
-                                        compact
-                                            ? 'size-9 rounded-xl'
-                                            : 'size-10 rounded-2xl',
+                                        'flex shrink-0 items-center justify-center rounded-xl border bg-background/80',
+                                        compact ? 'size-8' : 'size-9',
                                         toneStyles.iconWrap,
                                     )}
                                 >
@@ -357,43 +334,36 @@ export function FilterPanel({
                                 </div>
                             )}
 
-                            <div
-                                className={
-                                    compact ? 'space-y-1' : 'space-y-1.5'
-                                }
-                            >
-                                <p
-                                    className={cn(
-                                        compact
-                                            ? 'text-[10px] font-semibold tracking-[0.2em] uppercase'
-                                            : 'text-[11px] font-semibold tracking-[0.24em] uppercase',
-                                        toneStyles.eyebrow,
-                                    )}
-                                >
-                                    {eyebrow}
-                                </p>
+                            <div className="min-w-0 space-y-1">
+                                {!compact && (
+                                    <p
+                                        className={cn(
+                                            'text-[10px] font-semibold tracking-[0.18em] uppercase',
+                                            toneStyles.eyebrow,
+                                        )}
+                                    >
+                                        {eyebrow}
+                                    </p>
+                                )}
                                 <div
                                     className={
-                                        compact ? 'space-y-0.5' : 'space-y-1'
+                                        compact ? 'space-y-0' : 'space-y-0.5'
                                     }
                                 >
                                     <h2
                                         className={cn(
-                                            'font-semibold tracking-tight',
+                                            'truncate font-semibold tracking-tight',
                                             compact
-                                                ? 'text-[15px]'
-                                                : 'text-base',
+                                                ? 'text-sm'
+                                                : 'text-[15px] sm:text-base',
                                         )}
                                     >
                                         {title}
                                     </h2>
-                                    {description && (
+                                    {description && !compact && (
                                         <p
                                             className={cn(
-                                                'max-w-2xl text-muted-foreground',
-                                                compact
-                                                    ? 'text-[13px] leading-5'
-                                                    : 'text-sm',
+                                                'max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm',
                                             )}
                                         >
                                             {description}
@@ -417,7 +387,7 @@ export function FilterPanel({
 
                     <div
                         className={cn(
-                            compact ? 'mt-4' : 'mt-5',
+                            compact ? 'mt-3' : 'mt-4',
                             contentClassName,
                         )}
                     >
@@ -427,8 +397,8 @@ export function FilterPanel({
                     {footer && (
                         <div
                             className={cn(
-                                'border-t border-border/70',
-                                compact ? 'mt-4 pt-3.5' : 'mt-5 pt-4',
+                                'border-t border-border/60',
+                                compact ? 'mt-3 pt-2.5' : 'mt-4 pt-3',
                             )}
                         >
                             {footer}
@@ -456,9 +426,8 @@ export function FilterField({
     return (
         <div
             className={cn(
-                'flex h-full flex-col border shadow-[0_16px_40px_-34px_rgba(15,23,42,0.55)]',
-                compact ? 'gap-2.5 rounded-xl p-3' : 'gap-3 rounded-2xl p-3.5',
-                toneStyles.field,
+                'flex h-full min-w-0 flex-col',
+                compact ? 'gap-1.5' : 'gap-2',
                 className,
             )}
             {...props}
@@ -467,10 +436,10 @@ export function FilterField({
                 <Label
                     htmlFor={htmlFor}
                     className={cn(
-                        'flex items-center gap-2 font-semibold text-muted-foreground uppercase',
+                        'flex items-center gap-1.5 font-semibold text-muted-foreground uppercase',
                         compact
-                            ? 'text-[10px] tracking-[0.16em]'
-                            : 'text-[11px] tracking-[0.18em]',
+                            ? 'text-[10px] tracking-[0.14em]'
+                            : 'text-[10px] tracking-[0.16em]',
                     )}
                 >
                     {Icon && (
@@ -488,7 +457,9 @@ export function FilterField({
                     <p
                         className={cn(
                             'text-muted-foreground',
-                            compact ? 'text-[11px] leading-4' : 'text-xs',
+                            compact
+                                ? 'text-[11px] leading-4'
+                                : 'text-[11px] leading-4',
                         )}
                     >
                         {hint}
@@ -496,7 +467,7 @@ export function FilterField({
                 )}
             </div>
 
-            <div className="flex-1">{children}</div>
+            <div className="min-w-0 flex-1">{children}</div>
         </div>
     );
 }
@@ -513,8 +484,8 @@ export function FilterInput({
             className={cn(
                 filterControlClassName,
                 compact
-                    ? 'h-9 rounded-lg px-2.5 text-[13px]'
-                    : 'h-10 rounded-xl px-3 text-sm',
+                    ? 'h-8 rounded-lg px-2.5 text-[13px]'
+                    : 'h-9 rounded-lg px-3 text-sm',
                 toneStyles.control,
                 className,
             )}
@@ -535,8 +506,8 @@ export function FilterSelectTrigger({
             className={cn(
                 filterControlClassName,
                 compact
-                    ? 'h-9 rounded-lg px-2.5 text-[13px]'
-                    : 'h-10 rounded-xl px-3 text-sm',
+                    ? 'h-8 rounded-lg px-2.5 text-[13px]'
+                    : 'h-9 rounded-lg px-3 text-sm',
                 toneStyles.control,
                 className,
             )}
@@ -558,7 +529,9 @@ export function FilterPill({
         <span
             className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border font-medium',
-                compact ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs',
+                compact
+                    ? 'px-2 py-0.5 text-[10px]'
+                    : 'px-2.5 py-0.5 text-[11px]',
                 active ? toneStyles.activePill : toneStyles.inactivePill,
                 className,
             )}

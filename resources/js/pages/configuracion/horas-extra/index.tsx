@@ -14,7 +14,6 @@ import {
     FilterField,
     FilterInput,
     FilterPanel,
-    FilterPill,
     FilterSelectTrigger,
     filterDropdownClassName,
     filterDropdownEmptyClassName,
@@ -238,8 +237,6 @@ export default function HorasExtraIndex({
         });
     }, [empresaId, centroId, empleadoId, mesSeleccionado, anioSeleccionado]);
 
-    const hasActiveFilters =
-        empresaId !== 'all' || centroId !== 'all' || empleadoId !== 'all';
     const mesLabel =
         MESES.find((m) => m.value === mesSeleccionado)?.label ?? '';
 
@@ -312,35 +309,17 @@ export default function HorasExtraIndex({
                     title="Filtros de horas extra"
                     description="Revisa horas extra por empresa, centro, empleado y periodo mensual con un único panel de control."
                     icon={Filter}
-                    tone="amber"
+                    tone="blue"
                     meta={
-                        <>
-                            <FilterPill active={hasActiveFilters}>
-                                {hasActiveFilters
-                                    ? 'Filtros activos'
-                                    : 'Sin filtros'}
-                            </FilterPill>
-                            <FilterPill>{`${registros.length} ${registros.length === 1 ? 'registro' : 'registros'}`}</FilterPill>
-                        </>
-                    }
-                    footer={
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleReset}
-                                    className="gap-2 rounded-xl"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Limpiar
-                                </Button>
-                                <span className="text-xs text-muted-foreground">
-                                    Los filtros se aplican automáticamente.
-                                </span>
-                            </div>
-                            <FilterPill>{`${mesLabel} ${anioSeleccionado}`}</FilterPill>
-                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleReset}
+                            className="gap-2 rounded-xl"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Limpiar
+                        </Button>
                     }
                 >
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

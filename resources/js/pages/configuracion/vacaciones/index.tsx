@@ -6,7 +6,6 @@ import {
     FilterField,
     FilterInput,
     FilterPanel,
-    FilterPill,
     FilterSelectTrigger,
     filterDropdownClassName,
     filterDropdownEmptyClassName,
@@ -329,20 +328,17 @@ export default function VacacionesIndex({
                     description="Elige empleado, periodo y modo de vista antes de abrir el calendario anual o mensual."
                     eyebrow="Planificación"
                     icon={CalendarDays}
-                    tone="teal"
+                    tone="blue"
                     meta={
-                        <>
-                            <FilterPill active={Boolean(selectedEmpleadoId)}>
-                                {selectedEmpleadoId
-                                    ? 'Empleado listo'
-                                    : 'Sin empleado'}
-                            </FilterPill>
-                            <FilterPill>
-                                {modoVista === 'anio'
-                                    ? `Año ${anioSeleccionado}`
-                                    : `${mesLabel} ${anioSeleccionado}`}
-                            </FilterPill>
-                        </>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleReset}
+                            className="gap-2 rounded-xl"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Limpiar
+                        </Button>
                     }
                     footer={
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -378,15 +374,6 @@ export default function VacacionesIndex({
                                 >
                                     <Search className="h-3.5 w-3.5" />
                                     Ver calendario
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleReset}
-                                    className="gap-2 rounded-xl"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Limpiar
                                 </Button>
                             </div>
                         </div>

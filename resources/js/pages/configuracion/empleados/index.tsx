@@ -15,7 +15,6 @@ import { useMemo, useState } from 'react';
 import {
     FilterField,
     FilterPanel,
-    FilterPill,
     FilterSelectTrigger,
 } from '@/components/filter-panel';
 import InputError from '@/components/input-error';
@@ -533,9 +532,6 @@ export default function EmpleadosIndex({
         });
     }, [employees, companyFilter, workCenterFilter]);
 
-    const hasActiveFilters =
-        companyFilter !== 'all' || workCenterFilter !== 'all';
-
     function openEdit(emp: UserType) {
         editForm.setData({
             nombre: emp.name,
@@ -585,6 +581,11 @@ export default function EmpleadosIndex({
         });
     }
 
+    function handleResetFilters() {
+        setCompanyFilter('all');
+        setWorkCenterFilter('all');
+    }
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Empleados" />
@@ -613,34 +614,15 @@ export default function EmpleadosIndex({
                     icon={Building2}
                     tone="blue"
                     meta={
-                        <>
-                            <FilterPill active={hasActiveFilters}>
-                                {hasActiveFilters
-                                    ? 'Filtros activos'
-                                    : 'Sin filtros'}
-                            </FilterPill>
-                            <FilterPill>{`${filteredEmployees.length} ${filteredEmployees.length === 1 ? 'empleado' : 'empleados'}`}</FilterPill>
-                        </>
-                    }
-                    footer={
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <span className="text-xs text-muted-foreground">
-                                La tabla se actualiza en tiempo real al cambiar
-                                los selectores.
-                            </span>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="gap-2 rounded-xl"
-                                onClick={() => {
-                                    setCompanyFilter('all');
-                                    setWorkCenterFilter('all');
-                                }}
-                            >
-                                <X className="h-3.5 w-3.5" />
-                                Limpiar
-                            </Button>
-                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleResetFilters}
+                            className="gap-2 rounded-xl"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Limpiar
+                        </Button>
                     }
                 >
                     <div className="grid gap-3 md:grid-cols-2">

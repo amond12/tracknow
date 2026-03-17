@@ -13,7 +13,6 @@ import {
     FilterField,
     FilterInput,
     FilterPanel,
-    FilterPill,
     FilterSelectTrigger,
     filterDropdownClassName,
     filterDropdownEmptyClassName,
@@ -209,8 +208,6 @@ export default function PdfsIndex({
 
     const mesLabel =
         MESES.find((m) => m.value === mesSeleccionado)?.label ?? '';
-    const hasActiveFilters =
-        empresaId !== 'all' || centroId !== 'all' || empleadoId !== 'all';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -233,35 +230,17 @@ export default function PdfsIndex({
                     title="Filtros de exportación"
                     description="Selecciona el alcance de empleados y el periodo del documento antes de generar los PDFs."
                     icon={Filter}
-                    tone="emerald"
+                    tone="blue"
                     meta={
-                        <>
-                            <FilterPill active={hasActiveFilters}>
-                                {hasActiveFilters
-                                    ? 'Filtros activos'
-                                    : 'Sin filtros'}
-                            </FilterPill>
-                            <FilterPill>{`${resumen.length} ${resumen.length === 1 ? 'empleado' : 'empleados'}`}</FilterPill>
-                        </>
-                    }
-                    footer={
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleReset}
-                                    className="gap-2 rounded-xl"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                    Limpiar
-                                </Button>
-                                <span className="text-xs text-muted-foreground">
-                                    Los filtros se aplican automáticamente.
-                                </span>
-                            </div>
-                            <FilterPill>{`${mesLabel} ${anioSeleccionado}`}</FilterPill>
-                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleReset}
+                            className="gap-2 rounded-xl"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                            Limpiar
+                        </Button>
                     }
                 >
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
