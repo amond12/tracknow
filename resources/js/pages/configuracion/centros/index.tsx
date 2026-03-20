@@ -513,7 +513,7 @@ function CentroForm({
     );
 }
 
-export default function CentrosIndex({ workCenters, companies }: Props) {
+function CentrosPageContent({ workCenters, companies }: Props) {
     const { state: sidebarState, isMobile } = useSidebar();
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<WorkCenterWithCompany | null>(
@@ -581,9 +581,7 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
     }
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Centros de trabajo" />
-
+        <>
             <div className="flex flex-col gap-6 p-6">
                 <div className="flex items-center justify-between">
                     <div>
@@ -833,6 +831,15 @@ export default function CentrosIndex({ workCenters, companies }: Props) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+        </>
+    );
+}
+
+export default function CentrosIndex(props: Props) {
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Centros de trabajo" />
+            <CentrosPageContent {...props} />
         </AppLayout>
     );
 }
