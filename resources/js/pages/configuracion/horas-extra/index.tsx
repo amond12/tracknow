@@ -20,6 +20,7 @@ import {
     filterDropdownListClassName,
     filterDropdownOptionClassName,
 } from '@/components/filter-panel';
+import { PaginationNav } from '@/components/pagination-nav';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -38,7 +39,13 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
-import type { BreadcrumbItem, Company, User, WorkCenter } from '@/types';
+import type {
+    BreadcrumbItem,
+    Company,
+    Paginated,
+    User,
+    WorkCenter,
+} from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
@@ -81,7 +88,7 @@ interface Props {
         company_id: number;
         work_center_id: number;
     })[];
-    registros: RegistroDia[];
+    registros: Paginated<RegistroDia>;
     filters: { empresa_id?: string; centro_id?: string; empleado_id?: string };
     mes: number;
     anio: number;
@@ -136,16 +143,17 @@ export default function HorasExtraIndex({
     companies,
     workCenters,
     employees,
-    registros,
+    registros: registrosPage,
     filters,
     mes,
     anio,
 }: Props) {
+    const registros = registrosPage.data;
+
     // ── Estado de filtros ───────────────────────────────────────────────────────
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
-    const skipAutoFilterRef = useRef(true);
 
     const initialEmpleado = filters.empleado_id
         ? employees.find((e) => e.id === Number(filters.empleado_id))
@@ -180,10 +188,14 @@ export default function HorasExtraIndex({
             ? workCenters
             : workCenters.filter((wc) => wc.company_id === Number(empresaId));
 
-    const availableEmployees =
-        empresaId === 'all'
-            ? employees
-            : employees.filter((e) => e.company_id === Number(empresaId));
+    const availableEmployees = employees.filter((employee) => {
+        const matchesCompany =
+            empresaId === 'all' || employee.company_id === Number(empresaId);
+        const matchesWorkCenter =
+            centroId === 'all' || employee.work_center_id === Number(centroId);
+
+        return matchesCompany && matchesWorkCenter;
+    });
 
     const normalizedSearch = empleadoSearch.trim().toLocaleLowerCase('es-ES');
     const filteredEmployees =
@@ -200,11 +212,39 @@ export default function HorasExtraIndex({
         setCentroId('all');
         setEmpleadoId('all');
         setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleCentroChange(value: string) {
+        setCentroId(value);
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
     }
 
     function handleEmpleadoSearchChange(value: string) {
         setEmpleadoSearch(value);
         setEmpleadoId('all');
+    }
+
+    function handleEmpleadoReset() {
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleEmpleadoSelect(employee: (typeof employees)[number]) {
+        setEmpleadoId(String(employee.id));
+        setEmpleadoSearch(`${employee.name} ${employee.apellido}`);
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleMesChange(value: string) {
+        setMesSeleccionado(value);
+    }
+
+    function handleAnioChange(value: string) {
+        setAnioSeleccionado(value);
     }
 
     function handleReset() {
@@ -216,12 +256,7 @@ export default function HorasExtraIndex({
         setAnioSeleccionado(String(new Date().getFullYear()));
     }
 
-    useEffect(() => {
-        if (skipAutoFilterRef.current) {
-            skipAutoFilterRef.current = false;
-            return;
-        }
-
+    function buildFilterParams(): Record<string, string> {
         const params: Record<string, string> = {
             mes: mesSeleccionado,
             anio: anioSeleccionado,
@@ -230,15 +265,20 @@ export default function HorasExtraIndex({
         if (centroId !== 'all') params.centro_id = centroId;
         if (empleadoId !== 'all') params.empleado_id = empleadoId;
 
+        return params;
+    }
+
+    function handleApplyFilters() {
+        const params = buildFilterParams();
+
         router.get('/horas-extra', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
         });
-    }, [empresaId, centroId, empleadoId, mesSeleccionado, anioSeleccionado]);
+    }
 
-    const mesLabel =
-        MESES.find((m) => m.value === mesSeleccionado)?.label ?? '';
+    const mesLabel = MESES.find((m) => m.value === String(mes))?.label ?? '';
 
     // ── Diálogo añadir ──────────────────────────────────────────────────────────
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -311,15 +351,25 @@ export default function HorasExtraIndex({
                     icon={Filter}
                     tone="blue"
                     meta={
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleReset}
-                            className="gap-2 rounded-xl"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                            Limpiar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleApplyFilters}
+                                className="gap-2 rounded-xl"
+                            >
+                                <Search className="h-3.5 w-3.5" />
+                                Actualizar
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleReset}
+                                className="gap-2 rounded-xl"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar
+                            </Button>
+                        </div>
                     }
                 >
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -363,7 +413,7 @@ export default function HorasExtraIndex({
                         >
                             <Select
                                 value={centroId}
-                                onValueChange={setCentroId}
+                                onValueChange={handleCentroChange}
                                 disabled={availableWorkCenters.length === 0}
                             >
                                 <FilterSelectTrigger id="centro_filter">
@@ -430,13 +480,7 @@ export default function HorasExtraIndex({
                                                     empleadoId === 'all',
                                                     'amber',
                                                 )}
-                                                onClick={() => {
-                                                    setEmpleadoId('all');
-                                                    setEmpleadoSearch('');
-                                                    setShowEmpleadoDropdown(
-                                                        false,
-                                                    );
-                                                }}
+                                                onClick={handleEmpleadoReset}
                                             >
                                                 Todos los empleados
                                             </button>
@@ -475,17 +519,11 @@ export default function HorasExtraIndex({
                                                                     empId,
                                                                 'amber',
                                                             )}
-                                                            onClick={() => {
-                                                                setEmpleadoId(
-                                                                    empId,
-                                                                );
-                                                                setEmpleadoSearch(
-                                                                    `${employee.name} ${employee.apellido}`,
-                                                                );
-                                                                setShowEmpleadoDropdown(
-                                                                    false,
-                                                                );
-                                                            }}
+                                                            onClick={() =>
+                                                                handleEmpleadoSelect(
+                                                                    employee,
+                                                                )
+                                                            }
                                                         >
                                                             {employee.name}{' '}
                                                             {employee.apellido}
@@ -506,7 +544,7 @@ export default function HorasExtraIndex({
                         >
                             <Select
                                 value={mesSeleccionado}
-                                onValueChange={setMesSeleccionado}
+                                onValueChange={handleMesChange}
                             >
                                 <FilterSelectTrigger id="mes_filter">
                                     <SelectValue />
@@ -531,7 +569,7 @@ export default function HorasExtraIndex({
                         >
                             <Select
                                 value={anioSeleccionado}
-                                onValueChange={setAnioSeleccionado}
+                                onValueChange={handleAnioChange}
                             >
                                 <FilterSelectTrigger id="anio_filter">
                                     <SelectValue />
@@ -552,8 +590,8 @@ export default function HorasExtraIndex({
                 <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
                     <div className="flex items-center border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
-                            {registros.length > 0
-                                ? `${registros.length} registro${registros.length !== 1 ? 's' : ''} — ${mesLabel} ${anioSeleccionado}`
+                            {registrosPage.total > 0
+                                ? `${registrosPage.total} registro${registrosPage.total !== 1 ? 's' : ''} — ${mesLabel} ${anio}`
                                 : 'Registros'}
                         </h2>
                     </div>
@@ -623,16 +661,23 @@ export default function HorasExtraIndex({
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                                    onClick={() =>
-                                                        setDeleteId(r.id)
-                                                    }
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
+                                                {r.origen === 'manual' ? (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                                        onClick={() =>
+                                                            setDeleteId(r.id)
+                                                        }
+                                                        title="Eliminar ajuste manual"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Recalculado
+                                                    </span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))
@@ -640,6 +685,11 @@ export default function HorasExtraIndex({
                             </tbody>
                         </table>
                     </div>
+                    <PaginationNav
+                        path="/horas-extra"
+                        pagination={registrosPage}
+                        query={{ ...filters, mes, anio }}
+                    />
                 </div>
             </div>
 
@@ -734,11 +784,12 @@ export default function HorasExtraIndex({
             >
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Eliminar registro</DialogTitle>
+                        <DialogTitle>Eliminar ajuste manual</DialogTitle>
                     </DialogHeader>
                     <p className="text-sm text-muted-foreground">
-                        ¿Estás seguro de que quieres eliminar este registro? La
-                        acción quedará registrada para trazabilidad.
+                        Al eliminar este ajuste manual, el dia se recalculara a
+                        partir de los fichajes existentes. La accion quedara
+                        registrada para trazabilidad.
                     </p>
                     <div className="flex justify-end gap-2 pt-2">
                         <Button

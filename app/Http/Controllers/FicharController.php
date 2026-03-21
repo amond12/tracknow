@@ -277,7 +277,7 @@ class FicharController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if (in_array($user->role, ['empleado', 'encargado'])) {
+        if ($user->isEmployeeLike()) {
             if (! $user->company_id || ! $user->work_center_id) {
                 return null;
             }
@@ -286,7 +286,7 @@ class FicharController extends Controller
             return $user;
         }
 
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             if ($user->work_center_id) {
                 $user->load(['workCenter', 'company']);
 
@@ -314,7 +314,7 @@ class FicharController extends Controller
 
     private function buildSetupMessage(User $user): string
     {
-        if ($user->role !== 'admin') {
+        if (! $user->isAdmin()) {
             return 'No tienes un perfil de empleado asignado.';
         }
 

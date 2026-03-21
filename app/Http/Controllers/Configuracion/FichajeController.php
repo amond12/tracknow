@@ -11,7 +11,9 @@ use App\Models\User;
 use App\Models\WorkCenter;
 use App\Services\HorasExtraService;
 use App\Support\WorkCenterTimezone;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class FichajeController extends Controller
@@ -28,7 +30,7 @@ class FichajeController extends Controller
 
         $employees = User::where(function ($q) use ($companyIds) {
             $q->whereIn('company_id', $companyIds)
-                ->whereIn('role', ['empleado', 'encargado']);
+                ->whereIn('role', User::STAFF_ROLES);
         })
             ->orWhere('id', $user->id)
             ->with('workCenter:id,nombre,timezone')
@@ -64,7 +66,11 @@ class FichajeController extends Controller
             $query->where('fecha', '<=', $request->fecha_hasta);
         }
 
-        $fichajes = $query->orderBy('fecha', 'desc')->orderBy('inicio_jornada', 'desc')->get();
+        $fichajes = $query
+            ->orderBy('fecha', 'desc')
+            ->orderBy('inicio_jornada', 'desc')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('configuracion/fichajes/index', [
             'fichajes' => $fichajes,
@@ -95,6 +101,8 @@ class FichajeController extends Controller
         );
         $valorAnterior = $fichaje->{$campo}?->toJSON();
 
+        $fichaje->loadMissing('pausas');
+
         $payload = [$campo => $nuevaFecha];
         if ($campo === 'inicio_jornada') {
             $payload['fecha'] = $nuevaFecha
@@ -103,7 +111,9 @@ class FichajeController extends Controller
                 ->toDateString();
         }
 
-        $fichaje->update($payload);
+        $fichaje->fill($payload);
+        $this->assertValidFichajeTimeline($fichaje, 'hora');
+        $fichaje->save();
 
         $edicion = EdicionFichaje::where([
             'fichaje_id' => $fichaje->id,
@@ -129,13 +139,9 @@ class FichajeController extends Controller
             ]);
         }
 
-        // Recalcular duración si ambos extremos existen
         $fichaje->refresh()->load('pausas');
-        if ($fichaje->inicio_jornada && $fichaje->fin_jornada) {
-            $totalPausas = $fichaje->pausas->sum('duracion_pausa');
-            $duracion = max(0, (int) $fichaje->fin_jornada->diffInSeconds($fichaje->inicio_jornada, true) - $totalPausas);
-            $fichaje->update(['duracion_jornada' => $duracion]);
-        }
+        $this->syncFichajeEstadoFromPausas($fichaje);
+        $this->recalculateFichajeDuration($fichaje, 'hora');
 
         if ($fichaje->estado === 'finalizada') {
             $service->recalcularParaFichaje($fichaje, $fechaResumenAnterior);
@@ -163,15 +169,23 @@ class FichajeController extends Controller
             ? WorkCenterTimezone::localToUtc($validated['fin_pausa'], $timezone)
             : null;
 
-        $duracionPausa = $finPausa
-            ? max(0, (int) $finPausa->diffInSeconds($inicioPausa, true))
-            : null;
+        $fichaje->loadMissing('pausas');
+        $this->assertPausaCanBeApplied(
+            $fichaje,
+            $inicioPausa,
+            $finPausa,
+            null,
+            'inicio_pausa',
+            'fin_pausa',
+        );
 
         $pausa = Pausa::create([
             'fichaje_id' => $fichaje->id,
             'inicio_pausa' => $inicioPausa,
             'fin_pausa' => $finPausa,
-            'duracion_pausa' => $duracionPausa,
+            'duracion_pausa' => $finPausa
+                ? $this->secondsBetween($inicioPausa, $finPausa)
+                : null,
         ]);
 
         EdicionFichaje::create([
@@ -187,13 +201,9 @@ class FichajeController extends Controller
             'motivo' => $validated['motivo'],
         ]);
 
-        // Recalcular duración de la jornada
         $fichaje->refresh()->load('pausas');
-        if ($fichaje->inicio_jornada && $fichaje->fin_jornada) {
-            $totalPausas = $fichaje->pausas->sum('duracion_pausa');
-            $duracion = max(0, (int) $fichaje->fin_jornada->diffInSeconds($fichaje->inicio_jornada, true) - $totalPausas);
-            $fichaje->update(['duracion_jornada' => $duracion]);
-        }
+        $this->syncFichajeEstadoFromPausas($fichaje);
+        $this->recalculateFichajeDuration($fichaje, 'inicio_pausa');
 
         if ($fichaje->estado === 'finalizada') {
             app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
@@ -224,6 +234,19 @@ class FichajeController extends Controller
         );
         $valorAnterior = $pausa->{$campo}?->toJSON();
 
+        $inicioPausa = $campo === 'inicio_pausa' ? $nuevaFecha : $pausa->inicio_pausa;
+        $finPausa = $campo === 'fin_pausa' ? $nuevaFecha : $pausa->fin_pausa;
+
+        $fichaje->loadMissing('pausas');
+        $this->assertPausaCanBeApplied(
+            $fichaje,
+            $inicioPausa,
+            $finPausa,
+            $pausa->id,
+            'hora',
+            'hora',
+        );
+
         $pausa->update([$campo => $nuevaFecha]);
 
         $edicion = EdicionFichaje::where([
@@ -250,20 +273,12 @@ class FichajeController extends Controller
             ]);
         }
 
-        // Recalcular duración de la pausa
         $pausa->refresh();
-        if ($pausa->inicio_pausa && $pausa->fin_pausa) {
-            $duracionPausa = max(0, (int) \Carbon\Carbon::parse($pausa->fin_pausa)->diffInSeconds(\Carbon\Carbon::parse($pausa->inicio_pausa), true));
-            $pausa->update(['duracion_pausa' => $duracionPausa]);
-        }
+        $this->recalculatePausaDuration($pausa, 'hora');
 
-        // Recalcular duración de la jornada
         $fichaje->refresh()->load('pausas');
-        if ($fichaje->inicio_jornada && $fichaje->fin_jornada) {
-            $totalPausas = $fichaje->pausas->sum('duracion_pausa');
-            $duracion = max(0, (int) $fichaje->fin_jornada->diffInSeconds($fichaje->inicio_jornada, true) - $totalPausas);
-            $fichaje->update(['duracion_jornada' => $duracion]);
-        }
+        $this->syncFichajeEstadoFromPausas($fichaje);
+        $this->recalculateFichajeDuration($fichaje, 'hora');
 
         if ($fichaje->estado === 'finalizada') {
             app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
@@ -277,7 +292,7 @@ class FichajeController extends Controller
         $this->autorizarFichaje($request, $fichaje);
 
         if ($fichaje->estado === 'finalizada') {
-            abort(422, 'El fichaje ya está finalizado.');
+            abort(422, 'El fichaje ya esta finalizado.');
         }
 
         $validated = $request->validate([
@@ -286,14 +301,19 @@ class FichajeController extends Controller
 
         $ahora = WorkCenterTimezone::nowUtc();
 
-        // Si estaba en pausa, cerrar la pausa activa
         if ($fichaje->estado === 'pausa') {
             $pausaActiva = $fichaje->pausas()->whereNull('fin_pausa')->latest()->first();
             if ($pausaActiva) {
-                $duracionPausa = max(0, (int) $ahora->diffInSeconds(\Carbon\Carbon::parse($pausaActiva->inicio_pausa), true));
+                $this->assertChronological(
+                    $pausaActiva->inicio_pausa,
+                    $ahora,
+                    'motivo',
+                    'La pausa activa debe comenzar antes de poder finalizarla.',
+                );
+
                 $pausaActiva->update([
                     'fin_pausa' => $ahora,
-                    'duracion_pausa' => $duracionPausa,
+                    'duracion_pausa' => $this->secondsBetween($pausaActiva->inicio_pausa, $ahora),
                 ]);
 
                 EdicionFichaje::create([
@@ -309,8 +329,19 @@ class FichajeController extends Controller
         }
 
         $fichaje->refresh()->load('pausas');
-        $totalPausas = $fichaje->pausas->sum('duracion_pausa');
-        $duracionJornada = max(0, (int) $ahora->diffInSeconds($fichaje->inicio_jornada, true) - $totalPausas);
+        $this->assertChronological(
+            $fichaje->inicio_jornada,
+            $ahora,
+            'motivo',
+            'La jornada debe comenzar antes de poder finalizarla.',
+        );
+
+        $fichaje->fill([
+            'fin_jornada' => $ahora,
+            'estado' => 'finalizada',
+        ]);
+        $this->assertValidFichajeTimeline($fichaje, 'motivo');
+        $duracionJornada = $this->calculateFichajeDurationFromModel($fichaje, 'motivo');
 
         $fichaje->update([
             'fin_jornada' => $ahora,
@@ -351,8 +382,12 @@ class FichajeController extends Controller
         ]);
 
         $empleado = User::where('id', $validated['employee_id'])
-            ->whereIn('company_id', $companyIds)
-            ->whereIn('role', ['empleado', 'encargado'])
+            ->where(function ($query) use ($companyIds, $user) {
+                $query->where(function ($staffQuery) use ($companyIds) {
+                    $staffQuery->whereIn('company_id', $companyIds)
+                        ->whereIn('role', User::STAFF_ROLES);
+                })->orWhere('id', $user->id);
+            })
             ->with('workCenter:id,timezone')
             ->first();
 
@@ -372,7 +407,23 @@ class FichajeController extends Controller
             : null;
         $fecha = $inicioJornada->copy()->setTimezone($timezone)->toDateString();
 
-        $estado = $finJornada ? 'finalizada' : 'activa';
+        $this->assertChronological(
+            $inicioJornada,
+            $finJornada,
+            'fin_jornada',
+            'La hora de fin debe ser posterior a la de inicio.',
+        );
+
+        $pausasNormalizadas = $this->normalizeDraftPausas(
+            $validated['pausas'] ?? [],
+            $timezone,
+            $inicioJornada,
+            $finJornada,
+        );
+        $hayPausaAbierta = collect($pausasNormalizadas)->contains(
+            fn (array $pausa) => $pausa['fin'] === null,
+        );
+        $estado = $finJornada ? 'finalizada' : ($hayPausaAbierta ? 'pausa' : 'activa');
 
         $fichaje = Fichaje::create([
             'user_id' => $empleado->id,
@@ -384,41 +435,25 @@ class FichajeController extends Controller
             'estado' => $estado,
         ]);
 
-        $totalPausas = 0;
         $pausasSnapshot = [];
 
-        foreach ($validated['pausas'] ?? [] as $pausaData) {
-            $inicioPausa = WorkCenterTimezone::localToUtc(
-                $pausaData['inicio_pausa'],
-                $timezone,
-            );
-            $finPausa = ! empty($pausaData['fin_pausa'])
-                ? WorkCenterTimezone::localToUtc($pausaData['fin_pausa'], $timezone)
-                : null;
-
-            $duracionPausa = $finPausa
-                ? max(0, (int) $finPausa->diffInSeconds($inicioPausa, true))
-                : null;
-
+        foreach ($pausasNormalizadas as $pausaData) {
             Pausa::create([
                 'fichaje_id' => $fichaje->id,
-                'inicio_pausa' => $inicioPausa,
-                'fin_pausa' => $finPausa,
-                'duracion_pausa' => $duracionPausa,
+                'inicio_pausa' => $pausaData['inicio'],
+                'fin_pausa' => $pausaData['fin'],
+                'duracion_pausa' => $pausaData['duracion'],
             ]);
 
-            $totalPausas += $duracionPausa ?? 0;
-
             $pausasSnapshot[] = [
-                'inicio_pausa' => $inicioPausa->toJSON(),
-                'fin_pausa' => $finPausa?->toJSON(),
+                'inicio_pausa' => $pausaData['inicio']->toJSON(),
+                'fin_pausa' => $pausaData['fin']?->toJSON(),
             ];
         }
 
         if ($finJornada) {
-            $duracionJornada = max(0, (int) $finJornada->diffInSeconds($inicioJornada, true) - $totalPausas);
-            $fichaje->update(['duracion_jornada' => $duracionJornada]);
             $fichaje->refresh()->load('pausas');
+            $this->recalculateFichajeDuration($fichaje, 'fin_jornada');
             app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
         }
 
@@ -468,13 +503,9 @@ class FichajeController extends Controller
 
         $pausa->delete();
 
-        // Recalcular duración de la jornada
         $fichaje->refresh()->load('pausas');
-        if ($fichaje->inicio_jornada && $fichaje->fin_jornada) {
-            $totalPausas = $fichaje->pausas->sum('duracion_pausa');
-            $duracion = max(0, (int) $fichaje->fin_jornada->diffInSeconds($fichaje->inicio_jornada, true) - $totalPausas);
-            $fichaje->update(['duracion_jornada' => $duracion]);
-        }
+        $this->syncFichajeEstadoFromPausas($fichaje);
+        $this->recalculateFichajeDuration($fichaje, 'motivo');
 
         if ($fichaje->estado === 'finalizada') {
             app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
@@ -501,7 +532,6 @@ class FichajeController extends Controller
             'motivo' => $validated['motivo'],
         ]);
 
-        // Capturar datos antes de borrar para recalcular tras el soft-delete
         $userId = $fichaje->user_id;
         $service = app(HorasExtraService::class);
         $fechaResumenAnterior = $service->fechaResumenParaFichaje($fichaje);
@@ -528,5 +558,336 @@ class FichajeController extends Controller
         if (! $pertenece) {
             abort(403);
         }
+    }
+
+    private function normalizeDraftPausas(
+        array $pausas,
+        string $timezone,
+        Carbon $inicioJornada,
+        ?Carbon $finJornada,
+    ): array {
+        $draftPausas = [];
+
+        foreach ($pausas as $index => $pausaData) {
+            $inicioPausa = WorkCenterTimezone::localToUtc(
+                $pausaData['inicio_pausa'],
+                $timezone,
+            );
+            $finPausa = ! empty($pausaData['fin_pausa'])
+                ? WorkCenterTimezone::localToUtc($pausaData['fin_pausa'], $timezone)
+                : null;
+
+            $this->assertPauseFitsWithinJornada(
+                $inicioPausa,
+                $finPausa,
+                $inicioJornada,
+                $finJornada,
+                "pausas.{$index}.inicio_pausa",
+                "pausas.{$index}.fin_pausa",
+            );
+
+            $draftPausas[] = [
+                'inicio' => $inicioPausa,
+                'fin' => $finPausa,
+                'duracion' => $finPausa
+                    ? $this->secondsBetween($inicioPausa, $finPausa)
+                    : null,
+                'start_field' => "pausas.{$index}.inicio_pausa",
+            ];
+        }
+
+        usort(
+            $draftPausas,
+            fn (array $left, array $right) => $left['inicio']->getTimestamp() <=> $right['inicio']->getTimestamp(),
+        );
+
+        for ($index = 1; $index < count($draftPausas); $index++) {
+            $previous = $draftPausas[$index - 1];
+            $current = $draftPausas[$index];
+
+            if ($this->intervalsOverlap(
+                $previous['inicio'],
+                $previous['fin'],
+                $current['inicio'],
+                $current['fin'],
+            )) {
+                $this->validationError(
+                    $current['start_field'],
+                    'Las pausas no pueden solaparse entre si.',
+                );
+            }
+        }
+
+        return $draftPausas;
+    }
+
+    private function assertValidFichajeTimeline(Fichaje $fichaje, string $errorField): void
+    {
+        $inicioJornada = $fichaje->inicio_jornada;
+        $finJornada = $fichaje->fin_jornada;
+
+        if (! $inicioJornada) {
+            return;
+        }
+
+        $this->assertChronological(
+            $inicioJornada,
+            $finJornada,
+            $errorField,
+            'La hora de fin debe ser posterior a la de inicio.',
+        );
+
+        foreach ($fichaje->pausas as $pausa) {
+            $this->assertPauseFitsWithinJornada(
+                $pausa->inicio_pausa,
+                $pausa->fin_pausa,
+                $inicioJornada,
+                $finJornada,
+                $errorField,
+                $errorField,
+            );
+        }
+
+        $pausasOrdenadas = $fichaje->pausas
+            ->sortBy(fn (Pausa $pausa) => $pausa->inicio_pausa?->getTimestamp() ?? PHP_INT_MIN)
+            ->values();
+
+        for ($index = 1; $index < $pausasOrdenadas->count(); $index++) {
+            $previous = $pausasOrdenadas[$index - 1];
+            $current = $pausasOrdenadas[$index];
+
+            if ($this->intervalsOverlap(
+                $previous->inicio_pausa,
+                $previous->fin_pausa,
+                $current->inicio_pausa,
+                $current->fin_pausa,
+            )) {
+                $this->validationError(
+                    $errorField,
+                    'Las pausas no pueden solaparse entre si.',
+                );
+            }
+        }
+    }
+
+    private function assertPausaCanBeApplied(
+        Fichaje $fichaje,
+        Carbon $inicioPausa,
+        ?Carbon $finPausa,
+        ?int $ignorePausaId,
+        string $startErrorField,
+        string $endErrorField,
+    ): void {
+        $this->assertPauseFitsWithinJornada(
+            $inicioPausa,
+            $finPausa,
+            $fichaje->inicio_jornada,
+            $fichaje->fin_jornada,
+            $startErrorField,
+            $endErrorField,
+        );
+
+        foreach ($fichaje->pausas as $pausaExistente) {
+            if ($ignorePausaId !== null && $pausaExistente->id === $ignorePausaId) {
+                continue;
+            }
+
+            if ($this->intervalsOverlap(
+                $pausaExistente->inicio_pausa,
+                $pausaExistente->fin_pausa,
+                $inicioPausa,
+                $finPausa,
+            )) {
+                $this->validationError(
+                    $startErrorField,
+                    'Las pausas no pueden solaparse entre si.',
+                );
+            }
+        }
+    }
+
+    private function assertPauseFitsWithinJornada(
+        ?Carbon $inicioPausa,
+        ?Carbon $finPausa,
+        ?Carbon $inicioJornada,
+        ?Carbon $finJornada,
+        string $startErrorField,
+        string $endErrorField,
+    ): void {
+        if (! $inicioPausa || ! $inicioJornada) {
+            return;
+        }
+
+        $this->assertChronological(
+            $inicioPausa,
+            $finPausa,
+            $endErrorField,
+            'El fin de la pausa debe ser posterior al inicio.',
+        );
+
+        if ($inicioPausa->lt($inicioJornada)) {
+            $this->validationError(
+                $startErrorField,
+                'La pausa debe comenzar dentro de la jornada.',
+            );
+        }
+
+        if ($finJornada === null) {
+            return;
+        }
+
+        if ($inicioPausa->gte($finJornada)) {
+            $this->validationError(
+                $startErrorField,
+                'La pausa debe comenzar antes del fin de la jornada.',
+            );
+        }
+
+        if ($finPausa === null) {
+            $this->validationError(
+                $endErrorField,
+                'Debes indicar el fin de la pausa dentro de una jornada finalizada.',
+            );
+        }
+
+        if ($finPausa->gt($finJornada)) {
+            $this->validationError(
+                $endErrorField,
+                'La pausa debe terminar dentro de la jornada.',
+            );
+        }
+    }
+
+    private function syncFichajeEstadoFromPausas(Fichaje $fichaje): void
+    {
+        $estado = $fichaje->fin_jornada
+            ? 'finalizada'
+            : ($fichaje->pausas->contains(fn (Pausa $pausa) => $pausa->fin_pausa === null)
+                ? 'pausa'
+                : 'activa');
+
+        if ($fichaje->estado !== $estado) {
+            $fichaje->update(['estado' => $estado]);
+        }
+    }
+
+    private function recalculatePausaDuration(Pausa $pausa, string $errorField): void
+    {
+        if (! $pausa->inicio_pausa || ! $pausa->fin_pausa) {
+            $pausa->update(['duracion_pausa' => null]);
+
+            return;
+        }
+
+        $this->assertChronological(
+            $pausa->inicio_pausa,
+            $pausa->fin_pausa,
+            $errorField,
+            'El fin de la pausa debe ser posterior al inicio.',
+        );
+
+        $pausa->update([
+            'duracion_pausa' => $this->secondsBetween($pausa->inicio_pausa, $pausa->fin_pausa),
+        ]);
+    }
+
+    private function recalculateFichajeDuration(Fichaje $fichaje, string $errorField): void
+    {
+        if (! $fichaje->inicio_jornada || ! $fichaje->fin_jornada) {
+            $fichaje->update(['duracion_jornada' => null]);
+
+            return;
+        }
+
+        $fichaje->loadMissing('pausas');
+        $this->assertValidFichajeTimeline($fichaje, $errorField);
+
+        $fichaje->update([
+            'duracion_jornada' => $this->calculateFichajeDurationFromModel($fichaje, $errorField),
+        ]);
+    }
+
+    private function calculateFichajeDurationFromModel(Fichaje $fichaje, string $errorField): int
+    {
+        $inicioJornada = $fichaje->inicio_jornada;
+        $finJornada = $fichaje->fin_jornada;
+
+        if (! $inicioJornada || ! $finJornada) {
+            return 0;
+        }
+
+        $this->assertChronological(
+            $inicioJornada,
+            $finJornada,
+            $errorField,
+            'La hora de fin debe ser posterior a la de inicio.',
+        );
+
+        $duracion = $this->secondsBetween($inicioJornada, $finJornada)
+            - $this->totalPauseSeconds($fichaje->pausas);
+
+        if ($duracion < 0) {
+            $this->validationError(
+                $errorField,
+                'La suma de pausas no puede superar la duracion total de la jornada.',
+            );
+        }
+
+        return $duracion;
+    }
+
+    private function totalPauseSeconds(iterable $pausas): int
+    {
+        $total = 0;
+
+        foreach ($pausas as $pausa) {
+            if (! $pausa->inicio_pausa || ! $pausa->fin_pausa) {
+                continue;
+            }
+
+            $total += $this->secondsBetween($pausa->inicio_pausa, $pausa->fin_pausa);
+        }
+
+        return $total;
+    }
+
+    private function intervalsOverlap(
+        ?Carbon $inicioA,
+        ?Carbon $finA,
+        ?Carbon $inicioB,
+        ?Carbon $finB,
+    ): bool {
+        if (! $inicioA || ! $inicioB) {
+            return false;
+        }
+
+        $finATimestamp = $finA?->getTimestamp() ?? PHP_INT_MAX;
+        $finBTimestamp = $finB?->getTimestamp() ?? PHP_INT_MAX;
+
+        return $inicioA->getTimestamp() < $finBTimestamp
+            && $inicioB->getTimestamp() < $finATimestamp;
+    }
+
+    private function secondsBetween(Carbon $inicio, Carbon $fin): int
+    {
+        return $fin->getTimestamp() - $inicio->getTimestamp();
+    }
+
+    private function assertChronological(
+        ?Carbon $inicio,
+        ?Carbon $fin,
+        string $errorField,
+        string $message,
+    ): void {
+        if ($inicio && $fin && $fin->lte($inicio)) {
+            $this->validationError($errorField, $message);
+        }
+    }
+
+    private function validationError(string $field, string $message): never
+    {
+        throw ValidationException::withMessages([
+            $field => $message,
+        ]);
     }
 }

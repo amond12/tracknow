@@ -40,10 +40,12 @@ class PdfController extends Controller
         $mes = (int) $request->input('mes', now()->month);
         $anio = (int) $request->input('anio', now()->year);
 
-        $query = User::where(function ($query) use ($companyIds) {
-            $query->whereIn('company_id', $companyIds)
-                ->whereIn('role', ['empleado', 'encargado']);
-        })->orWhere('id', $user->id);
+        $query = User::where(function ($query) use ($companyIds, $user) {
+            $query->where(function ($query) use ($companyIds) {
+                $query->whereIn('company_id', $companyIds)
+                    ->whereIn('role', ['empleado', 'encargado']);
+            })->orWhere('id', $user->id);
+        });
 
         if ($request->filled('empresa_id')) {
             $query->where('company_id', $request->empresa_id);
@@ -57,23 +59,25 @@ class PdfController extends Controller
             $query->where('id', $request->empleado_id);
         }
 
-        $empleadosFiltrados = $query
+        $resumen = $query
             ->with(['fichajes' => function ($query) use ($mes, $anio) {
                 $query->whereMonth('fecha', $mes)
                     ->whereYear('fecha', $anio)
                     ->orderBy('fecha');
             }])
-            ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni']);
-
-        $resumen = $empleadosFiltrados->map(fn ($employee) => [
-            'id' => $employee->id,
-            'nombre' => $employee->name,
-            'apellido' => $employee->apellido,
-            'dni' => $employee->dni,
-            'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
-            'total_dias' => $employee->fichajes->count(),
-            'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
-        ])->values();
+            ->orderBy('apellido')
+            ->orderBy('name')
+            ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
+            ->withQueryString()
+            ->through(fn ($employee) => [
+                'id' => $employee->id,
+                'nombre' => $employee->name,
+                'apellido' => $employee->apellido,
+                'dni' => $employee->dni,
+                'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
+                'total_dias' => $employee->fichajes->count(),
+                'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
+            ]);
 
         return Inertia::render('configuracion/pdfs/index', [
             'companies' => $companies,

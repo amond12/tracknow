@@ -2,18 +2,21 @@
 
 use App\Models\User;
 
-test('employees cannot access configuration pages', function (string $routeName) {
+test('restricted staff cannot access configuration pages', function (string $role, string $routeName) {
     $employee = User::factory()->create([
-        'role' => 'empleado',
+        'role' => $role,
     ]);
 
     $this->actingAs($employee)
         ->get(route($routeName))
         ->assertForbidden();
 })->with([
-    'configuracion.empresas.index',
-    'configuracion.centros.index',
-    'configuracion.empleados.index',
+    ['empleado', 'configuracion.empresas.index'],
+    ['empleado', 'configuracion.centros.index'],
+    ['empleado', 'configuracion.empleados.index'],
+    ['encargado', 'configuracion.empresas.index'],
+    ['encargado', 'configuracion.centros.index'],
+    ['encargado', 'configuracion.empleados.index'],
 ]);
 
 test('admins can access configuration pages', function (string $routeName) {

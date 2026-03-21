@@ -28,6 +28,7 @@ import {
     filterDropdownListClassName,
     filterDropdownOptionClassName,
 } from '@/components/filter-panel';
+import { PaginationNav } from '@/components/pagination-nav';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -62,6 +63,7 @@ import type {
     Company,
     EdicionFichaje,
     Fichaje,
+    Paginated,
     Pausa,
     User,
     WorkCenter,
@@ -83,7 +85,7 @@ type FichajeConRelaciones = Fichaje & {
 };
 
 interface Props {
-    fichajes: FichajeConRelaciones[];
+    fichajes: Paginated<FichajeConRelaciones>;
     companies: Pick<Company, 'id' | 'nombre'>[];
     workCenters: (Pick<WorkCenter, 'id' | 'nombre'> & { company_id: number })[];
     employees: (Pick<User, 'id' | 'name' | 'apellido' | 'remoto'> & {
@@ -206,25 +208,25 @@ function HoraEditable({
                     <span className="font-mono text-base font-medium">
                         {valor ? formatTimeInTimeZone(valor, timeZone) : '—'}
                     </span>
-                    {valor && (
-                        <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6 hover:bg-primary/10 hover:text-primary"
-                            onClick={() => {
-                                setHora(
-                                    getTimeInputValueInTimeZone(
-                                        valor,
-                                        timeZone,
-                                    ),
-                                );
-                                setEditing(true);
-                            }}
-                            title="Editar"
-                        >
-                            <Pencil className="h-3 w-3" />
-                        </Button>
-                    )}
+                    <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 hover:bg-primary/10 hover:text-primary"
+                        onClick={() => {
+                            setHora(
+                                valor
+                                    ? getTimeInputValueInTimeZone(
+                                          valor,
+                                          timeZone,
+                                      )
+                                    : '',
+                            );
+                            setEditing(true);
+                        }}
+                        title={valor ? 'Editar' : 'Añadir hora'}
+                    >
+                        <Pencil className="h-3 w-3" />
+                    </Button>
                 </div>
             ) : (
                 <form
@@ -917,6 +919,22 @@ function NuevoFichajeModal({
                                             }
                                             className="h-8 text-sm"
                                         />
+                                        {(errors as Record<string, string>)[
+                                            `pausas.${idx}.fin_pausa`
+                                        ] && (
+                                            <p className="text-xs text-destructive">
+                                                {
+                                                    (
+                                                        errors as Record<
+                                                            string,
+                                                            string
+                                                        >
+                                                    )[
+                                                        `pausas.${idx}.fin_pausa`
+                                                    ]
+                                                }
+                                            </p>
+                                        )}
                                     </div>
                                     <Button
                                         type="button"
@@ -1504,7 +1522,6 @@ export default function FichajesIndex({
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
-    const skipAutoFilterRef = useRef(true);
     const initialEmpleado = filters.empleado_id
         ? employees.find(
               (employee) => employee.id === Number(filters.empleado_id),
@@ -1543,10 +1560,14 @@ export default function FichajesIndex({
             ? workCenters
             : workCenters.filter((wc) => wc.company_id === Number(empresaId));
 
-    const availableEmployees =
-        empresaId === 'all'
-            ? employees
-            : employees.filter((e) => e.company_id === Number(empresaId));
+    const availableEmployees = employees.filter((employee) => {
+        const matchesCompany =
+            empresaId === 'all' || employee.company_id === Number(empresaId);
+        const matchesWorkCenter =
+            centroId === 'all' || employee.work_center_id === Number(centroId);
+
+        return matchesCompany && matchesWorkCenter;
+    });
     const normalizedEmpleadoSearch = empleadoSearch
         .trim()
         .toLocaleLowerCase('es-ES');
@@ -1564,11 +1585,39 @@ export default function FichajesIndex({
         setCentroId('all');
         setEmpleadoId('all');
         setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleCentroChange(value: string) {
+        setCentroId(value);
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
     }
 
     function handleEmpleadoSearchChange(value: string) {
         setEmpleadoSearch(value);
         setEmpleadoId('all');
+    }
+
+    function handleEmpleadoReset() {
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleEmpleadoSelect(employee: (typeof employees)[number]) {
+        setEmpleadoId(String(employee.id));
+        setEmpleadoSearch(`${employee.name} ${employee.apellido}`);
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleFechaDesdeChange(value: string) {
+        setFechaDesde(value);
+    }
+
+    function handleFechaHastaChange(value: string) {
+        setFechaHasta(value);
     }
 
     function handleReset() {
@@ -1580,12 +1629,7 @@ export default function FichajesIndex({
         setFechaHasta('');
     }
 
-    useEffect(() => {
-        if (skipAutoFilterRef.current) {
-            skipAutoFilterRef.current = false;
-            return;
-        }
-
+    function buildFilterParams(): Record<string, string> {
         const params: Record<string, string> = {};
         if (empresaId !== 'all') params.empresa_id = empresaId;
         if (centroId !== 'all') params.centro_id = centroId;
@@ -1593,16 +1637,22 @@ export default function FichajesIndex({
         if (fechaDesde) params.fecha_desde = fechaDesde;
         if (fechaHasta) params.fecha_hasta = fechaHasta;
 
+        return params;
+    }
+
+    function handleApplyFilters() {
+        const params = buildFilterParams();
+
         router.get('/fichajes', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
         });
-    }, [empresaId, centroId, empleadoId, fechaDesde, fechaHasta]);
+    }
 
     const fichajeSeleccionado =
         selectedId != null
-            ? (fichajes.find((f) => f.id === selectedId) ?? null)
+            ? (fichajes.data.find((f) => f.id === selectedId) ?? null)
             : null;
 
     const estadoBadge = {
@@ -1652,19 +1702,29 @@ export default function FichajesIndex({
                 {/* Filtros */}
                 <FilterPanel
                     title="Filtros de registros"
-                    description="Ajusta empresa, centro, empleado y rango de fechas. Los cambios se aplican al instante."
+                    description="Ajusta empresa, centro, empleado y rango de fechas, y pulsa Actualizar para aplicar los cambios."
                     icon={Filter}
                     tone="blue"
                     meta={
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleReset}
-                            className="gap-2 rounded-xl"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                            Limpiar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleApplyFilters}
+                                className="gap-2 rounded-xl"
+                            >
+                                <Search className="h-3.5 w-3.5" />
+                                Actualizar
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleReset}
+                                className="gap-2 rounded-xl"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar
+                            </Button>
+                        </div>
                     }
                 >
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -1708,7 +1768,7 @@ export default function FichajesIndex({
                         >
                             <Select
                                 value={centroId}
-                                onValueChange={setCentroId}
+                                onValueChange={handleCentroChange}
                                 disabled={availableWorkCenters.length === 0}
                             >
                                 <FilterSelectTrigger id="centro_filter">
@@ -1775,13 +1835,7 @@ export default function FichajesIndex({
                                                     empleadoId === 'all',
                                                     'sky',
                                                 )}
-                                                onClick={() => {
-                                                    setEmpleadoId('all');
-                                                    setEmpleadoSearch('');
-                                                    setShowEmpleadoDropdown(
-                                                        false,
-                                                    );
-                                                }}
+                                                onClick={handleEmpleadoReset}
                                             >
                                                 Todos los empleados
                                             </button>
@@ -1820,17 +1874,11 @@ export default function FichajesIndex({
                                                                     employeeId,
                                                                 'sky',
                                                             )}
-                                                            onClick={() => {
-                                                                setEmpleadoId(
-                                                                    employeeId,
-                                                                );
-                                                                setEmpleadoSearch(
-                                                                    `${employee.name} ${employee.apellido}`,
-                                                                );
-                                                                setShowEmpleadoDropdown(
-                                                                    false,
-                                                                );
-                                                            }}
+                                                            onClick={() =>
+                                                                handleEmpleadoSelect(
+                                                                    employee,
+                                                                )
+                                                            }
                                                         >
                                                             {employee.name}{' '}
                                                             {employee.apellido}
@@ -1853,7 +1901,9 @@ export default function FichajesIndex({
                                 id="fecha_desde"
                                 type="date"
                                 value={fechaDesde}
-                                onChange={(e) => setFechaDesde(e.target.value)}
+                                onChange={(e) =>
+                                    handleFechaDesdeChange(e.target.value)
+                                }
                             />
                         </FilterField>
 
@@ -1866,7 +1916,9 @@ export default function FichajesIndex({
                                 id="fecha_hasta"
                                 type="date"
                                 value={fechaHasta}
-                                onChange={(e) => setFechaHasta(e.target.value)}
+                                onChange={(e) =>
+                                    handleFechaHastaChange(e.target.value)
+                                }
                             />
                         </FilterField>
                     </div>
@@ -1876,8 +1928,8 @@ export default function FichajesIndex({
                 <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
                     <div className="flex items-center border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
-                            {fichajes.length > 0
-                                ? `${fichajes.length} registro${fichajes.length !== 1 ? 's' : ''}`
+                            {fichajes.total > 0
+                                ? `${fichajes.total} registro${fichajes.total !== 1 ? 's' : ''}`
                                 : 'Registros'}
                         </h2>
                     </div>
@@ -1912,7 +1964,7 @@ export default function FichajesIndex({
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {fichajes.length === 0 ? (
+                                {fichajes.data.length === 0 ? (
                                     <tr>
                                         <td
                                             colSpan={8}
@@ -1931,7 +1983,7 @@ export default function FichajesIndex({
                                         </td>
                                     </tr>
                                 ) : (
-                                    fichajes.map((f) => {
+                                    fichajes.data.map((f) => {
                                         const totalPausas = f.pausas.reduce(
                                             (acc, p) =>
                                                 acc + (p.duracion_pausa ?? 0),
@@ -2081,6 +2133,11 @@ export default function FichajesIndex({
                             </tbody>
                         </table>
                     </div>
+                    <PaginationNav
+                        path="/fichajes"
+                        pagination={fichajes}
+                        query={filters}
+                    />
                 </div>
             </div>
 

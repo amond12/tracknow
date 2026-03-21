@@ -2,39 +2,39 @@
 
 use App\Models\User;
 
-test('employees are redirected away from dashboard', function () {
+test('restricted staff are redirected away from dashboard', function (string $role) {
     $employee = User::factory()->create([
-        'role' => 'empleado',
+        'role' => $role,
     ]);
 
     $this->actingAs($employee)
         ->get(route('dashboard'))
         ->assertRedirect(route('fichar'));
-});
+})->with(['empleado', 'encargado']);
 
-test('employees can enter settings but are redirected away from profile', function () {
+test('restricted staff can enter settings but are redirected away from profile', function (string $role) {
     $employee = User::factory()->create([
-        'role' => 'empleado',
+        'role' => $role,
     ]);
 
     $this->actingAs($employee)
         ->get(route('settings'))
         ->assertRedirect('/settings/password');
-});
+})->with(['empleado', 'encargado']);
 
-test('employees cannot access profile settings page', function () {
+test('restricted staff cannot access profile settings page', function (string $role) {
     $employee = User::factory()->create([
-        'role' => 'empleado',
+        'role' => $role,
     ]);
 
     $this->actingAs($employee)
         ->get(route('profile.edit'))
         ->assertForbidden();
-});
+})->with(['empleado', 'encargado']);
 
-test('employees cannot update profile settings', function () {
+test('restricted staff cannot update profile settings', function (string $role) {
     $employee = User::factory()->create([
-        'role' => 'empleado',
+        'role' => $role,
     ]);
 
     $this->actingAs($employee)
@@ -43,11 +43,11 @@ test('employees cannot update profile settings', function () {
             'email' => 'empleado@example.com',
         ])
         ->assertForbidden();
-});
+})->with(['empleado', 'encargado']);
 
-test('employees cannot delete own account', function () {
+test('restricted staff cannot delete own account', function (string $role) {
     $employee = User::factory()->create([
-        'role' => 'empleado',
+        'role' => $role,
     ]);
 
     $this->actingAs($employee)
@@ -55,7 +55,7 @@ test('employees cannot delete own account', function () {
             'password' => 'password',
         ])
         ->assertForbidden();
-});
+})->with(['empleado', 'encargado']);
 
 test('admins can access dashboard and profile settings page', function () {
     $admin = User::factory()->create([

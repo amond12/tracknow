@@ -15,6 +15,17 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_EMPLEADO = 'empleado';
+
+    public const ROLE_ENCARGADO = 'encargado';
+
+    public const STAFF_ROLES = [
+        self::ROLE_EMPLEADO,
+        self::ROLE_ENCARGADO,
+    ];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -119,5 +130,25 @@ class User extends Authenticatable
         ];
 
         return (int) round(($map[$fecha->dayOfWeekIso] ?? 0) * 3600);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isEmpleado(): bool
+    {
+        return $this->role === self::ROLE_EMPLEADO;
+    }
+
+    public function isEncargado(): bool
+    {
+        return $this->role === self::ROLE_ENCARGADO;
+    }
+
+    public function isEmployeeLike(): bool
+    {
+        return in_array($this->role, self::STAFF_ROLES, true);
     }
 }

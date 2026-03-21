@@ -26,7 +26,7 @@ class HorasExtraController extends Controller
 
         $employees = User::where(function ($q) use ($companyIds) {
             $q->whereIn('company_id', $companyIds)
-                ->whereIn('role', ['empleado', 'encargado']);
+                ->whereIn('role', User::STAFF_ROLES);
         })
             ->orWhere('id', $user->id)
             ->orderBy('apellido')
@@ -43,7 +43,7 @@ class HorasExtraController extends Controller
             ->whereHas('user', function ($q) use ($companyIds, $user) {
                 $q->where(function ($q2) use ($companyIds) {
                     $q2->whereIn('company_id', $companyIds)
-                        ->whereIn('role', ['empleado', 'encargado']);
+                        ->whereIn('role', User::STAFF_ROLES);
                 })->orWhere('id', $user->id);
             })
             ->whereBetween('fecha', [$fechaInicio->toDateString(), $fechaFin->toDateString()]);
@@ -60,18 +60,22 @@ class HorasExtraController extends Controller
             $query->where('user_id', $request->empleado_id);
         }
 
-        $registros = $query->orderBy('fecha', 'desc')->get()->map(function ($d) {
-            return [
-                'id' => $d->id,
-                'user_id' => $d->user->id,
-                'nombre' => $d->user->name,
-                'apellido' => $d->user->apellido ?? '',
-                'fecha' => $d->fecha->toDateString(),
-                'horas_extra' => $d->horas_extra,
-                'origen' => $d->origen ?? 'auto',
-                'admin_nombre' => $d->admin?->name,
-            ];
-        })->values();
+        $registros = $query
+            ->orderBy('fecha', 'desc')
+            ->paginate(20)
+            ->withQueryString()
+            ->through(function ($d) {
+                return [
+                    'id' => $d->id,
+                    'user_id' => $d->user->id,
+                    'nombre' => $d->user->name,
+                    'apellido' => $d->user->apellido ?? '',
+                    'fecha' => $d->fecha->toDateString(),
+                    'horas_extra' => $d->horas_extra,
+                    'origen' => $d->origen ?? 'auto',
+                    'admin_nombre' => $d->admin?->name,
+                ];
+            });
 
         return Inertia::render('configuracion/horas-extra/index', [
             'companies' => $companies,
@@ -95,15 +99,12 @@ class HorasExtraController extends Controller
             'horas_extra' => 'required|integer',
         ]);
 
-        // Verificar que el empleado pertenece a una empresa del admin, o es el propio admin
-        $empleado = User::where(function ($q) use ($companyIds) {
-            $q->whereIn('company_id', $companyIds)
-                ->whereIn('role', ['empleado', 'encargado']);
-        })
-            ->orWhere('id', $admin->id)
-            ->findOrFail($validated['user_id']);
+        $empleado = $this->resolveManagedUserOrFail(
+            (int) $validated['user_id'],
+            (int) $admin->id,
+            $companyIds,
+        );
 
-        // Obtener horas trabajadas: del resumen existente o calculando desde fichajes
         $fecha = Carbon::parse($validated['fecha']);
         $existente = ResumenDiario::where('user_id', $empleado->id)
             ->where('fecha', $fecha->toDateString())
@@ -138,14 +139,22 @@ class HorasExtraController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, ResumenDiario $resumenDiario)
+    public function destroy(Request $request, ResumenDiario $resumenDiario, HorasExtraService $service)
     {
+        abort_if(
+            $resumenDiario->origen !== 'manual',
+            422,
+            'Solo se pueden eliminar ajustes manuales de horas extra.'
+        );
+
         $admin = $request->user();
         $companyIds = Company::where('user_id', $admin->id)->pluck('id');
-
-        // Verificar que el registro pertenece a un empleado del admin
-        $empleado = User::whereIn('company_id', $companyIds)
-            ->findOrFail($resumenDiario->user_id);
+        $empleado = $this->resolveManagedUserOrFail(
+            (int) $resumenDiario->user_id,
+            (int) $admin->id,
+            $companyIds,
+        );
+        $fecha = Carbon::parse($resumenDiario->fecha)->startOfDay();
 
         HorasExtraLog::create([
             'user_id' => $resumenDiario->user_id,
@@ -157,7 +166,21 @@ class HorasExtraController extends Controller
         ]);
 
         $resumenDiario->delete();
+        $service->recalcularDia($empleado, $fecha);
 
         return back();
+    }
+
+    private function resolveManagedUserOrFail(
+        int $userId,
+        int $adminId,
+        $companyIds,
+    ): User {
+        return User::where(function ($q) use ($companyIds) {
+            $q->whereIn('company_id', $companyIds)
+                ->whereIn('role', User::STAFF_ROLES);
+        })
+            ->orWhere('id', $adminId)
+            ->findOrFail($userId);
     }
 }

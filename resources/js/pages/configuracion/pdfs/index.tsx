@@ -19,6 +19,7 @@ import {
     filterDropdownListClassName,
     filterDropdownOptionClassName,
 } from '@/components/filter-panel';
+import { PaginationNav } from '@/components/pagination-nav';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -28,7 +29,13 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
-import type { BreadcrumbItem, Company, User, WorkCenter } from '@/types';
+import type {
+    BreadcrumbItem,
+    Company,
+    Paginated,
+    User,
+    WorkCenter,
+} from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
@@ -75,7 +82,7 @@ interface Props {
         company_id: number;
         work_center_id: number;
     })[];
-    resumen: ResumenEmpleado[];
+    resumen: Paginated<ResumenEmpleado>;
     filters: {
         empresa_id?: string;
         centro_id?: string;
@@ -102,15 +109,16 @@ export default function PdfsIndex({
     companies,
     workCenters,
     employees,
-    resumen,
+    resumen: resumenPage,
     filters,
     mes,
     anio,
 }: Props) {
+    const resumen = resumenPage.data;
+
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
-    const skipAutoFilterRef = useRef(true);
 
     const initialEmpleado = filters.empleado_id
         ? employees.find((e) => e.id === Number(filters.empleado_id))
@@ -145,10 +153,14 @@ export default function PdfsIndex({
             ? workCenters
             : workCenters.filter((wc) => wc.company_id === Number(empresaId));
 
-    const availableEmployees =
-        empresaId === 'all'
-            ? employees
-            : employees.filter((e) => e.company_id === Number(empresaId));
+    const availableEmployees = employees.filter((employee) => {
+        const matchesCompany =
+            empresaId === 'all' || employee.company_id === Number(empresaId);
+        const matchesWorkCenter =
+            centroId === 'all' || employee.work_center_id === Number(centroId);
+
+        return matchesCompany && matchesWorkCenter;
+    });
 
     const normalizedSearch = empleadoSearch.trim().toLocaleLowerCase('es-ES');
     const filteredEmployees =
@@ -165,11 +177,39 @@ export default function PdfsIndex({
         setCentroId('all');
         setEmpleadoId('all');
         setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleCentroChange(value: string) {
+        setCentroId(value);
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
     }
 
     function handleEmpleadoSearchChange(value: string) {
         setEmpleadoSearch(value);
         setEmpleadoId('all');
+    }
+
+    function handleEmpleadoReset() {
+        setEmpleadoId('all');
+        setEmpleadoSearch('');
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleEmpleadoSelect(employee: (typeof employees)[number]) {
+        setEmpleadoId(String(employee.id));
+        setEmpleadoSearch(`${employee.name} ${employee.apellido}`);
+        setShowEmpleadoDropdown(false);
+    }
+
+    function handleMesChange(value: string) {
+        setMesSeleccionado(value);
+    }
+
+    function handleAnioChange(value: string) {
+        setAnioSeleccionado(value);
     }
 
     function handleReset() {
@@ -181,12 +221,7 @@ export default function PdfsIndex({
         setAnioSeleccionado(String(new Date().getFullYear()));
     }
 
-    useEffect(() => {
-        if (skipAutoFilterRef.current) {
-            skipAutoFilterRef.current = false;
-            return;
-        }
-
+    function buildFilterParams(): Record<string, string> {
         const params: Record<string, string> = {
             mes: mesSeleccionado,
             anio: anioSeleccionado,
@@ -195,19 +230,24 @@ export default function PdfsIndex({
         if (centroId !== 'all') params.centro_id = centroId;
         if (empleadoId !== 'all') params.empleado_id = empleadoId;
 
+        return params;
+    }
+
+    function handleApplyFilters() {
+        const params = buildFilterParams();
+
         router.get('/pdfs', params, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
         });
-    }, [empresaId, centroId, empleadoId, mesSeleccionado, anioSeleccionado]);
-
-    function pdfUrl(id: number): string {
-        return `/pdfs/${id}/download?mes=${mesSeleccionado}&anio=${anioSeleccionado}`;
     }
 
-    const mesLabel =
-        MESES.find((m) => m.value === mesSeleccionado)?.label ?? '';
+    function pdfUrl(id: number): string {
+        return `/pdfs/${id}/download?mes=${mes}&anio=${anio}`;
+    }
+
+    const mesLabel = MESES.find((m) => m.value === String(mes))?.label ?? '';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -228,19 +268,29 @@ export default function PdfsIndex({
                 {/* Filtros */}
                 <FilterPanel
                     title="Filtros de exportación"
-                    description="Selecciona el alcance de empleados y el periodo del documento antes de generar los PDFs."
+                    description="Selecciona el alcance de empleados y el periodo del documento, y pulsa Actualizar para aplicar los cambios."
                     icon={Filter}
                     tone="blue"
                     meta={
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleReset}
-                            className="gap-2 rounded-xl"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                            Limpiar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleApplyFilters}
+                                className="gap-2 rounded-xl"
+                            >
+                                <Search className="h-3.5 w-3.5" />
+                                Actualizar
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleReset}
+                                className="gap-2 rounded-xl"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar
+                            </Button>
+                        </div>
                     }
                 >
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -284,7 +334,7 @@ export default function PdfsIndex({
                         >
                             <Select
                                 value={centroId}
-                                onValueChange={setCentroId}
+                                onValueChange={handleCentroChange}
                                 disabled={availableWorkCenters.length === 0}
                             >
                                 <FilterSelectTrigger id="centro_filter">
@@ -351,13 +401,7 @@ export default function PdfsIndex({
                                                     empleadoId === 'all',
                                                     'emerald',
                                                 )}
-                                                onClick={() => {
-                                                    setEmpleadoId('all');
-                                                    setEmpleadoSearch('');
-                                                    setShowEmpleadoDropdown(
-                                                        false,
-                                                    );
-                                                }}
+                                                onClick={handleEmpleadoReset}
                                             >
                                                 Todos los empleados
                                             </button>
@@ -396,17 +440,11 @@ export default function PdfsIndex({
                                                                     employeeId,
                                                                 'emerald',
                                                             )}
-                                                            onClick={() => {
-                                                                setEmpleadoId(
-                                                                    employeeId,
-                                                                );
-                                                                setEmpleadoSearch(
-                                                                    `${employee.name} ${employee.apellido}`,
-                                                                );
-                                                                setShowEmpleadoDropdown(
-                                                                    false,
-                                                                );
-                                                            }}
+                                                            onClick={() =>
+                                                                handleEmpleadoSelect(
+                                                                    employee,
+                                                                )
+                                                            }
                                                         >
                                                             {employee.name}{' '}
                                                             {employee.apellido}
@@ -427,7 +465,7 @@ export default function PdfsIndex({
                         >
                             <Select
                                 value={mesSeleccionado}
-                                onValueChange={setMesSeleccionado}
+                                onValueChange={handleMesChange}
                             >
                                 <FilterSelectTrigger id="mes_filter">
                                     <SelectValue />
@@ -452,7 +490,7 @@ export default function PdfsIndex({
                         >
                             <Select
                                 value={anioSeleccionado}
-                                onValueChange={setAnioSeleccionado}
+                                onValueChange={handleAnioChange}
                             >
                                 <FilterSelectTrigger id="anio_filter">
                                     <SelectValue />
@@ -473,8 +511,8 @@ export default function PdfsIndex({
                 <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
                     <div className="flex items-center border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
-                            {resumen.length > 0
-                                ? `${resumen.length} empleado${resumen.length !== 1 ? 's' : ''} — ${mesLabel} ${anioSeleccionado}`
+                            {resumenPage.total > 0
+                                ? `${resumenPage.total} empleado${resumenPage.total !== 1 ? 's' : ''} — ${mesLabel} ${anio}`
                                 : 'Empleados'}
                         </h2>
                     </div>
@@ -593,6 +631,11 @@ export default function PdfsIndex({
                             </tbody>
                         </table>
                     </div>
+                    <PaginationNav
+                        path="/pdfs"
+                        pagination={resumenPage}
+                        query={{ ...filters, mes, anio }}
+                    />
                 </div>
             </div>
         </AppLayout>

@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('settings', function (Request $request) {
-        $role = $request->user()?->role;
-
-        if (in_array($role, ['employee', 'empleado'], true)) {
+        if ($request->user()?->isEmployeeLike()) {
             return redirect('/settings/password');
         }
 

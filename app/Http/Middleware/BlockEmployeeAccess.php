@@ -10,9 +10,7 @@ class BlockEmployeeAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $role = $request->user()?->role;
-
-        if (in_array($role, ['empleado', 'encargado'], true)) {
+        if ($request->user()?->isEmployeeLike()) {
             abort(403);
         }
 

@@ -724,7 +724,7 @@ export default function CalendarioIndex({
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
     function handleDayClick(ds: string) {
-        if (!selectedEmpleadoId) return;
+        if (!empleadoId) return;
         setSelectedDate(ds);
         setDialogOpen(true);
     }
@@ -747,6 +747,21 @@ export default function CalendarioIndex({
             nuevos.forEach((e) => next.set(e.fecha, e));
             return next;
         });
+    }
+
+    function navigateWithFilters(
+        nextEmpleadoId: number | null,
+        nextAnio: string,
+    ) {
+        const params: Record<string, string> = {
+            anio: nextAnio,
+        };
+
+        if (nextEmpleadoId) {
+            params.empleado_id = String(nextEmpleadoId);
+        }
+
+        router.get('/calendario', params, { preserveState: false });
     }
 
     // ── Centro de trabajo bulk apply ──────────────────────────────────────────
@@ -825,11 +840,12 @@ export default function CalendarioIndex({
         setSelectedEmpleadoId(null);
         setEmpleadoSearch('');
         setAnioSeleccionado(String(currentYear));
+        setShowDropdown(false);
         router.get('/calendario', {}, { preserveState: false });
     }
 
-    const empleadoActual = selectedEmpleadoId
-        ? employees.find((e) => e.id === selectedEmpleadoId)
+    const empleadoActual = empleadoId
+        ? employees.find((e) => e.id === empleadoId)
         : null;
 
     const totalVac = Array.from(eventosPorFecha.values()).filter(
@@ -863,7 +879,7 @@ export default function CalendarioIndex({
                 {/* Filtros */}
                 <FilterPanel
                     title="Selección de calendario"
-                    description="Busca un empleado y cambia el año de consulta desde un panel unificado."
+                    description="Busca un empleado y cambia el año de consulta. El calendario se recarga automáticamente al seleccionar ambos filtros."
                     eyebrow="Planificación"
                     icon={CalendarDays}
                     tone="blue"
@@ -954,18 +970,9 @@ export default function CalendarioIndex({
                                                             `${emp.name} ${emp.apellido}`,
                                                         );
                                                         setShowDropdown(false);
-                                                        router.get(
-                                                            '/calendario',
-                                                            {
-                                                                empleado_id:
-                                                                    String(
-                                                                        emp.id,
-                                                                    ),
-                                                                anio: anioSeleccionado,
-                                                            },
-                                                            {
-                                                                preserveState: false,
-                                                            },
+                                                        navigateWithFilters(
+                                                            emp.id,
+                                                            anioSeleccionado,
                                                         );
                                                     }}
                                                 >
@@ -985,19 +992,12 @@ export default function CalendarioIndex({
                         >
                             <Select
                                 value={anioSeleccionado}
-                                onValueChange={(v) => {
-                                    setAnioSeleccionado(v);
-                                    if (selectedEmpleadoId) {
-                                        router.get(
-                                            '/calendario',
-                                            {
-                                                empleado_id:
-                                                    String(selectedEmpleadoId),
-                                                anio: v,
-                                            },
-                                            { preserveState: false },
-                                        );
-                                    }
+                                onValueChange={(value) => {
+                                    setAnioSeleccionado(value);
+                                    navigateWithFilters(
+                                        selectedEmpleadoId,
+                                        value,
+                                    );
                                 }}
                             >
                                 <FilterSelectTrigger id="anio_filter">
@@ -1016,7 +1016,7 @@ export default function CalendarioIndex({
                 </FilterPanel>
 
                 {/* Calendario */}
-                {selectedEmpleadoId ? (
+                {empleadoId ? (
                     <div className="rounded-xl border bg-card shadow-sm">
                         {/* Cabecera */}
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
@@ -1026,7 +1026,7 @@ export default function CalendarioIndex({
                                     {empleadoActual
                                         ? `${empleadoActual.name} ${empleadoActual.apellido} — `
                                         : ''}
-                                    {anioSeleccionado}
+                                    {anio}
                                 </h2>
                             </div>
                             {/* Resumen badges */}
@@ -1050,7 +1050,7 @@ export default function CalendarioIndex({
                             </div>
                             {empleadoId && (
                                 <a
-                                    href={`/calendario/${empleadoId}/pdf?anio=${anioSeleccionado}`}
+                                    href={`/calendario/${empleadoId}/pdf?anio=${anio}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >
@@ -1099,7 +1099,7 @@ export default function CalendarioIndex({
                                     >
                                         <MiniMes
                                             mes={m}
-                                            anio={Number(anioSeleccionado)}
+                                            anio={anio}
                                             eventosPorFecha={eventosPorFecha}
                                             fichajesSet={fichajesSet}
                                             onDayClick={handleDayClick}
@@ -1117,7 +1117,7 @@ export default function CalendarioIndex({
                                 Selecciona un empleado para ver su calendario
                             </p>
                             <p className="text-xs">
-                                Elige también el año para cargar los datos
+                                Elige también el año y el calendario se cargará automáticamente
                             </p>
                         </div>
                     </div>
@@ -1273,12 +1273,12 @@ export default function CalendarioIndex({
                 </div>
             )}
 
-            {selectedEmpleadoId && (
+            {empleadoId && (
                 <EventoDialog
                     open={dialogOpen}
                     onClose={() => setDialogOpen(false)}
                     dateStr={selectedDate}
-                    empleadoId={selectedEmpleadoId}
+                    empleadoId={empleadoId}
                     existingEvento={
                         selectedDate
                             ? (eventosPorFecha.get(selectedDate) ?? null)
