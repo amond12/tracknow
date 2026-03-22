@@ -122,7 +122,13 @@ function PaginationButton({
     }
 
     return (
-        <Button asChild type="button" variant="outline" size="sm" className={classes}>
+        <Button
+            asChild
+            type="button"
+            variant="outline"
+            size="sm"
+            className={classes}
+        >
             <Link href={href} preserveScroll>
                 {children}
             </Link>
@@ -153,9 +159,7 @@ export function PaginationNav<T>({
             <div className="flex flex-wrap items-center gap-1.5">
                 <PaginationButton
                     href={
-                        currentPage > 1
-                            ? buildHref(path, query, 1)
-                            : undefined
+                        currentPage > 1 ? buildHref(path, query, 1) : undefined
                     }
                     disabled={currentPage === 1}
                     className="px-2"

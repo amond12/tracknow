@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Building2,
     CalendarDays,
@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
-import type { BreadcrumbItem, User } from '@/types';
+import type { Auth, BreadcrumbItem, User } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
@@ -674,6 +674,8 @@ export default function CalendarioIndex({
     eventos,
     fichajes,
 }: Props) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const canManage = auth.user.role !== 'empleado';
     const [anioSeleccionado, setAnioSeleccionado] = useState(String(anio));
     const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<number | null>(
         empleadoId,
@@ -724,7 +726,7 @@ export default function CalendarioIndex({
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
     function handleDayClick(ds: string) {
-        if (!empleadoId) return;
+        if (!empleadoId || !canManage) return;
         setSelectedDate(ds);
         setDialogOpen(true);
     }
@@ -897,7 +899,7 @@ export default function CalendarioIndex({
                     footer={
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="flex flex-wrap items-center gap-2">
-                                {centros.length > 0 && (
+                                {canManage && centros.length > 0 && (
                                     <Button
                                         size="sm"
                                         variant="outline"
@@ -1085,7 +1087,9 @@ export default function CalendarioIndex({
                                 Festivo
                             </span>
                             <span className="ml-auto text-[10px] italic">
-                                Click en cualquier día para añadir o editar
+                                {canManage
+                                    ? 'Click en cualquier día para añadir o editar'
+                                    : 'Calendario en solo lectura'}
                             </span>
                         </div>
 
@@ -1117,155 +1121,161 @@ export default function CalendarioIndex({
                                 Selecciona un empleado para ver su calendario
                             </p>
                             <p className="text-xs">
-                                Elige también el año y el calendario se cargará automáticamente
+                                Elige también el año y el calendario se cargará
+                                automáticamente
                             </p>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* ── Dialog: Aplicar a centro de trabajo ── */}
-            <Dialog
-                open={centroDialogOpen}
-                onOpenChange={(v) => {
-                    if (!v) setCentroDialogOpen(false);
-                }}
-            >
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            Aplicar a centro de trabajo
-                        </DialogTitle>
-                    </DialogHeader>
+            {canManage && (
+                <Dialog
+                    open={centroDialogOpen}
+                    onOpenChange={(v) => {
+                        if (!v) setCentroDialogOpen(false);
+                    }}
+                >
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                Aplicar a centro de trabajo
+                            </DialogTitle>
+                        </DialogHeader>
 
-                    <div className="flex flex-col gap-4 pt-1">
-                        {/* Centro */}
-                        <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium">
-                                Centro de trabajo
-                            </Label>
-                            <Select
-                                value={centroId}
-                                onValueChange={(v) => {
-                                    setCentroId(v);
-                                    setCentroError('');
-                                }}
-                            >
-                                <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Seleccionar centro..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {centros.map((c) => (
-                                        <SelectItem
-                                            key={c.id}
-                                            value={String(c.id)}
-                                        >
-                                            {c.nombre}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Tipo */}
-                        <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium">Tipo</Label>
-                            <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setCentroTipo('festivo')}
-                                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${centroTipo === 'festivo' ? 'bg-pink-100 text-pink-800 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                        <div className="flex flex-col gap-4 pt-1">
+                            {/* Centro */}
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs font-medium">
+                                    Centro de trabajo
+                                </Label>
+                                <Select
+                                    value={centroId}
+                                    onValueChange={(v) => {
+                                        setCentroId(v);
+                                        setCentroError('');
+                                    }}
                                 >
-                                    Festivo
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setCentroTipo('vacacion')}
-                                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${centroTipo === 'vacacion' ? 'bg-blue-100 text-blue-800 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                    <SelectTrigger className="h-9">
+                                        <SelectValue placeholder="Seleccionar centro..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {centros.map((c) => (
+                                            <SelectItem
+                                                key={c.id}
+                                                value={String(c.id)}
+                                            >
+                                                {c.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Tipo */}
+                            <div className="grid gap-1.5">
+                                <Label className="text-xs font-medium">
+                                    Tipo
+                                </Label>
+                                <div className="flex items-center gap-1 rounded-lg border bg-muted/40 p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCentroTipo('festivo')}
+                                        className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${centroTipo === 'festivo' ? 'bg-pink-100 text-pink-800 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        Festivo
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setCentroTipo('vacacion')
+                                        }
+                                        className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${centroTipo === 'vacacion' ? 'bg-blue-100 text-blue-800 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        Vacación
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Motivo (festivo) */}
+                            {centroTipo === 'festivo' && (
+                                <div className="grid gap-1.5">
+                                    <Label className="text-xs font-medium">
+                                        Nombre del festivo (opcional)
+                                    </Label>
+                                    <Input
+                                        value={centroMotivo}
+                                        onChange={(e) =>
+                                            setCentroMotivo(e.target.value)
+                                        }
+                                        placeholder="Ej: Navidad, Día de la Comunidad..."
+                                        className="h-9"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Fechas */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="grid gap-1.5">
+                                    <Label className="text-xs font-medium">
+                                        Desde *
+                                    </Label>
+                                    <Input
+                                        type="date"
+                                        value={centroDesde}
+                                        onChange={(e) =>
+                                            setCentroDesde(e.target.value)
+                                        }
+                                        className="h-9"
+                                    />
+                                </div>
+                                <div className="grid gap-1.5">
+                                    <Label className="text-xs font-medium">
+                                        Hasta *
+                                    </Label>
+                                    <Input
+                                        type="date"
+                                        value={centroHasta}
+                                        min={centroDesde}
+                                        onChange={(e) =>
+                                            setCentroHasta(e.target.value)
+                                        }
+                                        className="h-9"
+                                    />
+                                </div>
+                            </div>
+
+                            {centroError && (
+                                <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                                    {centroError}
+                                </p>
+                            )}
+
+                            <div className="flex justify-end gap-2 pt-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCentroDialogOpen(false)}
                                 >
-                                    Vacación
-                                </button>
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={handleStoreCentro}
+                                    disabled={centroSaving}
+                                    className="gap-1.5"
+                                >
+                                    <Building2 className="h-3.5 w-3.5" />
+                                    {centroSaving
+                                        ? 'Aplicando...'
+                                        : 'Aplicar a todos'}
+                                </Button>
                             </div>
                         </div>
-
-                        {/* Motivo (festivo) */}
-                        {centroTipo === 'festivo' && (
-                            <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">
-                                    Nombre del festivo (opcional)
-                                </Label>
-                                <Input
-                                    value={centroMotivo}
-                                    onChange={(e) =>
-                                        setCentroMotivo(e.target.value)
-                                    }
-                                    placeholder="Ej: Navidad, Día de la Comunidad..."
-                                    className="h-9"
-                                />
-                            </div>
-                        )}
-
-                        {/* Fechas */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">
-                                    Desde *
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={centroDesde}
-                                    onChange={(e) =>
-                                        setCentroDesde(e.target.value)
-                                    }
-                                    className="h-9"
-                                />
-                            </div>
-                            <div className="grid gap-1.5">
-                                <Label className="text-xs font-medium">
-                                    Hasta *
-                                </Label>
-                                <Input
-                                    type="date"
-                                    value={centroHasta}
-                                    min={centroDesde}
-                                    onChange={(e) =>
-                                        setCentroHasta(e.target.value)
-                                    }
-                                    className="h-9"
-                                />
-                            </div>
-                        </div>
-
-                        {centroError && (
-                            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                                {centroError}
-                            </p>
-                        )}
-
-                        <div className="flex justify-end gap-2 pt-1">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCentroDialogOpen(false)}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button
-                                size="sm"
-                                onClick={handleStoreCentro}
-                                disabled={centroSaving}
-                                className="gap-1.5"
-                            >
-                                <Building2 className="h-3.5 w-3.5" />
-                                {centroSaving
-                                    ? 'Aplicando...'
-                                    : 'Aplicar a todos'}
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                    </DialogContent>
+                </Dialog>
+            )}
 
             {centroResult && (
                 <div className="fixed right-6 bottom-6 z-50 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
@@ -1273,7 +1283,7 @@ export default function CalendarioIndex({
                 </div>
             )}
 
-            {empleadoId && (
+            {canManage && empleadoId && (
                 <EventoDialog
                     open={dialogOpen}
                     onClose={() => setDialogOpen(false)}

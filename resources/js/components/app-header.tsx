@@ -69,7 +69,7 @@ const activeItemStyles =
 export function AppHeader({ breadcrumbs = [] }: Props) {
     const page = usePage<{ auth: Auth }>();
     const { auth } = page.props;
-    const isEmployee = ['empleado', 'encargado'].includes(auth.user.role);
+    const isEmployee = auth.user.role === 'empleado';
     const homeHref = isEmployee ? '/fichar' : DASHBOARD_URL;
     const visibleMainNavItems = isEmployee
         ? mainNavItems.filter((item) => item.href !== DASHBOARD_URL)

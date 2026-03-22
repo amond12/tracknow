@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Company;
 use App\Models\Fichaje;
 use App\Models\ResumenDiario;
 use App\Models\User;
 use App\Models\Vacacion;
 use App\Models\WorkCenter;
+use App\Support\AdminScope;
 use App\Support\WorkCenterTimezone;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -21,63 +21,102 @@ class PdfController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-
-        $companies = Company::where('user_id', $user->id)->get(['id', 'nombre']);
-        $companyIds = $companies->pluck('id');
-
-        $workCenters = WorkCenter::whereIn('company_id', $companyIds)
-            ->get(['id', 'company_id', 'nombre']);
-
-        $employees = User::where(function ($query) use ($companyIds) {
-            $query->whereIn('company_id', $companyIds)
-                ->whereIn('role', ['empleado', 'encargado']);
-        })
-            ->orWhere('id', $user->id)
-            ->orderBy('apellido')
-            ->orderBy('name')
-            ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'remoto']);
-
         $mes = (int) $request->input('mes', now()->month);
         $anio = (int) $request->input('anio', now()->year);
+        if ($user->isEmpleado()) {
+            $user->loadMissing(['company:id,nombre', 'workCenter:id,company_id,nombre']);
 
-        $query = User::where(function ($query) use ($companyIds, $user) {
-            $query->where(function ($query) use ($companyIds) {
+            $companies = $user->company
+                ? collect([['id' => $user->company->id, 'nombre' => $user->company->nombre]])
+                : collect();
+            $workCenters = $user->workCenter
+                ? collect([[
+                    'id' => $user->workCenter->id,
+                    'company_id' => $user->workCenter->company_id,
+                    'nombre' => $user->workCenter->nombre,
+                ]])
+                : collect();
+            $employees = collect([[
+                'id' => $user->id,
+                'company_id' => $user->company_id,
+                'work_center_id' => $user->work_center_id,
+                'name' => $user->name,
+                'apellido' => $user->apellido,
+                'remoto' => $user->remoto,
+            ]]);
+
+            $resumen = User::whereKey($user->id)
+                ->with(['fichajes' => function ($query) use ($mes, $anio) {
+                    $query->whereMonth('fecha', $mes)
+                        ->whereYear('fecha', $anio)
+                        ->orderBy('fecha');
+                }])
+                ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
+                ->withQueryString()
+                ->through(fn ($employee) => [
+                    'id' => $employee->id,
+                    'nombre' => $employee->name,
+                    'apellido' => $employee->apellido,
+                    'dni' => $employee->dni,
+                    'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
+                    'total_dias' => $employee->fichajes->count(),
+                    'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
+                ]);
+        } else {
+            $companies = AdminScope::companyQueryFor($user)->get(['id', 'nombre']);
+            $companyIds = $companies->pluck('id');
+
+            $workCenters = WorkCenter::whereIn('company_id', $companyIds)
+                ->get(['id', 'company_id', 'nombre']);
+
+            $employees = User::where(function ($query) use ($companyIds) {
                 $query->whereIn('company_id', $companyIds)
-                    ->whereIn('role', ['empleado', 'encargado']);
-            })->orWhere('id', $user->id);
-        });
+                    ->whereIn('role', User::STAFF_ROLES);
+            })
+                ->orWhere('id', $user->id)
+                ->orderBy('apellido')
+                ->orderBy('name')
+                ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'remoto']);
 
-        if ($request->filled('empresa_id')) {
-            $query->where('company_id', $request->empresa_id);
+            $query = User::where(function ($query) use ($companyIds, $user) {
+                $query->where(function ($query) use ($companyIds) {
+                    $query->whereIn('company_id', $companyIds)
+                        ->whereIn('role', User::STAFF_ROLES);
+                })->orWhere('id', $user->id);
+            });
+
+            if ($request->filled('empresa_id')) {
+                $query->where('company_id', $request->empresa_id);
+            }
+
+            if ($request->filled('centro_id')) {
+                $query->where('work_center_id', $request->centro_id);
+            }
+
+            if ($request->filled('empleado_id')) {
+                $query->where('id', $request->empleado_id);
+            }
+
+            $resumen = $query
+                ->with(['fichajes' => function ($query) use ($mes, $anio) {
+                    $query->whereMonth('fecha', $mes)
+                        ->whereYear('fecha', $anio)
+                        ->orderBy('fecha');
+                }])
+                ->orderBy('apellido')
+                ->orderBy('name')
+                ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
+                ->withQueryString()
+                ->through(fn ($employee) => [
+                    'id' => $employee->id,
+                    'nombre' => $employee->name,
+                    'apellido' => $employee->apellido,
+                    'dni' => $employee->dni,
+                    'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
+                    'total_dias' => $employee->fichajes->count(),
+                    'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
+                ]);
         }
-
-        if ($request->filled('centro_id')) {
-            $query->where('work_center_id', $request->centro_id);
-        }
-
-        if ($request->filled('empleado_id')) {
-            $query->where('id', $request->empleado_id);
-        }
-
-        $resumen = $query
-            ->with(['fichajes' => function ($query) use ($mes, $anio) {
-                $query->whereMonth('fecha', $mes)
-                    ->whereYear('fecha', $anio)
-                    ->orderBy('fecha');
-            }])
-            ->orderBy('apellido')
-            ->orderBy('name')
-            ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
-            ->withQueryString()
-            ->through(fn ($employee) => [
-                'id' => $employee->id,
-                'nombre' => $employee->name,
-                'apellido' => $employee->apellido,
-                'dni' => $employee->dni,
-                'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
-                'total_dias' => $employee->fichajes->count(),
-                'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
-            ]);
 
         return Inertia::render('configuracion/pdfs/index', [
             'companies' => $companies,
@@ -92,10 +131,15 @@ class PdfController extends Controller
 
     public function download(Request $request, User $empleado)
     {
-        $companyIds = Company::where('user_id', $request->user()->id)->pluck('id');
+        $user = $request->user();
 
-        $esPropioAdmin = $empleado->id === $request->user()->id;
-        abort_if(! $esPropioAdmin && ! $companyIds->contains($empleado->company_id), 403);
+        if ($user->isEmpleado()) {
+            abort_if($empleado->id !== $user->id, 403);
+        } else {
+            $companyIds = AdminScope::companyIdsFor($user);
+            $esPropioUsuario = $empleado->id === $user->id;
+            abort_if(! $esPropioUsuario && ! $companyIds->contains($empleado->company_id), 403);
+        }
 
         $mes = (int) $request->query('mes', now()->month);
         $anio = (int) $request->query('anio', now()->year);
@@ -105,7 +149,7 @@ class PdfController extends Controller
 
         $empleado->load(['company', 'workCenter']);
 
-        $empresa = $empleado->company ?? Company::where('user_id', $request->user()->id)->first();
+        $empresa = $empleado->company ?? AdminScope::companyQueryFor($user)->first();
         $centro = $empleado->workCenter ?? $empresa?->workCenters()->first();
         $timezone = WorkCenterTimezone::resolve($centro);
 

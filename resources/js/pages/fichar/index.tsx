@@ -1,5 +1,14 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import { AlertCircle, CheckCircle2, Clock, Coffee, LogIn, LogOut, MapPin, Wifi } from 'lucide-react';
+import {
+    AlertCircle,
+    CheckCircle2,
+    Clock,
+    Coffee,
+    LogIn,
+    LogOut,
+    MapPin,
+    Wifi,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,9 +33,7 @@ import type { BreadcrumbItem, Fichaje, User } from '@/types';
 type AccionPendiente = 'iniciar' | 'pausa' | 'finalizar' | null;
 type LocationState = { lat: number; lng: number; accuracy: number } | null;
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Fichar', href: '/fichar' },
-];
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Fichar', href: '/fichar' }];
 
 function formatSeconds(seconds: number): string {
     const h = Math.floor(seconds / 3600);
@@ -40,7 +47,9 @@ function getFichajeTimeZone(
     fichaje: Fichaje | null | undefined,
     fallbackTimeZone: string,
 ): string {
-    return fichaje?.timezone ?? fichaje?.work_center?.timezone ?? fallbackTimeZone;
+    return (
+        fichaje?.timezone ?? fichaje?.work_center?.timezone ?? fallbackTimeZone
+    );
 }
 
 async function fetchPublicIp(): Promise<string> {
@@ -98,19 +107,38 @@ export default function FicharPage() {
     }>();
 
     const { employee, fichajeActivo, historial, errors, setupMessage } = props;
-    const employeeTimeZone = employee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
+    const employeeTimeZone =
+        employee?.work_center?.timezone ?? DEFAULT_WORK_CENTER_TIMEZONE;
     const workCenterTimeZoneLabel = getTimeZoneLabel(employeeTimeZone);
     const activeTimeZone = getFichajeTimeZone(fichajeActivo, employeeTimeZone);
     const activeTimeZoneLabel = getTimeZoneLabel(activeTimeZone);
 
-    const iniciarForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
-    const pausaForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
-    const finalizarForm = useForm({ lat: '', lng: '', accuracy: '', ip_publica: '' });
+    const iniciarForm = useForm({
+        lat: '',
+        lng: '',
+        accuracy: '',
+        ip_publica: '',
+    });
+    const pausaForm = useForm({
+        lat: '',
+        lng: '',
+        accuracy: '',
+        ip_publica: '',
+    });
+    const finalizarForm = useForm({
+        lat: '',
+        lng: '',
+        accuracy: '',
+        ip_publica: '',
+    });
 
     const [elapsed, setElapsed] = useState(0);
     const [pausaTimer, setPausaTimer] = useState(0);
-    const [accionPendiente, setAccionPendiente] = useState<AccionPendiente>(null);
-    const [accionLocalError, setAccionLocalError] = useState<string | null>(null);
+    const [accionPendiente, setAccionPendiente] =
+        useState<AccionPendiente>(null);
+    const [accionLocalError, setAccionLocalError] = useState<string | null>(
+        null,
+    );
     const [validandoContexto, setValidandoContexto] = useState(false);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -127,21 +155,30 @@ export default function FicharPage() {
             const now = Date.now();
             const start = new Date(fichajeActivo.inicio_jornada).getTime();
             const totalPausasMs = (fichajeActivo.pausas ?? []).reduce(
-                (accumulator, pausa) => accumulator + ((pausa.duracion_pausa ?? 0) * 1000),
+                (accumulator, pausa) =>
+                    accumulator + (pausa.duracion_pausa ?? 0) * 1000,
                 0,
             );
 
             let pausaActivaMs = 0;
             if (fichajeActivo.estado === 'pausa') {
-                const pausaActiva = (fichajeActivo.pausas ?? []).find((pausa) => !pausa.fin_pausa);
+                const pausaActiva = (fichajeActivo.pausas ?? []).find(
+                    (pausa) => !pausa.fin_pausa,
+                );
                 if (pausaActiva) {
-                    pausaActivaMs = Math.max(0, now - new Date(pausaActiva.inicio_pausa).getTime());
+                    pausaActivaMs = Math.max(
+                        0,
+                        now - new Date(pausaActiva.inicio_pausa).getTime(),
+                    );
                 }
             }
 
             const totalMs = now - start;
 
-            return Math.max(0, Math.floor((totalMs - totalPausasMs - pausaActivaMs) / 1000));
+            return Math.max(
+                0,
+                Math.floor((totalMs - totalPausasMs - pausaActivaMs) / 1000),
+            );
         };
 
         const initTimeout = window.setTimeout(() => {
@@ -157,7 +194,8 @@ export default function FicharPage() {
         };
     }, [fichajeActivo]);
 
-    const pausaActiva = fichajeActivo?.pausas?.find((pausa) => !pausa.fin_pausa) ?? null;
+    const pausaActiva =
+        fichajeActivo?.pausas?.find((pausa) => !pausa.fin_pausa) ?? null;
     const estado = fichajeActivo?.estado ?? null;
 
     useEffect(() => {
@@ -166,7 +204,10 @@ export default function FicharPage() {
         }
 
         const calcPausaElapsed = () =>
-            Math.floor((Date.now() - new Date(pausaActiva.inicio_pausa).getTime()) / 1000);
+            Math.floor(
+                (Date.now() - new Date(pausaActiva.inicio_pausa).getTime()) /
+                    1000,
+            );
 
         const initTimeout = window.setTimeout(() => {
             setPausaTimer(calcPausaElapsed());
@@ -205,7 +246,9 @@ export default function FicharPage() {
 
         const currentLocation = await fetchCurrentLocation();
         if (employee.remoto && !currentLocation) {
-            setAccionLocalError('Debes permitir la geolocalizacion para fichar en remoto.');
+            setAccionLocalError(
+                'Debes permitir la geolocalizacion para fichar en remoto.',
+            );
             setValidandoContexto(false);
             return;
         }
@@ -234,9 +277,14 @@ export default function FicharPage() {
     };
 
     const isLoading =
-        validandoContexto || iniciarForm.processing || pausaForm.processing || finalizarForm.processing;
-    const elapsedMostrado = !fichajeActivo || fichajeActivo.estado === 'finalizada' ? 0 : elapsed;
-    const pausaTimerMostrado = estado !== 'pausa' || !pausaActiva ? 0 : pausaTimer;
+        validandoContexto ||
+        iniciarForm.processing ||
+        pausaForm.processing ||
+        finalizarForm.processing;
+    const elapsedMostrado =
+        !fichajeActivo || fichajeActivo.estado === 'finalizada' ? 0 : elapsed;
+    const pausaTimerMostrado =
+        estado !== 'pausa' || !pausaActiva ? 0 : pausaTimer;
     const errorMsg = accionLocalError ?? errors?.error ?? null;
 
     const accionLabels: Record<
@@ -256,7 +304,8 @@ export default function FicharPage() {
         },
         finalizar: {
             titulo: 'Finalizar Jornada',
-            descripcion: 'El cierre se registrara con la hora oficial del centro.',
+            descripcion:
+                'El cierre se registrara con la hora oficial del centro.',
         },
     };
 
@@ -293,7 +342,10 @@ export default function FicharPage() {
                 {!employee && (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{setupMessage ?? 'No tienes un perfil de empleado asignado.'}</AlertDescription>
+                        <AlertDescription>
+                            {setupMessage ??
+                                'No tienes un perfil de empleado asignado.'}
+                        </AlertDescription>
                     </Alert>
                 )}
 
@@ -321,35 +373,46 @@ export default function FicharPage() {
                             </Alert>
                         )}
 
-                        <div className={`rounded-2xl border p-8 text-center transition-colors ${currentState.bg}`}>
+                        <div
+                            className={`rounded-2xl border p-8 text-center transition-colors ${currentState.bg}`}
+                        >
                             <div className="flex flex-col items-center gap-4">
                                 {currentState.icon}
 
                                 <div>
-                                    <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                                    <p className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
                                         {currentState.label}
                                     </p>
                                     {fichajeActivo && (
                                         <p className="mt-1 text-xs text-muted-foreground">
-                                            Inicio: {formatDateTimeInTimeZone(fichajeActivo.inicio_jornada, activeTimeZone)}
+                                            Inicio:{' '}
+                                            {formatDateTimeInTimeZone(
+                                                fichajeActivo.inicio_jornada,
+                                                activeTimeZone,
+                                            )}
                                         </p>
                                     )}
                                 </div>
 
                                 {estado === 'activa' && (
-                                    <div className="text-5xl font-mono font-bold tabular-nums text-green-700 dark:text-green-400">
+                                    <div className="font-mono text-5xl font-bold text-green-700 tabular-nums dark:text-green-400">
                                         {formatSeconds(elapsedMostrado)}
                                     </div>
                                 )}
 
                                 {estado === 'pausa' && (
                                     <div className="flex flex-col items-center gap-1">
-                                        <div className="text-5xl font-mono font-bold tabular-nums text-yellow-700 dark:text-yellow-400">
+                                        <div className="font-mono text-5xl font-bold text-yellow-700 tabular-nums dark:text-yellow-400">
                                             {formatSeconds(pausaTimerMostrado)}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">Tiempo en pausa</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Tiempo en pausa
+                                        </p>
                                         <p className="text-sm text-muted-foreground">
-                                            Tiempo trabajado: <span className="font-semibold">{formatSeconds(elapsedMostrado)}</span>
+                                            Tiempo trabajado:{' '}
+                                            <span className="font-semibold">
+                                                {formatSeconds(elapsedMostrado)}
+                                            </span>
                                         </p>
                                     </div>
                                 )}
@@ -359,7 +422,9 @@ export default function FicharPage() {
                                         <Button
                                             size="lg"
                                             disabled={isLoading}
-                                            onClick={() => handleAccion('iniciar')}
+                                            onClick={() =>
+                                                handleAccion('iniciar')
+                                            }
                                             className="gap-2"
                                         >
                                             <LogIn className="h-5 w-5" />
@@ -373,7 +438,9 @@ export default function FicharPage() {
                                                 size="lg"
                                                 variant="outline"
                                                 disabled={isLoading}
-                                                onClick={() => handleAccion('pausa')}
+                                                onClick={() =>
+                                                    handleAccion('pausa')
+                                                }
                                                 className="gap-2"
                                             >
                                                 <Coffee className="h-5 w-5" />
@@ -383,7 +450,9 @@ export default function FicharPage() {
                                                 size="lg"
                                                 variant="destructive"
                                                 disabled={isLoading}
-                                                onClick={() => handleAccion('finalizar')}
+                                                onClick={() =>
+                                                    handleAccion('finalizar')
+                                                }
                                                 className="gap-2"
                                             >
                                                 <LogOut className="h-5 w-5" />
@@ -396,7 +465,9 @@ export default function FicharPage() {
                                         <Button
                                             size="lg"
                                             disabled={isLoading}
-                                            onClick={() => handleAccion('pausa')}
+                                            onClick={() =>
+                                                handleAccion('pausa')
+                                            }
                                             className="gap-2 bg-yellow-600 hover:bg-yellow-700"
                                         >
                                             <LogIn className="h-5 w-5" />
@@ -409,8 +480,13 @@ export default function FicharPage() {
 
                         {employee.work_center && (
                             <p className="text-center text-sm text-muted-foreground">
-                                Centro: <span className="font-medium">{employee.work_center.nombre}</span>
-                                <span className="ml-2 text-xs">{workCenterTimeZoneLabel}</span>
+                                Centro:{' '}
+                                <span className="font-medium">
+                                    {employee.work_center.nombre}
+                                </span>
+                                <span className="ml-2 text-xs">
+                                    {workCenterTimeZoneLabel}
+                                </span>
                                 {employee.remoto && (
                                     <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                                         <Wifi className="h-3 w-3" /> Remoto
@@ -422,49 +498,86 @@ export default function FicharPage() {
                         {historial.length > 0 && (
                             <div className="rounded-xl border">
                                 <div className="border-b px-4 py-3">
-                                    <h2 className="text-sm font-semibold">Ultimas jornadas</h2>
+                                    <h2 className="text-sm font-semibold">
+                                        Ultimas jornadas
+                                    </h2>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b bg-muted/20">
-                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Fecha</th>
-                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Entrada</th>
-                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Salida</th>
-                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">Pausas</th>
-                                                <th className="px-4 py-2 text-right font-medium text-muted-foreground">Trabajado</th>
+                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                                                    Fecha
+                                                </th>
+                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                                                    Entrada
+                                                </th>
+                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                                                    Salida
+                                                </th>
+                                                <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                                                    Pausas
+                                                </th>
+                                                <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+                                                    Trabajado
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {historial.map((fichaje, index) => {
-                                                const totalPausas = (fichaje.pausas ?? []).reduce(
-                                                    (accumulator, pausa) => accumulator + (pausa.duracion_pausa ?? 0),
+                                                const totalPausas = (
+                                                    fichaje.pausas ?? []
+                                                ).reduce(
+                                                    (accumulator, pausa) =>
+                                                        accumulator +
+                                                        (pausa.duracion_pausa ??
+                                                            0),
                                                     0,
                                                 );
-                                                const timeZone = getFichajeTimeZone(fichaje, employeeTimeZone);
+                                                const timeZone =
+                                                    getFichajeTimeZone(
+                                                        fichaje,
+                                                        employeeTimeZone,
+                                                    );
 
                                                 return (
                                                     <tr
                                                         key={fichaje.id}
                                                         className={`border-b last:border-0 ${index % 2 === 0 ? '' : 'bg-muted/10'}`}
                                                     >
-                                                        <td className="px-4 py-2">{formatDateValue(fichaje.fecha)}</td>
                                                         <td className="px-4 py-2">
-                                                            {formatTimeInTimeZone(fichaje.inicio_jornada, timeZone)}
+                                                            {formatDateValue(
+                                                                fichaje.fecha,
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-2">
+                                                            {formatTimeInTimeZone(
+                                                                fichaje.inicio_jornada,
+                                                                timeZone,
+                                                            )}
                                                         </td>
                                                         <td className="px-4 py-2">
                                                             {fichaje.fin_jornada
-                                                                ? formatTimeInTimeZone(fichaje.fin_jornada, timeZone)
+                                                                ? formatTimeInTimeZone(
+                                                                      fichaje.fin_jornada,
+                                                                      timeZone,
+                                                                  )
                                                                 : '-'}
                                                         </td>
                                                         <td className="px-4 py-2">
-                                                            {(fichaje.pausas ?? []).length > 0
+                                                            {(
+                                                                fichaje.pausas ??
+                                                                []
+                                                            ).length > 0
                                                                 ? `${(fichaje.pausas ?? []).length} (${formatSeconds(totalPausas)})`
                                                                 : '-'}
                                                         </td>
                                                         <td className="px-4 py-2 text-right font-mono">
-                                                            {fichaje.duracion_jornada != null
-                                                                ? formatSeconds(fichaje.duracion_jornada)
+                                                            {fichaje.duracion_jornada !=
+                                                            null
+                                                                ? formatSeconds(
+                                                                      fichaje.duracion_jornada,
+                                                                  )
                                                                 : '-'}
                                                         </td>
                                                     </tr>
@@ -500,7 +613,9 @@ export default function FicharPage() {
                                 <p className="text-sm text-muted-foreground">
                                     {accionLabels[accionPendiente].descripcion}
                                 </p>
-                                <p className="text-xs text-muted-foreground">{activeTimeZoneLabel}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {activeTimeZoneLabel}
+                                </p>
                             </div>
 
                             <DialogFooter className="flex-row justify-center gap-2 sm:justify-center">

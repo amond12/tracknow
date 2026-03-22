@@ -6,11 +6,11 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class BlockEmployeeAccess
+class EnsureManagerAccess
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user()?->isEmpleado()) {
+        if (! $request->user()?->isManager()) {
             abort(403);
         }
 

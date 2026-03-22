@@ -2,40 +2,34 @@
 
 use App\Models\User;
 
-test('restricted staff are redirected away from dashboard', function (string $role) {
+test('empleados son redirigidos del dashboard a fichar', function () {
     $employee = User::factory()->create([
-        'role' => $role,
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)
         ->get(route('dashboard'))
         ->assertRedirect(route('fichar'));
-})->with(['empleado', 'encargado']);
+});
 
-test('restricted staff can enter settings but are redirected away from profile', function (string $role) {
+test('empleados entran en settings pero se redirigen a password', function () {
     $employee = User::factory()->create([
-        'role' => $role,
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)
         ->get(route('settings'))
         ->assertRedirect('/settings/password');
-})->with(['empleado', 'encargado']);
+});
 
-test('restricted staff cannot access profile settings page', function (string $role) {
+test('empleados no pueden acceder ni modificar su perfil', function () {
     $employee = User::factory()->create([
-        'role' => $role,
+        'role' => 'empleado',
     ]);
 
     $this->actingAs($employee)
         ->get(route('profile.edit'))
         ->assertForbidden();
-})->with(['empleado', 'encargado']);
-
-test('restricted staff cannot update profile settings', function (string $role) {
-    $employee = User::factory()->create([
-        'role' => $role,
-    ]);
 
     $this->actingAs($employee)
         ->patch(route('profile.update'), [
@@ -43,21 +37,33 @@ test('restricted staff cannot update profile settings', function (string $role) 
             'email' => 'empleado@example.com',
         ])
         ->assertForbidden();
-})->with(['empleado', 'encargado']);
-
-test('restricted staff cannot delete own account', function (string $role) {
-    $employee = User::factory()->create([
-        'role' => $role,
-    ]);
 
     $this->actingAs($employee)
         ->delete(route('profile.destroy'), [
             'password' => 'password',
         ])
         ->assertForbidden();
-})->with(['empleado', 'encargado']);
+});
 
-test('admins can access dashboard and profile settings page', function () {
+test('encargados pueden acceder a dashboard y perfil', function () {
+    $encargado = User::factory()->create([
+        'role' => 'encargado',
+    ]);
+
+    $this->actingAs($encargado)
+        ->get(route('dashboard'))
+        ->assertOk();
+
+    $this->actingAs($encargado)
+        ->get(route('settings'))
+        ->assertRedirect('/settings/profile');
+
+    $this->actingAs($encargado)
+        ->get(route('profile.edit'))
+        ->assertOk();
+});
+
+test('admins pueden acceder a dashboard y perfil', function () {
     $admin = User::factory()->create([
         'role' => 'admin',
     ]);

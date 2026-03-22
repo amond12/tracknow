@@ -21,6 +21,11 @@ class User extends Authenticatable
 
     public const ROLE_ENCARGADO = 'encargado';
 
+    public const MANAGER_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_ENCARGADO,
+    ];
+
     public const STAFF_ROLES = [
         self::ROLE_EMPLEADO,
         self::ROLE_ENCARGADO,
@@ -75,14 +80,14 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
-            'remoto'            => 'boolean',
-            'horario_lunes'     => 'float',
-            'horario_martes'    => 'float',
+            'remoto' => 'boolean',
+            'horario_lunes' => 'float',
+            'horario_martes' => 'float',
             'horario_miercoles' => 'float',
-            'horario_jueves'    => 'float',
-            'horario_viernes'   => 'float',
-            'horario_sabado'    => 'float',
-            'horario_domingo'   => 'float',
+            'horario_jueves' => 'float',
+            'horario_viernes' => 'float',
+            'horario_sabado' => 'float',
+            'horario_domingo' => 'float',
         ];
     }
 
@@ -145,6 +150,11 @@ class User extends Authenticatable
     public function isEncargado(): bool
     {
         return $this->role === self::ROLE_ENCARGADO;
+    }
+
+    public function isManager(): bool
+    {
+        return in_array($this->role, self::MANAGER_ROLES, true);
     }
 
     public function isEmployeeLike(): bool

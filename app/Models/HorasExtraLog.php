@@ -23,7 +23,7 @@ class HorasExtraLog extends Model
     ];
 
     protected $casts = [
-        'fecha'      => 'date',
+        'fecha' => 'date',
         'created_at' => 'datetime',
     ];
 

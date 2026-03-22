@@ -1,16 +1,16 @@
 <?php
 
-use App\Http\Middleware\BlockEmployeeAccess;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TrabajoController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
+use App\Http\Middleware\BlockEmployeeAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
     Route::get('settings', function (Request $request) {
-        if ($request->user()?->isEmployeeLike()) {
+        if ($request->user()?->isEmpleado()) {
             return redirect('/settings/password');
         }
 

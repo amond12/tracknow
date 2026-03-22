@@ -14,7 +14,7 @@ import type { Auth, NavItem } from '@/types';
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const { isCurrentOrParentUrl } = useCurrentUrl();
-    const isEmployee = ['empleado', 'encargado'].includes(auth.user.role);
+    const isEmployee = auth.user.role === 'empleado';
     const sidebarNavItems: NavItem[] = [
         ...(!isEmployee
             ? [

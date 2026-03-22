@@ -20,7 +20,7 @@ class Vacacion extends Model
     ];
 
     protected $casts = [
-        'fecha'       => 'date',
+        'fecha' => 'date',
         'dia_completo' => 'boolean',
     ];
 

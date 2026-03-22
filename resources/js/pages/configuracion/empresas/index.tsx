@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
@@ -15,11 +15,11 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
-import type { BreadcrumbItem, Company } from '@/types';
+import type { Auth, BreadcrumbItem, Company } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
-    { title: 'Configuración', href: '/configuracion/empresas' },
+    { title: 'Configuracion', href: '/configuracion/empresas' },
     { title: 'Empresas', href: '/configuracion/empresas' },
 ];
 
@@ -91,6 +91,8 @@ function EmpresaForm({
 }
 
 export default function EmpresasIndex({ companies }: Props) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const canManageCompanies = auth.user.role === 'admin';
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Company | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
@@ -147,26 +149,36 @@ export default function EmpresasIndex({ companies }: Props) {
                             Gestiona las empresas de tu cuenta
                         </p>
                     </div>
-                    <Button onClick={() => setCreateOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Nueva empresa
-                    </Button>
+                    {canManageCompanies && (
+                        <Button onClick={() => setCreateOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nueva empresa
+                        </Button>
+                    )}
                 </div>
 
                 <div className="overflow-hidden rounded-lg border">
                     <table className="w-full text-sm">
                         <thead className="bg-muted/50">
                             <tr>
-                                <th className="px-4 py-3 text-left font-medium">Nombre</th>
-                                <th className="px-4 py-3 text-left font-medium">CIF/NIF</th>
-                                <th className="px-4 py-3 text-right font-medium">Acciones</th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Nombre
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    CIF/NIF
+                                </th>
+                                {canManageCompanies && (
+                                    <th className="px-4 py-3 text-right font-medium">
+                                        Acciones
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y">
                             {companies.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={3}
+                                        colSpan={canManageCompanies ? 3 : 2}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         No hay empresas registradas
@@ -174,28 +186,43 @@ export default function EmpresasIndex({ companies }: Props) {
                                 </tr>
                             ) : (
                                 companies.map((company) => (
-                                    <tr key={company.id} className="hover:bg-muted/30">
-                                        <td className="px-4 py-3 font-medium">{company.nombre}</td>
-                                        <td className="px-4 py-3">{company.cif}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() => openEdit(company)}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="text-destructive hover:text-destructive"
-                                                    onClick={() => setDeleteTarget(company)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                    <tr
+                                        key={company.id}
+                                        className="hover:bg-muted/30"
+                                    >
+                                        <td className="px-4 py-3 font-medium">
+                                            {company.nombre}
                                         </td>
+                                        <td className="px-4 py-3">
+                                            {company.cif}
+                                        </td>
+                                        {canManageCompanies && (
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        onClick={() =>
+                                                            openEdit(company)
+                                                        }
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="text-destructive hover:text-destructive"
+                                                        onClick={() =>
+                                                            setDeleteTarget(
+                                                                company,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             )}
@@ -204,94 +231,133 @@ export default function EmpresasIndex({ companies }: Props) {
                 </div>
             </div>
 
-            {/* Dialog: Crear */}
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Nueva empresa</DialogTitle>
-                    </DialogHeader>
-                    <EmpresaForm
-                        data={createForm.data}
-                        setData={createForm.setData}
-                        errors={createForm.errors}
-                        processing={createForm.processing}
-                        onSubmit={handleCreate}
-                        onCancel={() => setCreateOpen(false)}
-                        submitLabel="Crear empresa"
-                    />
-                </DialogContent>
-            </Dialog>
+            {canManageCompanies && (
+                <>
+                    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Nueva empresa</DialogTitle>
+                            </DialogHeader>
+                            <EmpresaForm
+                                data={createForm.data}
+                                setData={createForm.setData}
+                                errors={createForm.errors}
+                                processing={createForm.processing}
+                                onSubmit={handleCreate}
+                                onCancel={() => setCreateOpen(false)}
+                                submitLabel="Crear empresa"
+                            />
+                        </DialogContent>
+                    </Dialog>
 
-            {/* Dialog: Editar */}
-            <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Editar empresa</DialogTitle>
-                    </DialogHeader>
-                    <EmpresaForm
-                        data={editForm.data}
-                        setData={editForm.setData}
-                        errors={editForm.errors}
-                        processing={editForm.processing}
-                        onSubmit={handleEdit}
-                        onCancel={() => setEditTarget(null)}
-                        submitLabel="Guardar cambios"
-                    />
-                </DialogContent>
-            </Dialog>
+                    <Dialog
+                        open={!!editTarget}
+                        onOpenChange={(open) => !open && setEditTarget(null)}
+                    >
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Editar empresa</DialogTitle>
+                            </DialogHeader>
+                            <EmpresaForm
+                                data={editForm.data}
+                                setData={editForm.setData}
+                                errors={editForm.errors}
+                                processing={editForm.processing}
+                                onSubmit={handleEdit}
+                                onCancel={() => setEditTarget(null)}
+                                submitLabel="Guardar cambios"
+                            />
+                        </DialogContent>
+                    </Dialog>
 
-            {/* Dialog: Confirmar eliminación */}
-            <Dialog
-                open={!!deleteTarget}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setDeleteTarget(null);
-                        setDeleteConfirm('');
-                    }
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Eliminar empresa</DialogTitle>
-                    </DialogHeader>
-                    <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
-                        Antes de continuar, te recomendamos exportar los datos de esta empresa.
-                        Una vez eliminada no podremos recuperarlos.
-                    </div>
-                    <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 space-y-1">
-                        <p className="font-medium">Se eliminará permanentemente:</p>
-                        <ul className="list-disc list-inside space-y-0.5">
-                            <li>La empresa <strong>{deleteTarget?.nombre}</strong></li>
-                            {(deleteTarget?.work_centers_count ?? 0) > 0 && (
-                                <li>{deleteTarget?.work_centers_count} centro{deleteTarget?.work_centers_count !== 1 ? 's' : ''} de trabajo</li>
-                            )}
-                            {(deleteTarget?.empleados_count ?? 0) > 0 && (
-                                <li>{deleteTarget?.empleados_count} empleado{deleteTarget?.empleados_count !== 1 ? 's' : ''}</li>
-                            )}
-                        </ul>
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="delete-confirm">
-                            Escribe <strong>ELIMINAR</strong> para confirmar
-                        </Label>
-                        <Input
-                            id="delete-confirm"
-                            value={deleteConfirm}
-                            onChange={(e) => setDeleteConfirm(e.target.value)}
-                            placeholder="ELIMINAR"
-                            autoComplete="off"
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteConfirm(''); }}>
-                            Cancelar
-                        </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleteConfirm !== 'ELIMINAR'}>
-                            Eliminar
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    <Dialog
+                        open={!!deleteTarget}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setDeleteTarget(null);
+                                setDeleteConfirm('');
+                            }
+                        }}
+                    >
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Eliminar empresa</DialogTitle>
+                            </DialogHeader>
+                            <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+                                Antes de continuar, te recomendamos exportar los
+                                datos de esta empresa. Una vez eliminada no
+                                podremos recuperarlos.
+                            </div>
+                            <div className="space-y-1 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                                <p className="font-medium">
+                                    Se eliminara permanentemente:
+                                </p>
+                                <ul className="list-inside list-disc space-y-0.5">
+                                    <li>
+                                        La empresa{' '}
+                                        <strong>{deleteTarget?.nombre}</strong>
+                                    </li>
+                                    {(deleteTarget?.work_centers_count ?? 0) >
+                                        0 && (
+                                        <li>
+                                            {deleteTarget?.work_centers_count}{' '}
+                                            centro
+                                            {deleteTarget?.work_centers_count !==
+                                            1
+                                                ? 's'
+                                                : ''}{' '}
+                                            de trabajo
+                                        </li>
+                                    )}
+                                    {(deleteTarget?.empleados_count ?? 0) >
+                                        0 && (
+                                        <li>
+                                            {deleteTarget?.empleados_count}{' '}
+                                            empleado
+                                            {deleteTarget?.empleados_count !== 1
+                                                ? 's'
+                                                : ''}
+                                        </li>
+                                    )}
+                                </ul>
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="delete-confirm">
+                                    Escribe <strong>ELIMINAR</strong> para
+                                    confirmar
+                                </Label>
+                                <Input
+                                    id="delete-confirm"
+                                    value={deleteConfirm}
+                                    onChange={(e) =>
+                                        setDeleteConfirm(e.target.value)
+                                    }
+                                    placeholder="ELIMINAR"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setDeleteTarget(null);
+                                        setDeleteConfirm('');
+                                    }}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleDelete}
+                                    disabled={deleteConfirm !== 'ELIMINAR'}
+                                >
+                                    Eliminar
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </>
+            )}
         </AppLayout>
     );
 }

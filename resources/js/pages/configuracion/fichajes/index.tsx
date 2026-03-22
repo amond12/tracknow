@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     Building2,
@@ -59,6 +59,7 @@ import {
 } from '@/lib/timezones';
 import { dashboard } from '@/routes';
 import type {
+    Auth,
     BreadcrumbItem,
     Company,
     EdicionFichaje,
@@ -929,9 +930,7 @@ function NuevoFichajeModal({
                                                             string,
                                                             string
                                                         >
-                                                    )[
-                                                        `pausas.${idx}.fin_pausa`
-                                                    ]
+                                                    )[`pausas.${idx}.fin_pausa`]
                                                 }
                                             </p>
                                         )}
@@ -1519,6 +1518,8 @@ export default function FichajesIndex({
     employees,
     filters,
 }: Props) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const canManage = auth.user.role !== 'empleado';
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
@@ -1690,13 +1691,15 @@ export default function FichajesIndex({
                             Consulta y edita los fichajes de tus empleados
                         </p>
                     </div>
-                    <Button
-                        className="shrink-0 gap-2"
-                        onClick={() => setNuevoOpen(true)}
-                    >
-                        <Plus className="h-4 w-4" />
-                        Nuevo fichaje
-                    </Button>
+                    {canManage && (
+                        <Button
+                            className="shrink-0 gap-2"
+                            onClick={() => setNuevoOpen(true)}
+                        >
+                            <Plus className="h-4 w-4" />
+                            Nuevo fichaje
+                        </Button>
+                    )}
                 </div>
 
                 {/* Filtros */}
@@ -2000,10 +2003,16 @@ export default function FichajesIndex({
                                         return (
                                             <tr
                                                 key={f.id}
-                                                className="cursor-pointer transition-colors hover:bg-muted/40"
-                                                onClick={() =>
-                                                    setSelectedId(f.id)
+                                                className={
+                                                    canManage
+                                                        ? 'cursor-pointer transition-colors hover:bg-muted/40'
+                                                        : 'transition-colors hover:bg-muted/40'
                                                 }
+                                                onClick={() => {
+                                                    if (canManage) {
+                                                        setSelectedId(f.id);
+                                                    }
+                                                }}
                                             >
                                                 <td className="px-4 py-3 font-medium">
                                                     {formatDateValue(f.fecha)}
@@ -2141,36 +2150,40 @@ export default function FichajesIndex({
                 </div>
             </div>
 
-            {/* Modal de detalle */}
-            <Dialog
-                open={fichajeSeleccionado !== null}
-                onOpenChange={(open) => {
-                    if (!open) setSelectedId(null);
-                }}
-            >
-                {fichajeSeleccionado && (
-                    <FichajeModal
-                        fichaje={fichajeSeleccionado}
-                        onClose={() => setSelectedId(null)}
-                    />
-                )}
-            </Dialog>
+            {canManage && (
+                <>
+                    {/* Modal de detalle */}
+                    <Dialog
+                        open={fichajeSeleccionado !== null}
+                        onOpenChange={(open) => {
+                            if (!open) setSelectedId(null);
+                        }}
+                    >
+                        {fichajeSeleccionado && (
+                            <FichajeModal
+                                fichaje={fichajeSeleccionado}
+                                onClose={() => setSelectedId(null)}
+                            />
+                        )}
+                    </Dialog>
 
-            {/* Modal nuevo fichaje */}
-            <Dialog
-                open={nuevoOpen}
-                onOpenChange={(open) => {
-                    if (!open) setNuevoOpen(false);
-                }}
-            >
-                {nuevoOpen && (
-                    <NuevoFichajeModal
-                        employees={employees}
-                        empresaId={empresaId}
-                        onClose={() => setNuevoOpen(false)}
-                    />
-                )}
-            </Dialog>
+                    {/* Modal nuevo fichaje */}
+                    <Dialog
+                        open={nuevoOpen}
+                        onOpenChange={(open) => {
+                            if (!open) setNuevoOpen(false);
+                        }}
+                    >
+                        {nuevoOpen && (
+                            <NuevoFichajeModal
+                                employees={employees}
+                                empresaId={empresaId}
+                                onClose={() => setNuevoOpen(false)}
+                            />
+                        )}
+                    </Dialog>
+                </>
+            )}
         </AppLayout>
     );
 }

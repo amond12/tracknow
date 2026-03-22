@@ -1,4 +1,4 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     Building2,
     Info,
@@ -41,7 +41,7 @@ import {
 } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
-import type { BreadcrumbItem, Company, WorkCenter } from '@/types';
+import type { Auth, BreadcrumbItem, Company, WorkCenter } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard() },
@@ -515,6 +515,8 @@ function CentroForm({
 
 function CentrosPageContent({ workCenters, companies }: Props) {
     const { state: sidebarState, isMobile } = useSidebar();
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const canManageCenters = auth.user.role === 'admin';
     const [createOpen, setCreateOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<WorkCenterWithCompany | null>(
         null,
@@ -592,13 +594,15 @@ function CentrosPageContent({ workCenters, companies }: Props) {
                             Gestiona los centros de trabajo de tus empresas
                         </p>
                     </div>
-                    <Button
-                        onClick={() => setCreateOpen(true)}
-                        disabled={companies.length === 0}
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Nuevo centro
-                    </Button>
+                    {canManageCenters && (
+                        <Button
+                            onClick={() => setCreateOpen(true)}
+                            disabled={companies.length === 0}
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nuevo centro
+                        </Button>
+                    )}
                 </div>
 
                 <div className="overflow-hidden rounded-lg border">
@@ -626,16 +630,18 @@ function CentrosPageContent({ workCenters, companies }: Props) {
                                 <th className="px-4 py-3 text-left font-medium">
                                     CP
                                 </th>
-                                <th className="px-4 py-3 text-right font-medium">
-                                    Acciones
-                                </th>
+                                {canManageCenters && (
+                                    <th className="px-4 py-3 text-right font-medium">
+                                        Acciones
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y">
                             {workCenters.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={8}
+                                        colSpan={canManageCenters ? 8 : 7}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         No hay centros de trabajo registrados
@@ -668,29 +674,33 @@ function CentrosPageContent({ workCenters, companies }: Props) {
                                         <td className="px-4 py-3">
                                             {centro.cp}
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() =>
-                                                        openEdit(centro)
-                                                    }
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="text-destructive hover:text-destructive"
-                                                    onClick={() =>
-                                                        setDeleteTarget(centro)
-                                                    }
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </td>
+                                        {canManageCenters && (
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        onClick={() =>
+                                                            openEdit(centro)
+                                                        }
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="text-destructive hover:text-destructive"
+                                                        onClick={() =>
+                                                            setDeleteTarget(
+                                                                centro,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             )}

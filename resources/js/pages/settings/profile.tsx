@@ -97,7 +97,9 @@ export default function Profile({
                                         id="dni"
                                         type="text"
                                         className="mt-1 block w-full"
-                                        defaultValue={(auth.user as any).dni ?? ''}
+                                        defaultValue={
+                                            (auth.user as any).dni ?? ''
+                                        }
                                         name="dni"
                                         required
                                         autoComplete="off"

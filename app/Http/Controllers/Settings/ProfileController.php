@@ -50,14 +50,19 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        // Recoge los IDs de empleados de las empresas del admin antes de borrar
-        $employeeIds = User::whereIn('company_id', $user->companies()->pluck('id'))->pluck('id');
-
         Auth::logout();
 
-        DB::transaction(function () use ($user, $employeeIds) {
-            User::whereIn('id', $employeeIds)->delete();
-            $user->delete(); // cascada: companies → work_centers
+        DB::transaction(function () use ($user) {
+            if ($user->isAdmin()) {
+                $employeeIds = User::whereIn('company_id', $user->companies()->pluck('id'))->pluck('id');
+
+                User::whereIn('id', $employeeIds)->delete();
+                $user->delete();
+
+                return;
+            }
+
+            $user->delete();
         });
 
         $request->session()->invalidate();

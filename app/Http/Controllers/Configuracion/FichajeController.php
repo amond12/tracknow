@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
-use App\Models\Company;
 use App\Models\EdicionFichaje;
 use App\Models\Fichaje;
 use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
 use App\Services\HorasExtraService;
+use App\Support\AdminScope;
 use App\Support\WorkCenterTimezone;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,40 +22,90 @@ class FichajeController extends Controller
     {
         $user = $request->user();
 
-        $companies = Company::where('user_id', $user->id)->get(['id', 'nombre']);
-        $companyIds = $companies->pluck('id');
-
-        $workCenters = WorkCenter::whereIn('company_id', $companyIds)
-            ->get(['id', 'company_id', 'nombre']);
-
-        $employees = User::where(function ($q) use ($companyIds) {
-            $q->whereIn('company_id', $companyIds)
-                ->whereIn('role', User::STAFF_ROLES);
-        })
-            ->orWhere('id', $user->id)
-            ->with('workCenter:id,nombre,timezone')
-            ->orderBy('apellido')
-            ->orderBy('name')
-            ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'remoto']);
-
         $query = Fichaje::with([
             'user',
             'workCenter:id,nombre,timezone',
             'pausas',
             'ediciones.user:id,name',
-        ])
-            ->whereHas('user', fn ($q) => $q->whereIn('company_id', $companyIds));
+        ]);
 
-        if ($request->filled('empresa_id')) {
-            $query->whereHas('user', fn ($q) => $q->where('company_id', $request->empresa_id));
-        }
+        if ($user->isEmpleado()) {
+            $user->loadMissing(['company:id,nombre', 'workCenter:id,company_id,nombre,timezone']);
 
-        if ($request->filled('centro_id')) {
-            $query->where('work_center_id', $request->centro_id);
-        }
+            $companies = $user->company
+                ? collect([['id' => $user->company->id, 'nombre' => $user->company->nombre]])
+                : collect();
+            $workCenters = $user->workCenter
+                ? collect([[
+                    'id' => $user->workCenter->id,
+                    'company_id' => $user->workCenter->company_id,
+                    'nombre' => $user->workCenter->nombre,
+                ]])
+                : collect();
+            $employees = collect([[
+                'id' => $user->id,
+                'company_id' => $user->company_id,
+                'work_center_id' => $user->work_center_id,
+                'name' => $user->name,
+                'apellido' => $user->apellido,
+                'remoto' => $user->remoto,
+                'work_center' => $user->workCenter
+                    ? [
+                        'id' => $user->workCenter->id,
+                        'nombre' => $user->workCenter->nombre,
+                        'timezone' => $user->workCenter->timezone,
+                    ]
+                    : null,
+            ]]);
 
-        if ($request->filled('empleado_id')) {
-            $query->where('user_id', $request->empleado_id);
+            if ($request->filled('empleado_id') && (int) $request->empleado_id !== $user->id) {
+                abort(403);
+            }
+
+            $query->where('user_id', $user->id);
+
+            if ($request->filled('empresa_id')) {
+                $query->whereHas('user', fn ($q) => $q->where('company_id', $request->empresa_id));
+            }
+
+            if ($request->filled('centro_id')) {
+                $query->where('work_center_id', $request->centro_id);
+            }
+        } else {
+            $companies = AdminScope::companyQueryFor($user)->get(['id', 'nombre']);
+            $companyIds = $companies->pluck('id');
+
+            $workCenters = WorkCenter::whereIn('company_id', $companyIds)
+                ->get(['id', 'company_id', 'nombre']);
+
+            $employees = User::where(function ($q) use ($companyIds) {
+                $q->whereIn('company_id', $companyIds)
+                    ->whereIn('role', User::STAFF_ROLES);
+            })
+                ->orWhere('id', $user->id)
+                ->with('workCenter:id,nombre,timezone')
+                ->orderBy('apellido')
+                ->orderBy('name')
+                ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido', 'remoto']);
+
+            $query->whereHas('user', function ($q) use ($companyIds, $user) {
+                $q->where(function ($staffQuery) use ($companyIds) {
+                    $staffQuery->whereIn('company_id', $companyIds)
+                        ->whereIn('role', User::STAFF_ROLES);
+                })->orWhere('id', $user->id);
+            });
+
+            if ($request->filled('empresa_id')) {
+                $query->whereHas('user', fn ($q) => $q->where('company_id', $request->empresa_id));
+            }
+
+            if ($request->filled('centro_id')) {
+                $query->where('work_center_id', $request->centro_id);
+            }
+
+            if ($request->filled('empleado_id')) {
+                $query->where('user_id', $request->empleado_id);
+            }
         }
 
         if ($request->filled('fecha_desde')) {
@@ -368,7 +418,7 @@ class FichajeController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
-        $companyIds = Company::where('user_id', $user->id)->pluck('id');
+        $companyIds = AdminScope::companyIdsFor($user);
 
         $validated = $request->validate([
             'employee_id' => 'required|integer',
@@ -549,15 +599,24 @@ class FichajeController extends Controller
     private function autorizarFichaje(Request $request, Fichaje $fichaje): void
     {
         $user = $request->user();
-        $companyIds = Company::where('user_id', $user->id)->pluck('id');
+        if ($user->isEmpleado()) {
+            abort_if($fichaje->user_id !== $user->id, 403);
+
+            return;
+        }
+
+        $companyIds = AdminScope::companyIdsFor($user);
 
         $pertenece = User::where('id', $fichaje->user_id)
-            ->whereIn('company_id', $companyIds)
+            ->where(function ($query) use ($companyIds, $user) {
+                $query->where(function ($staffQuery) use ($companyIds) {
+                    $staffQuery->whereIn('company_id', $companyIds)
+                        ->whereIn('role', User::STAFF_ROLES);
+                })->orWhere('id', $user->id);
+            })
             ->exists();
 
-        if (! $pertenece) {
-            abort(403);
-        }
+        abort_if(! $pertenece, 403);
     }
 
     private function normalizeDraftPausas(

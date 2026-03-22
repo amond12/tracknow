@@ -10,7 +10,7 @@ class RedirectEmployeeFromDashboard
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user()?->isEmployeeLike()) {
+        if ($request->user()?->isEmpleado()) {
             return redirect()->route('fichar');
         }
 

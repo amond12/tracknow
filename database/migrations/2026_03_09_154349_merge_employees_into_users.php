@@ -20,15 +20,15 @@ return new class extends Migration
         // 2. Copiar datos de employees → users
         DB::table('employees')->orderBy('id')->each(function ($emp) {
             DB::table('users')->where('id', $emp->user_id)->update([
-                'name'           => $emp->nombre,
-                'apellido'       => $emp->apellido,
-                'telefono'       => $emp->telefono,
-                'dni'            => $emp->dni,
-                'company_id'     => $emp->company_id,
+                'name' => $emp->nombre,
+                'apellido' => $emp->apellido,
+                'telefono' => $emp->telefono,
+                'dni' => $emp->dni,
+                'company_id' => $emp->company_id,
                 'work_center_id' => $emp->work_center_id,
-                'nss'            => $emp->nss,
-                'remoto'         => $emp->remoto,
-                'role'           => $emp->rol,
+                'nss' => $emp->nss,
+                'remoto' => $emp->remoto,
+                'role' => $emp->rol,
             ]);
         });
 

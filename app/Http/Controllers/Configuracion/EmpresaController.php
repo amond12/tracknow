@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\HorasExtraLog;
 use App\Models\User;
+use App\Support\AdminScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class EmpresaController extends Controller
 {
     public function index(Request $request): Response
     {
-        $companies = $request->user()->companies()
+        $companies = AdminScope::companyQueryFor($request->user())
             ->withCount(['workCenters', 'empleados'])
             ->orderBy('nombre')
             ->get();
@@ -29,21 +30,21 @@ class EmpresaController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'nombre'    => ['required', 'string', 'max:255'],
-            'cif'       => ['required', 'string', 'max:20'],
-            'pais'      => ['nullable', 'string', 'max:100'],
-            'ciudad'    => ['nullable', 'string', 'max:100'],
+            'nombre' => ['required', 'string', 'max:255'],
+            'cif' => ['required', 'string', 'max:20'],
+            'pais' => ['nullable', 'string', 'max:100'],
+            'ciudad' => ['nullable', 'string', 'max:100'],
             'direccion' => ['nullable', 'string', 'max:255'],
-            'cp'        => ['nullable', 'string', 'max:10'],
+            'cp' => ['nullable', 'string', 'max:10'],
         ]);
 
         $request->user()->companies()->create([
-            'nombre'    => $validated['nombre'],
-            'cif'       => $validated['cif'],
-            'pais'      => $validated['pais'] ?? '',
-            'ciudad'    => $validated['ciudad'] ?? '',
+            'nombre' => $validated['nombre'],
+            'cif' => $validated['cif'],
+            'pais' => $validated['pais'] ?? '',
+            'ciudad' => $validated['ciudad'] ?? '',
             'direccion' => $validated['direccion'] ?? '',
-            'cp'        => $validated['cp'] ?? '',
+            'cp' => $validated['cp'] ?? '',
         ]);
 
         return redirect()->back();
@@ -54,17 +55,17 @@ class EmpresaController extends Controller
         abort_if($empresa->user_id !== $request->user()->id, 403);
 
         $validated = $request->validate([
-            'nombre'    => ['required', 'string', 'max:255'],
-            'cif'       => ['required', 'string', 'max:20'],
-            'pais'      => ['nullable', 'string', 'max:100'],
-            'ciudad'    => ['nullable', 'string', 'max:100'],
+            'nombre' => ['required', 'string', 'max:255'],
+            'cif' => ['required', 'string', 'max:20'],
+            'pais' => ['nullable', 'string', 'max:100'],
+            'ciudad' => ['nullable', 'string', 'max:100'],
             'direccion' => ['nullable', 'string', 'max:255'],
-            'cp'        => ['nullable', 'string', 'max:10'],
+            'cp' => ['nullable', 'string', 'max:10'],
         ]);
 
         $payload = [
             'nombre' => $validated['nombre'],
-            'cif'    => $validated['cif'],
+            'cif' => $validated['cif'],
         ];
 
         foreach (['pais', 'ciudad', 'direccion', 'cp'] as $field) {

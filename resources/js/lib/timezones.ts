@@ -11,10 +11,19 @@ export const WORK_CENTER_TIMEZONE_OPTIONS = [
     { value: 'America/New_York', label: 'Nueva York (America/New_York)' },
     { value: 'America/Chicago', label: 'Chicago (America/Chicago)' },
     { value: 'America/Denver', label: 'Denver (America/Denver)' },
-    { value: 'America/Los_Angeles', label: 'Los Angeles (America/Los_Angeles)' },
-    { value: 'America/Mexico_City', label: 'Ciudad de Mexico (America/Mexico_City)' },
+    {
+        value: 'America/Los_Angeles',
+        label: 'Los Angeles (America/Los_Angeles)',
+    },
+    {
+        value: 'America/Mexico_City',
+        label: 'Ciudad de Mexico (America/Mexico_City)',
+    },
     { value: 'America/Bogota', label: 'Bogota (America/Bogota)' },
-    { value: 'America/Argentina/Buenos_Aires', label: 'Buenos Aires (America/Argentina/Buenos_Aires)' },
+    {
+        value: 'America/Argentina/Buenos_Aires',
+        label: 'Buenos Aires (America/Argentina/Buenos_Aires)',
+    },
     { value: 'America/Sao_Paulo', label: 'Sao Paulo (America/Sao_Paulo)' },
     { value: 'Asia/Dubai', label: 'Dubai (Asia/Dubai)' },
     { value: 'Asia/Kolkata', label: 'India (Asia/Kolkata)' },
@@ -128,7 +137,8 @@ export function getTimeZoneLabel(timeZone?: string | null): string {
     const resolvedTimeZone = resolveTimeZone(timeZone);
 
     return (
-        WORK_CENTER_TIMEZONE_OPTIONS.find((option) => option.value === resolvedTimeZone)
-            ?.label ?? resolvedTimeZone
+        WORK_CENTER_TIMEZONE_OPTIONS.find(
+            (option) => option.value === resolvedTimeZone,
+        )?.label ?? resolvedTimeZone
     );
 }

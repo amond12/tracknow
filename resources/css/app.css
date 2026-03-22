@@ -9,8 +9,8 @@
 
 @theme {
     --font-sans:
-        'Inter', 'Instrument Sans', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Inter', 'Instrument Sans', 'Helvetica Neue', ui-sans-serif, system-ui,
+        sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
     --radius-lg: var(--radius);
@@ -139,22 +139,25 @@
 
     body {
         @apply bg-background text-foreground;
-        font-family: 'Inter', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+        font-family:
+            'Inter', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
     }
 }
 
 /* ── Sidebar: corporate SaaS style ─────────────────────────────────── */
 
 /* Active nav item: white card + blue left bar */
-[data-sidebar="menu-button"][data-active="true"] {
+[data-sidebar='menu-button'][data-active='true'] {
     background-color: #ffffff !important;
-    box-shadow: inset 3px 0 0 #2563eb, 0 1px 3px 0 rgb(0 0 0 / 0.06) !important;
+    box-shadow:
+        inset 3px 0 0 #2563eb,
+        0 1px 3px 0 rgb(0 0 0 / 0.06) !important;
     color: #2563eb !important;
     font-weight: 600 !important;
 }
 
 /* Icon wrapper inside active item */
-[data-sidebar="menu-button"][data-active="true"] > svg {
+[data-sidebar='menu-button'][data-active='true'] > svg {
     background-color: #eff6ff;
     color: #2563eb;
     border-radius: 5px;
@@ -163,7 +166,7 @@
 }
 
 /* Group labels: uppercase micro-text */
-[data-sidebar="group-label"] {
+[data-sidebar='group-label'] {
     text-transform: uppercase;
     letter-spacing: 0.07em;
     font-size: 10.5px;
@@ -172,6 +175,6 @@
 }
 
 /* Subtle right border on the sidebar panel */
-[data-slot="sidebar"][data-side="left"] {
+[data-slot='sidebar'][data-side='left'] {
     border-right: 1px solid #e5e7eb;
 }

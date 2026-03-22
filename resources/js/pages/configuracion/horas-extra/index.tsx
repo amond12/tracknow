@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Building2,
     Calendar,
@@ -40,6 +40,7 @@ import {
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import type {
+    Auth,
     BreadcrumbItem,
     Company,
     Paginated,
@@ -148,6 +149,8 @@ export default function HorasExtraIndex({
     mes,
     anio,
 }: Props) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const canManage = auth.user.role !== 'empleado';
     const registros = registrosPage.data;
 
     // ── Estado de filtros ───────────────────────────────────────────────────────
@@ -335,13 +338,15 @@ export default function HorasExtraIndex({
                             empleado
                         </p>
                     </div>
-                    <Button
-                        onClick={() => setShowAddDialog(true)}
-                        className="gap-2"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Añadir horas extra
-                    </Button>
+                    {canManage && (
+                        <Button
+                            onClick={() => setShowAddDialog(true)}
+                            className="gap-2"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Añadir horas extra
+                        </Button>
+                    )}
                 </div>
 
                 {/* Filtros */}
@@ -611,16 +616,18 @@ export default function HorasExtraIndex({
                                     <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                                         Origen
                                     </th>
-                                    <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                                        Acciones
-                                    </th>
+                                    {canManage && (
+                                        <th className="px-4 py-3 text-right text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                            Acciones
+                                        </th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {registros.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={5}
+                                            colSpan={canManage ? 5 : 4}
                                             className="px-4 py-10 text-center text-muted-foreground"
                                         >
                                             No hay datos para los filtros
@@ -660,25 +667,29 @@ export default function HorasExtraIndex({
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-right">
-                                                {r.origen === 'manual' ? (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-7 w-7 text-destructive hover:text-destructive"
-                                                        onClick={() =>
-                                                            setDeleteId(r.id)
-                                                        }
-                                                        title="Eliminar ajuste manual"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        Recalculado
-                                                    </span>
-                                                )}
-                                            </td>
+                                            {canManage && (
+                                                <td className="px-4 py-3 text-right">
+                                                    {r.origen === 'manual' ? (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-destructive hover:text-destructive"
+                                                            onClick={() =>
+                                                                setDeleteId(
+                                                                    r.id,
+                                                                )
+                                                            }
+                                                            title="Eliminar ajuste manual"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Recalculado
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     ))
                                 )}
@@ -693,117 +704,136 @@ export default function HorasExtraIndex({
                 </div>
             </div>
 
-            {/* Diálogo — Añadir horas extra */}
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Añadir horas extra</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-2">
-                        <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium">
-                                Empleado
-                            </Label>
-                            <Select
-                                value={addForm.user_id}
-                                onValueChange={(v) =>
-                                    setAddForm((f) => ({ ...f, user_id: v }))
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar empleado" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {employees.map((e) => (
-                                        <SelectItem
-                                            key={e.id}
-                                            value={String(e.id)}
-                                        >
-                                            {e.apellido} {e.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+            {canManage && (
+                <>
+                    {/* Diálogo — Añadir horas extra */}
+                    <Dialog
+                        open={showAddDialog}
+                        onOpenChange={setShowAddDialog}
+                    >
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Añadir horas extra</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-2">
+                                <div className="grid gap-1.5">
+                                    <Label className="text-xs font-medium">
+                                        Empleado
+                                    </Label>
+                                    <Select
+                                        value={addForm.user_id}
+                                        onValueChange={(v) =>
+                                            setAddForm((f) => ({
+                                                ...f,
+                                                user_id: v,
+                                            }))
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Seleccionar empleado" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {employees.map((e) => (
+                                                <SelectItem
+                                                    key={e.id}
+                                                    value={String(e.id)}
+                                                >
+                                                    {e.apellido} {e.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                        <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium">Fecha</Label>
-                            <Input
-                                type="date"
-                                value={addForm.fecha}
-                                onChange={(e) =>
-                                    setAddForm((f) => ({
-                                        ...f,
-                                        fecha: e.target.value,
-                                    }))
-                                }
-                            />
-                        </div>
+                                <div className="grid gap-1.5">
+                                    <Label className="text-xs font-medium">
+                                        Fecha
+                                    </Label>
+                                    <Input
+                                        type="date"
+                                        value={addForm.fecha}
+                                        onChange={(e) =>
+                                            setAddForm((f) => ({
+                                                ...f,
+                                                fecha: e.target.value,
+                                            }))
+                                        }
+                                    />
+                                </div>
 
-                        <div className="grid gap-1.5">
-                            <Label className="text-xs font-medium">
-                                Horas extra (HH:MM, negativo con -)
-                            </Label>
-                            <Input
-                                type="text"
-                                placeholder="01:30 o -00:30"
-                                value={addForm.horas_extra}
-                                onChange={(e) =>
-                                    setAddForm((f) => ({
-                                        ...f,
-                                        horas_extra: e.target.value,
-                                    }))
-                                }
-                            />
-                        </div>
-                    </div>
+                                <div className="grid gap-1.5">
+                                    <Label className="text-xs font-medium">
+                                        Horas extra (HH:MM, negativo con -)
+                                    </Label>
+                                    <Input
+                                        type="text"
+                                        placeholder="01:30 o -00:30"
+                                        value={addForm.horas_extra}
+                                        onChange={(e) =>
+                                            setAddForm((f) => ({
+                                                ...f,
+                                                horas_extra: e.target.value,
+                                            }))
+                                        }
+                                    />
+                                </div>
+                            </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowAddDialog(false)}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            onClick={handleAdd}
-                            disabled={!addForm.user_id || !addForm.fecha}
-                        >
-                            Guardar
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowAddDialog(false)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    onClick={handleAdd}
+                                    disabled={
+                                        !addForm.user_id || !addForm.fecha
+                                    }
+                                >
+                                    Guardar
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
 
-            {/* Diálogo — Confirmar eliminación */}
-            <Dialog
-                open={deleteId !== null}
-                onOpenChange={(open) => {
-                    if (!open) setDeleteId(null);
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Eliminar ajuste manual</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Al eliminar este ajuste manual, el dia se recalculara a
-                        partir de los fichajes existentes. La accion quedara
-                        registrada para trazabilidad.
-                    </p>
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setDeleteId(null)}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button variant="destructive" onClick={handleDelete}>
-                            Eliminar
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                    {/* Diálogo — Confirmar eliminación */}
+                    <Dialog
+                        open={deleteId !== null}
+                        onOpenChange={(open) => {
+                            if (!open) setDeleteId(null);
+                        }}
+                    >
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>
+                                    Eliminar ajuste manual
+                                </DialogTitle>
+                            </DialogHeader>
+                            <p className="text-sm text-muted-foreground">
+                                Al eliminar este ajuste manual, el dia se
+                                recalculara a partir de los fichajes existentes.
+                                La accion quedara registrada para trazabilidad.
+                            </p>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setDeleteId(null)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={handleDelete}
+                                >
+                                    Eliminar
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </>
+            )}
         </AppLayout>
     );
 }

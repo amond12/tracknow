@@ -15,11 +15,11 @@ trait ProfileValidationRules
     protected function profileRules(?int $userId = null): array
     {
         return [
-            'name'     => $this->nameRules(),
+            'name' => $this->nameRules(),
             'apellido' => $this->apellidoRules(),
-            'email'    => $this->emailRules($userId),
+            'email' => $this->emailRules($userId),
             'telefono' => $this->telefonoRules(),
-            'dni'      => $this->dniRules($userId),
+            'dni' => $this->dniRules($userId),
         ];
     }
 
