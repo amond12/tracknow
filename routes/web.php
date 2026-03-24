@@ -1,16 +1,15 @@
 <?php
 
-use App\Http\Middleware\RedirectEmployeeFromDashboard;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route(auth()->check() ? 'dashboard' : 'login');
+    return redirect()->route(auth()->check() ? 'fichar' : 'login');
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')
-        ->middleware(RedirectEmployeeFromDashboard::class)
-        ->name('dashboard');
+    Route::get('dashboard', function () {
+        return redirect()->route('fichar');
+    })->name('dashboard');
 });
 
 require __DIR__.'/settings.php';

@@ -1,4 +1,5 @@
 import { AppContent } from '@/components/app-content';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
@@ -15,6 +16,7 @@ export default function AppSidebarLayout({
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 {children}
             </AppContent>
+            <MobileBottomNav />
         </AppShell>
     );
 }

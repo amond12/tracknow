@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import { BookOpen, Folder, Menu, Search } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -33,22 +33,13 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
-import { dashboard } from '@/routes';
 import type { Auth, BreadcrumbItem, NavItem } from '@/types';
 
 type Props = {
     breadcrumbs?: BreadcrumbItem[];
 };
 
-const DASHBOARD_URL = dashboard().url;
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: DASHBOARD_URL,
-        icon: LayoutGrid,
-    },
-];
+const mainNavItems: NavItem[] = [];
 
 const rightNavItems: NavItem[] = [
     {
@@ -69,11 +60,8 @@ const activeItemStyles =
 export function AppHeader({ breadcrumbs = [] }: Props) {
     const page = usePage<{ auth: Auth }>();
     const { auth } = page.props;
-    const isEmployee = auth.user.role === 'empleado';
-    const homeHref = isEmployee ? '/fichar' : DASHBOARD_URL;
-    const visibleMainNavItems = isEmployee
-        ? mainNavItems.filter((item) => item.href !== DASHBOARD_URL)
-        : mainNavItems;
+    const homeHref = '/fichar';
+    const visibleMainNavItems = mainNavItems;
     const getInitials = useInitials();
     const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
     return (

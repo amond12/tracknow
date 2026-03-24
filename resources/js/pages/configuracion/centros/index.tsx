@@ -13,6 +13,7 @@ import type { ReactNode } from 'react';
 import { CentroIP } from '@/components/centro-ip';
 import { CentroLocalizador } from '@/components/centro-localizador';
 import { DireccionFields } from '@/components/direccion-fields';
+import { MobilePageHeader } from '@/components/mobile-page-header';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,11 +41,10 @@ import {
     WORK_CENTER_TIMEZONE_OPTIONS,
 } from '@/lib/timezones';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
 import type { Auth, BreadcrumbItem, Company, WorkCenter } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: dashboard() },
+    { title: 'Fichar', href: '/fichar' },
     { title: 'Configuracion', href: '/configuracion/centros' },
     { title: 'Centros de trabajo', href: '/configuracion/centros' },
 ];
@@ -584,8 +584,26 @@ function CentrosPageContent({ workCenters, companies }: Props) {
 
     return (
         <>
-            <div className="flex flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
+            <div className="mobile-page-shell">
+                <MobilePageHeader
+                    title="Centros de trabajo"
+                    description="Consulta sedes y valida direcciones con una navegacion mas natural en movil."
+                    eyebrow="Ubicaciones"
+                    action={
+                        canManageCenters ? (
+                            <Button
+                                onClick={() => setCreateOpen(true)}
+                                disabled={companies.length === 0}
+                                className="h-11 w-full justify-center rounded-2xl"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nuevo centro
+                            </Button>
+                        ) : null
+                    }
+                />
+
+                <div className="hidden items-center justify-between md:flex">
                     <div>
                         <h1 className="text-2xl font-semibold">
                             Centros de trabajo
@@ -605,7 +623,94 @@ function CentrosPageContent({ workCenters, companies }: Props) {
                     )}
                 </div>
 
-                <div className="overflow-hidden rounded-lg border">
+                {workCenters.length === 0 ? (
+                    <div className="mobile-surface px-4 py-10 text-center md:hidden">
+                        <p className="text-sm font-medium text-slate-900">
+                            No hay centros de trabajo registrados
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Crea un centro para empezar a validar fichajes y
+                            horarios.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mobile-list-stack md:hidden">
+                        {workCenters.map((centro) => (
+                            <div key={centro.id} className="mobile-list-item">
+                                <div className="mobile-list-item__header">
+                                    <div>
+                                        <p className="mobile-list-item__title">
+                                            {centro.nombre}
+                                        </p>
+                                        <p className="mobile-list-item__subtitle">
+                                            {centro.company.nombre}
+                                        </p>
+                                    </div>
+
+                                    {canManageCenters && (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                className="h-10 w-10 rounded-2xl"
+                                                onClick={() => openEdit(centro)}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                className="h-10 w-10 rounded-2xl text-destructive"
+                                                onClick={() =>
+                                                    setDeleteTarget(centro)
+                                                }
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mobile-list-item__rows">
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Direccion
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {centro.direccion}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Poblacion
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {centro.poblacion}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Provincia
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {centro.provincia}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            CP
+                                        </span>
+                                        <span className="mobile-list-item__value font-mono">
+                                            {centro.cp}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="hidden overflow-hidden rounded-lg border md:block">
                     <table className="w-full text-sm">
                         <thead className="bg-muted/50">
                             <tr>

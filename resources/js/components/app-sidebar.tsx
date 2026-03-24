@@ -1,16 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import {
-    Building2,
-    CalendarDays,
-    ClipboardList,
-    Clock,
-    FileText,
-    LayoutGrid,
-    MapPin,
-    Settings2,
-    TrendingUp,
-    Users,
-} from 'lucide-react';
+import { Settings2 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavCollapsible } from '@/components/nav-collapsible';
 import { NavMain } from '@/components/nav-main';
@@ -24,69 +13,19 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
-import type { Auth, NavItem } from '@/types';
-
-const DASHBOARD_URL = dashboard().url;
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: DASHBOARD_URL,
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Fichar',
-        href: '/fichar',
-        icon: Clock,
-    },
-    {
-        title: 'Registros',
-        href: '/fichajes',
-        icon: ClipboardList,
-    },
-    {
-        title: 'PDFs',
-        href: '/pdfs',
-        icon: FileText,
-    },
-    {
-        title: 'Horas Extra',
-        href: '/horas-extra',
-        icon: TrendingUp,
-    },
-    {
-        title: 'Calendario',
-        href: '/calendario',
-        icon: CalendarDays,
-    },
-];
-
-const configNavItems: Omit<NavItem, 'children'>[] = [
-    {
-        title: 'Empresas',
-        href: '/configuracion/empresas',
-        icon: Building2,
-    },
-    {
-        title: 'Centros de trabajo',
-        href: '/configuracion/centros',
-        icon: MapPin,
-    },
-    {
-        title: 'Empleados',
-        href: '/configuracion/empleados',
-        icon: Users,
-    },
-];
+import {
+    configNavItems,
+    getHomeHref,
+    getVisibleMainNavItems,
+    isEmployeeRole,
+} from '@/lib/app-navigation';
+import type { Auth } from '@/types';
 
 export function AppSidebar() {
     const { auth } = usePage<{ auth: Auth }>().props;
-    const isEmployee = auth.user.role === 'empleado';
-    const homeHref = isEmployee ? '/fichar' : DASHBOARD_URL;
-    const visibleMainNavItems = isEmployee
-        ? mainNavItems.filter((item) => item.href !== DASHBOARD_URL)
-        : mainNavItems;
+    const isEmployee = isEmployeeRole(auth.user);
+    const homeHref = getHomeHref(auth.user);
+    const visibleMainNavItems = getVisibleMainNavItems(auth.user);
 
     return (
         <Sidebar collapsible="icon" variant="inset">

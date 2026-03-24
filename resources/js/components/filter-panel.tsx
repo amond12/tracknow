@@ -4,7 +4,13 @@ import type {
     HTMLAttributes,
     ReactNode,
 } from 'react';
-import { createContext, useContext, useSyncExternalStore } from 'react';
+import { ChevronDown } from 'lucide-react';
+import {
+    createContext,
+    useContext,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SelectTrigger } from '@/components/ui/select';
@@ -293,12 +299,16 @@ export function FilterPanel({
     const compactViewport = useCompactFilterViewport();
     const toneStyles = getFilterToneStyles(tone);
     const compact = !isMobile && compactViewport;
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const showPanelBody = !isMobile || mobileOpen;
 
     return (
         <filterPanelContext.Provider value={{ compact, tone }}>
             <section
                 className={cn(
                     'relative overflow-visible border border-border/70 bg-card/95 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.22)]',
+                    isMobile &&
+                        'rounded-[1.75rem] border-white/70 bg-white/88 shadow-[0_26px_52px_-36px_rgba(15,23,42,0.38)] backdrop-blur',
                     compact ? 'rounded-[1.125rem]' : 'rounded-[1.375rem]',
                     className,
                 )}
@@ -310,99 +320,191 @@ export function FilterPanel({
                         compact ? 'p-3.5 sm:p-4' : 'p-4 sm:p-5',
                     )}
                 >
-                    <div
-                        className={cn(
-                            'flex flex-col border-b border-border/60 lg:flex-row lg:items-center lg:justify-between',
-                            compact ? 'gap-2.5 pb-3' : 'gap-3 pb-4',
-                        )}
-                    >
-                        <div className="flex min-w-0 items-start gap-2.5">
-                            {Icon && (
-                                <div
-                                    className={cn(
-                                        'flex shrink-0 items-center justify-center rounded-xl border bg-background/80',
-                                        compact ? 'size-8' : 'size-9',
-                                        toneStyles.iconWrap,
+                    {isMobile ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setMobileOpen((open) => !open)}
+                                className={cn(
+                                    'flex w-full items-start justify-between gap-3 text-left',
+                                    showPanelBody &&
+                                        'border-b border-border/60 pb-4',
+                                )}
+                            >
+                                <div className="flex min-w-0 items-start gap-2.5">
+                                    {Icon && (
+                                        <div
+                                            className={cn(
+                                                'flex size-10 shrink-0 items-center justify-center rounded-2xl border bg-background/80',
+                                                toneStyles.iconWrap,
+                                            )}
+                                        >
+                                            <Icon
+                                                className={cn(
+                                                    'h-4 w-4',
+                                                    toneStyles.icon,
+                                                )}
+                                            />
+                                        </div>
                                     )}
-                                >
-                                    <Icon
+
+                                    <div className="min-w-0 space-y-1">
+                                        <p
+                                            className={cn(
+                                                'text-[10px] font-semibold tracking-[0.18em] uppercase',
+                                                toneStyles.eyebrow,
+                                            )}
+                                        >
+                                            {eyebrow}
+                                        </p>
+                                        <div className="space-y-0.5">
+                                            <h2 className="truncate text-[15px] font-semibold tracking-tight sm:text-base">
+                                                {title}
+                                            </h2>
+                                            <p className="text-xs leading-5 text-muted-foreground">
+                                                {mobileOpen
+                                                    ? (description ??
+                                                      'Oculta los filtros cuando termines.')
+                                                    : 'Toca para desplegar los filtros.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex shrink-0 items-center gap-2 pt-1">
+                                    <span className="rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+                                        {mobileOpen ? 'Ocultar' : 'Abrir'}
+                                    </span>
+                                    <ChevronDown
                                         className={cn(
-                                            compact ? 'h-3.5 w-3.5' : 'h-4 w-4',
-                                            toneStyles.icon,
+                                            'h-4 w-4 text-muted-foreground transition-transform duration-200',
+                                            mobileOpen && 'rotate-180',
                                         )}
                                     />
                                 </div>
-                            )}
+                            </button>
 
-                            <div className="min-w-0 space-y-1">
-                                {!compact && (
-                                    <p
-                                        className={cn(
-                                            'text-[10px] font-semibold tracking-[0.18em] uppercase',
-                                            toneStyles.eyebrow,
-                                        )}
+                            {showPanelBody && (
+                                <>
+                                    <div
+                                        className={cn('mt-4', contentClassName)}
                                     >
-                                        {eyebrow}
-                                    </p>
-                                )}
-                                <div
-                                    className={
-                                        compact ? 'space-y-0' : 'space-y-0.5'
-                                    }
-                                >
-                                    <h2
-                                        className={cn(
-                                            'truncate font-semibold tracking-tight',
-                                            compact
-                                                ? 'text-sm'
-                                                : 'text-[15px] sm:text-base',
-                                        )}
-                                    >
-                                        {title}
-                                    </h2>
-                                    {description && !compact && (
-                                        <p
-                                            className={cn(
-                                                'max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm',
-                                            )}
-                                        >
-                                            {description}
-                                        </p>
+                                        {children}
+                                    </div>
+
+                                    {meta && (
+                                        <div className="mt-4 border-t border-border/60 pt-4">
+                                            <div className="flex flex-col gap-2 [&>button]:w-full [&>div]:flex [&>div]:w-full [&>div]:flex-col [&>div]:gap-2 [&>div>*]:w-full">
+                                                {meta}
+                                            </div>
+                                        </div>
                                     )}
-                                </div>
-                            </div>
-                        </div>
 
-                        {meta && (
+                                    {footer && (
+                                        <div className="mt-4 border-t border-border/60 pt-3">
+                                            {footer}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        <>
                             <div
                                 className={cn(
-                                    'flex flex-wrap items-center lg:justify-end',
-                                    compact ? 'gap-1.5' : 'gap-2',
+                                    'flex flex-col border-b border-border/60 lg:flex-row lg:items-center lg:justify-between',
+                                    compact ? 'gap-2.5 pb-3' : 'gap-3 pb-4',
                                 )}
                             >
-                                {meta}
+                                <div className="flex min-w-0 items-start gap-2.5">
+                                    {Icon && (
+                                        <div
+                                            className={cn(
+                                                'flex shrink-0 items-center justify-center rounded-xl border bg-background/80',
+                                                compact ? 'size-8' : 'size-9',
+                                                toneStyles.iconWrap,
+                                            )}
+                                        >
+                                            <Icon
+                                                className={cn(
+                                                    compact
+                                                        ? 'h-3.5 w-3.5'
+                                                        : 'h-4 w-4',
+                                                    toneStyles.icon,
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="min-w-0 space-y-1">
+                                        {!compact && (
+                                            <p
+                                                className={cn(
+                                                    'text-[10px] font-semibold tracking-[0.18em] uppercase',
+                                                    toneStyles.eyebrow,
+                                                )}
+                                            >
+                                                {eyebrow}
+                                            </p>
+                                        )}
+                                        <div
+                                            className={
+                                                compact
+                                                    ? 'space-y-0'
+                                                    : 'space-y-0.5'
+                                            }
+                                        >
+                                            <h2
+                                                className={cn(
+                                                    'truncate font-semibold tracking-tight',
+                                                    compact
+                                                        ? 'text-sm'
+                                                        : 'text-[15px] sm:text-base',
+                                                )}
+                                            >
+                                                {title}
+                                            </h2>
+                                            {description && !compact && (
+                                                <p className="max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
+                                                    {description}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {meta && (
+                                    <div
+                                        className={cn(
+                                            'flex flex-wrap items-center lg:justify-end',
+                                            compact ? 'gap-1.5' : 'gap-2',
+                                        )}
+                                    >
+                                        {meta}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    <div
-                        className={cn(
-                            compact ? 'mt-3' : 'mt-4',
-                            contentClassName,
-                        )}
-                    >
-                        {children}
-                    </div>
+                            <div
+                                className={cn(
+                                    compact ? 'mt-3' : 'mt-4',
+                                    contentClassName,
+                                )}
+                            >
+                                {children}
+                            </div>
 
-                    {footer && (
-                        <div
-                            className={cn(
-                                'border-t border-border/60',
-                                compact ? 'mt-3 pt-2.5' : 'mt-4 pt-3',
+                            {footer && (
+                                <div
+                                    className={cn(
+                                        'border-t border-border/60',
+                                        compact ? 'mt-3 pt-2.5' : 'mt-4 pt-3',
+                                    )}
+                                >
+                                    {footer}
+                                </div>
                             )}
-                        >
-                            {footer}
-                        </div>
+                        </>
                     )}
                 </div>
             </section>

@@ -227,7 +227,39 @@ export default function TrabajoSettings({
                         {/* Horario semanal */}
                         <div className="grid gap-3">
                             <Label>Horario semanal (horas por día)</Label>
-                            <div className="overflow-hidden rounded-lg border">
+                            <div className="space-y-3 md:hidden">
+                                {DIAS.map((dia) => (
+                                    <div
+                                        key={dia.key}
+                                        className="rounded-[1.35rem] border border-slate-200/80 bg-white px-4 py-3 shadow-[0_16px_32px_-26px_rgba(15,23,42,0.2)]"
+                                    >
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-900">
+                                                    {dia.label}
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    Horas previstas
+                                                </p>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={horarios[dia.key]}
+                                                onChange={(e) =>
+                                                    handleHorarioChange(
+                                                        dia.key,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="h-11 w-24 rounded-2xl border bg-background px-3 text-right text-sm focus:ring-1 focus:ring-ring focus:outline-none"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="hidden overflow-hidden rounded-lg border md:block">
                                 <table className="w-full text-sm">
                                     <thead className="bg-muted/50">
                                         <tr>
@@ -273,8 +305,12 @@ export default function TrabajoSettings({
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            <Button type="submit" disabled={processing}>
+                        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                            <Button
+                                type="submit"
+                                disabled={processing}
+                                className="h-11 w-full rounded-2xl sm:w-auto"
+                            >
                                 Guardar
                             </Button>
 

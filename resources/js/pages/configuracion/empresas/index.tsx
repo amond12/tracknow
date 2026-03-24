@@ -1,6 +1,7 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { MobilePageHeader } from '@/components/mobile-page-header';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,11 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import type { Auth, BreadcrumbItem, Company } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: dashboard() },
+    { title: 'Fichar', href: '/fichar' },
     { title: 'Configuracion', href: '/configuracion/empresas' },
     { title: 'Empresas', href: '/configuracion/empresas' },
 ];
@@ -141,8 +141,25 @@ export default function EmpresasIndex({ companies }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Empresas" />
 
-            <div className="flex flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
+            <div className="mobile-page-shell">
+                <MobilePageHeader
+                    title="Empresas"
+                    description="Gestiona las empresas de tu cuenta con una vista clara y preparada para movil."
+                    eyebrow="Organizacion"
+                    action={
+                        canManageCompanies ? (
+                            <Button
+                                onClick={() => setCreateOpen(true)}
+                                className="h-11 w-full justify-center rounded-2xl"
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nueva empresa
+                            </Button>
+                        ) : null
+                    }
+                />
+
+                <div className="hidden items-center justify-between md:flex">
                     <div>
                         <h1 className="text-2xl font-semibold">Empresas</h1>
                         <p className="text-sm text-muted-foreground">
@@ -157,7 +174,80 @@ export default function EmpresasIndex({ companies }: Props) {
                     )}
                 </div>
 
-                <div className="overflow-hidden rounded-lg border">
+                {companies.length === 0 ? (
+                    <div className="mobile-surface px-4 py-10 text-center md:hidden">
+                        <p className="text-sm font-medium text-slate-900">
+                            No hay empresas registradas
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Crea la primera empresa para empezar a organizar la
+                            app en movil.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mobile-list-stack md:hidden">
+                        {companies.map((company) => (
+                            <div key={company.id} className="mobile-list-item">
+                                <div className="mobile-list-item__header">
+                                    <div>
+                                        <p className="mobile-list-item__title">
+                                            {company.nombre}
+                                        </p>
+                                        <p className="mobile-list-item__subtitle">
+                                            CIF/NIF {company.cif}
+                                        </p>
+                                    </div>
+
+                                    {canManageCompanies && (
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                className="h-10 w-10 rounded-2xl"
+                                                onClick={() =>
+                                                    openEdit(company)
+                                                }
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                className="h-10 w-10 rounded-2xl text-destructive"
+                                                onClick={() =>
+                                                    setDeleteTarget(company)
+                                                }
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mobile-list-item__rows">
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Centros
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {company.work_centers_count ?? 0}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Empleados
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {company.empleados_count ?? 0}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="hidden overflow-hidden rounded-lg border md:block">
                     <table className="w-full text-sm">
                         <thead className="bg-muted/50">
                             <tr>

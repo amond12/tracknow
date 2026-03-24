@@ -20,6 +20,7 @@ import {
     filterDropdownListClassName,
     filterDropdownOptionClassName,
 } from '@/components/filter-panel';
+import { MobilePageHeader } from '@/components/mobile-page-header';
 import { PaginationNav } from '@/components/pagination-nav';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +39,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import type {
     Auth,
     BreadcrumbItem,
@@ -49,7 +49,7 @@ import type {
 } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: dashboard() },
+    { title: 'Fichar', href: '/fichar' },
     { title: 'Horas Extra', href: '/horas-extra' },
 ];
 
@@ -326,9 +326,26 @@ export default function HorasExtraIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Horas Extra" />
 
-            <div className="flex flex-col gap-6 p-6">
+            <div className="mobile-page-shell">
+                <MobilePageHeader
+                    title="Horas extra"
+                    description="Consulta ajustes y balances mensuales con una interfaz movil mas directa."
+                    eyebrow="Jornadas"
+                    action={
+                        canManage ? (
+                            <Button
+                                onClick={() => setShowAddDialog(true)}
+                                className="h-11 w-full justify-center gap-2 rounded-2xl"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Añadir horas extra
+                            </Button>
+                        ) : null
+                    }
+                />
+
                 {/* Cabecera */}
-                <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="hidden flex-wrap items-start justify-between gap-4 md:flex">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight">
                             Horas Extra
@@ -592,7 +609,84 @@ export default function HorasExtraIndex({
                 </FilterPanel>
 
                 {/* Tabla */}
-                <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                {registros.length === 0 ? (
+                    <div className="mobile-surface px-4 py-10 text-center md:hidden">
+                        <p className="text-sm font-medium text-slate-900">
+                            No hay datos para los filtros seleccionados
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Cambia empresa, centro o periodo para ver horas
+                            extra.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mobile-list-stack md:hidden">
+                        {registros.map((r) => (
+                            <div key={r.id} className="mobile-list-item">
+                                <div className="mobile-list-item__header">
+                                    <div>
+                                        <p className="mobile-list-item__title">
+                                            {r.apellido}
+                                            {r.apellido ? ', ' : ''}
+                                            {r.nombre}
+                                        </p>
+                                        <p className="mobile-list-item__subtitle">
+                                            {formatDate(r.fecha)}
+                                        </p>
+                                    </div>
+
+                                    {r.origen === 'manual' ? (
+                                        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">
+                                            Manual
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                                            Auto
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="mobile-list-item__rows">
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Horas extra
+                                        </span>
+                                        <span className="mobile-list-item__value font-mono">
+                                            <ExtraCell
+                                                seconds={r.horas_extra}
+                                            />
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Origen
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {r.origen === 'manual'
+                                                ? r.admin_nombre
+                                                    ? `Manual · ${r.admin_nombre}`
+                                                    : 'Manual'
+                                                : 'Recalculado'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {canManage && r.origen === 'manual' && (
+                                    <Button
+                                        variant="outline"
+                                        className="mt-4 h-11 w-full justify-center gap-2 rounded-2xl text-destructive"
+                                        onClick={() => setDeleteId(r.id)}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                        Eliminar ajuste
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm md:block">
                     <div className="flex items-center border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
                             {registrosPage.total > 0

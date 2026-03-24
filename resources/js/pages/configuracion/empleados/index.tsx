@@ -17,6 +17,7 @@ import {
     FilterPanel,
     FilterSelectTrigger,
 } from '@/components/filter-panel';
+import { MobilePageHeader } from '@/components/mobile-page-header';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +39,6 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import type {
     BreadcrumbItem,
     Company,
@@ -47,7 +47,7 @@ import type {
 } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: dashboard() },
+    { title: 'Fichar', href: '/fichar' },
     { title: 'Configuración', href: '/configuracion/empleados' },
     { title: 'Empleados', href: '/configuracion/empleados' },
 ];
@@ -590,8 +590,24 @@ export default function EmpleadosIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Empleados" />
 
-            <div className="flex flex-col gap-6 p-6">
-                <div className="flex items-center justify-between">
+            <div className="mobile-page-shell">
+                <MobilePageHeader
+                    title="Empleados"
+                    description="Gestiona la plantilla con una vista tipo app pensada para movil."
+                    eyebrow="Equipo"
+                    action={
+                        <Button
+                            onClick={() => setCreateOpen(true)}
+                            disabled={companies.length === 0}
+                            className="h-11 w-full justify-center rounded-2xl"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Nuevo empleado
+                        </Button>
+                    }
+                />
+
+                <div className="hidden items-center justify-between md:flex">
                     <div>
                         <h1 className="text-2xl font-semibold">Empleados</h1>
                         <p className="text-sm text-muted-foreground">
@@ -693,7 +709,95 @@ export default function EmpleadosIndex({
                     </div>
                 </FilterPanel>
 
-                <div className="overflow-hidden rounded-lg border">
+                {filteredEmployees.length === 0 ? (
+                    <div className="mobile-surface px-4 py-10 text-center md:hidden">
+                        <p className="text-sm font-medium text-slate-900">
+                            {employees.length === 0
+                                ? 'No hay empleados registrados'
+                                : 'No hay empleados para los filtros seleccionados'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Ajusta los filtros o crea un empleado nuevo.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mobile-list-stack md:hidden">
+                        {filteredEmployees.map((emp) => (
+                            <div key={emp.id} className="mobile-list-item">
+                                <div className="mobile-list-item__header">
+                                    <div>
+                                        <p className="mobile-list-item__title">
+                                            {emp.name} {emp.apellido}
+                                        </p>
+                                        <p className="mobile-list-item__subtitle">
+                                            {emp.email}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="icon"
+                                            variant="outline"
+                                            className="h-10 w-10 rounded-2xl"
+                                            onClick={() => openEdit(emp)}
+                                        >
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            size="icon"
+                                            variant="outline"
+                                            className="h-10 w-10 rounded-2xl text-destructive"
+                                            onClick={() => setDeleteTarget(emp)}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 capitalize">
+                                        {emp.role}
+                                    </span>
+                                    {emp.remoto && (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-medium text-blue-700">
+                                            <Wifi className="h-3 w-3" />
+                                            Remoto
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="mobile-list-item__rows">
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Telefono
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {emp.telefono || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            DNI
+                                        </span>
+                                        <span className="mobile-list-item__value font-mono">
+                                            {emp.dni || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            NSS
+                                        </span>
+                                        <span className="mobile-list-item__value font-mono">
+                                            {emp.nss || '-'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="hidden overflow-hidden rounded-lg border md:block">
                     <table className="w-full text-sm">
                         <thead className="bg-muted/50">
                             <tr>

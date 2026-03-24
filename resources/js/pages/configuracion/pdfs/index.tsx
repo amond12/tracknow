@@ -19,6 +19,7 @@ import {
     filterDropdownListClassName,
     filterDropdownOptionClassName,
 } from '@/components/filter-panel';
+import { MobilePageHeader } from '@/components/mobile-page-header';
 import { PaginationNav } from '@/components/pagination-nav';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +29,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import type {
     BreadcrumbItem,
     Company,
@@ -38,7 +38,7 @@ import type {
 } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: dashboard() },
+    { title: 'Fichar', href: '/fichar' },
     { title: 'Configuración', href: '/pdfs' },
     { title: 'Generación de PDFs', href: '/pdfs' },
 ];
@@ -253,9 +253,15 @@ export default function PdfsIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Generación de PDFs" />
 
-            <div className="flex flex-col gap-6 p-6">
+            <div className="mobile-page-shell">
+                <MobilePageHeader
+                    title="Generacion de PDFs"
+                    description="Descarga los documentos mensuales con una vista mas clara para movil."
+                    eyebrow="Documentos"
+                />
+
                 {/* Header */}
-                <div>
+                <div className="hidden md:block">
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Generación de PDFs
                     </h1>
@@ -508,7 +514,78 @@ export default function PdfsIndex({
                 </FilterPanel>
 
                 {/* Tabla de empleados */}
-                <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                {resumen.length === 0 ? (
+                    <div className="mobile-surface px-4 py-10 text-center md:hidden">
+                        <p className="text-sm font-medium text-slate-900">
+                            No hay empleados
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Ajusta los filtros para ver resultados y generar
+                            PDFs.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mobile-list-stack md:hidden">
+                        {resumen.map((row) => (
+                            <div key={row.id} className="mobile-list-item">
+                                <div className="mobile-list-item__header">
+                                    <div>
+                                        <p className="mobile-list-item__title">
+                                            {row.nombre} {row.apellido}
+                                        </p>
+                                        <p className="mobile-list-item__subtitle">
+                                            {mesLabel} {anio}
+                                        </p>
+                                    </div>
+                                    {!row.tiene_fichajes && (
+                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                                            Sin registros
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="mobile-list-item__rows">
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            DNI
+                                        </span>
+                                        <span className="mobile-list-item__value font-mono">
+                                            {row.dni || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Dias registrados
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {row.total_dias}
+                                        </span>
+                                    </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Total horas
+                                        </span>
+                                        <span className="mobile-list-item__value font-mono">
+                                            {formatSeconds(row.total_segundos)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <a
+                                    href={pdfUrl(row.id)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                                >
+                                    <FileDown className="h-4 w-4" />
+                                    Descargar PDF
+                                </a>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm md:block">
                     <div className="flex items-center border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
                             {resumenPage.total > 0

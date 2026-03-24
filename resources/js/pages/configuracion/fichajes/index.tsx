@@ -28,6 +28,7 @@ import {
     filterDropdownListClassName,
     filterDropdownOptionClassName,
 } from '@/components/filter-panel';
+import { MobilePageHeader } from '@/components/mobile-page-header';
 import { PaginationNav } from '@/components/pagination-nav';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,7 +58,6 @@ import {
     getTimeInputValueInTimeZone,
     getTimeZoneLabel,
 } from '@/lib/timezones';
-import { dashboard } from '@/routes';
 import type {
     Auth,
     BreadcrumbItem,
@@ -71,7 +71,7 @@ import type {
 } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: dashboard() },
+    { title: 'Fichar', href: '/fichar' },
     { title: 'Configuración', href: '/fichajes' },
     { title: 'Registros', href: '/fichajes' },
 ];
@@ -1680,9 +1680,26 @@ export default function FichajesIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Registros de fichajes" />
 
-            <div className="flex flex-col gap-6 p-6">
+            <div className="mobile-page-shell">
+                <MobilePageHeader
+                    title="Registros de fichajes"
+                    description="Revisa jornadas y abre el detalle de cada fichaje con un flujo mas natural en movil."
+                    eyebrow="Actividad"
+                    action={
+                        canManage ? (
+                            <Button
+                                className="h-11 w-full justify-center gap-2 rounded-2xl"
+                                onClick={() => setNuevoOpen(true)}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Nuevo fichaje
+                            </Button>
+                        ) : null
+                    }
+                />
+
                 {/* Header */}
-                <div className="flex items-start justify-between gap-4">
+                <div className="hidden items-start justify-between gap-4 md:flex">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight">
                             Registros de fichajes
@@ -1928,7 +1945,140 @@ export default function FichajesIndex({
                 </FilterPanel>
 
                 {/* Tabla */}
-                <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                {fichajes.data.length === 0 ? (
+                    <div className="mobile-surface px-4 py-10 text-center md:hidden">
+                        <p className="text-sm font-medium text-slate-900">
+                            No hay registros
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            No hay fichajes para los filtros seleccionados.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="mobile-list-stack md:hidden">
+                        {fichajes.data.map((f) => {
+                            const totalPausas = f.pausas.reduce(
+                                (acc, p) => acc + (p.duracion_pausa ?? 0),
+                                0,
+                            );
+                            const estado =
+                                estadoBadge[f.estado] ?? estadoBadge.finalizada;
+                            const timeZone =
+                                f.timezone ??
+                                f.work_center?.timezone ??
+                                DEFAULT_WORK_CENTER_TIMEZONE;
+
+                            return (
+                                <div
+                                    key={f.id}
+                                    className="mobile-list-item text-left"
+                                >
+                                    <div className="mobile-list-item__header">
+                                        <div>
+                                            <p className="mobile-list-item__title">
+                                                {f.user?.name}{' '}
+                                                {f.user?.apellido}
+                                            </p>
+                                            <p className="mobile-list-item__subtitle">
+                                                {formatDateValue(f.fecha)}
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${estado.className}`}
+                                        >
+                                            <span
+                                                className={`h-1.5 w-1.5 rounded-full ${estado.dot}`}
+                                            />
+                                            {estado.label}
+                                        </span>
+                                    </div>
+
+                                    <div className="mobile-list-item__rows">
+                                        <div className="mobile-list-item__row">
+                                            <span className="mobile-list-item__label">
+                                                Entrada
+                                            </span>
+                                            <span className="mobile-list-item__value font-mono">
+                                                {formatTimeInTimeZone(
+                                                    f.inicio_jornada,
+                                                    timeZone,
+                                                )}
+                                            </span>
+                                        </div>
+                                        <div className="mobile-list-item__row">
+                                            <span className="mobile-list-item__label">
+                                                Salida
+                                            </span>
+                                            <span className="mobile-list-item__value font-mono">
+                                                {f.fin_jornada
+                                                    ? formatTimeInTimeZone(
+                                                          f.fin_jornada,
+                                                          timeZone,
+                                                      )
+                                                    : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="mobile-list-item__row">
+                                            <span className="mobile-list-item__label">
+                                                Pausas
+                                            </span>
+                                            <span className="mobile-list-item__value font-mono">
+                                                {f.pausas.length > 0
+                                                    ? `${f.pausas.length} (${formatSeconds(totalPausas)})`
+                                                    : '-'}
+                                            </span>
+                                        </div>
+                                        <div className="mobile-list-item__row">
+                                            <span className="mobile-list-item__label">
+                                                Trabajado
+                                            </span>
+                                            <span className="mobile-list-item__value font-mono">
+                                                {f.duracion_jornada != null
+                                                    ? formatSeconds(
+                                                          f.duracion_jornada,
+                                                      )
+                                                    : '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {f.user?.remoto &&
+                                        (f.lat_inicio || f.lat_fin) && (
+                                            <div className="mt-4 flex flex-wrap gap-3 text-xs">
+                                                {f.lat_inicio &&
+                                                f.lng_inicio ? (
+                                                    <MapLink
+                                                        lat={f.lat_inicio}
+                                                        lng={f.lng_inicio}
+                                                        label="Entrada"
+                                                    />
+                                                ) : null}
+                                                {f.lat_fin && f.lng_fin ? (
+                                                    <MapLink
+                                                        lat={f.lat_fin}
+                                                        lng={f.lng_fin}
+                                                        label="Salida"
+                                                    />
+                                                ) : null}
+                                            </div>
+                                        )}
+                                    {canManage && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="mt-4 h-11 w-full justify-center rounded-2xl"
+                                            onClick={() => setSelectedId(f.id)}
+                                        >
+                                            Ver detalle
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                <div className="hidden overflow-hidden rounded-xl border bg-card shadow-sm md:block">
                     <div className="flex items-center border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
                             {fichajes.total > 0
