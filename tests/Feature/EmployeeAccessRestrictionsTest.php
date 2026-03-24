@@ -45,14 +45,14 @@ test('empleados no pueden acceder ni modificar su perfil', function () {
         ->assertForbidden();
 });
 
-test('encargados pueden acceder a dashboard y perfil', function () {
+test('encargados son redirigidos del dashboard a fichar y pueden acceder a perfil', function () {
     $encargado = User::factory()->create([
         'role' => 'encargado',
     ]);
 
     $this->actingAs($encargado)
         ->get(route('dashboard'))
-        ->assertOk();
+        ->assertRedirect(route('fichar'));
 
     $this->actingAs($encargado)
         ->get(route('settings'))
@@ -63,14 +63,14 @@ test('encargados pueden acceder a dashboard y perfil', function () {
         ->assertOk();
 });
 
-test('admins pueden acceder a dashboard y perfil', function () {
+test('admins son redirigidos del dashboard a fichar y pueden acceder a perfil', function () {
     $admin = User::factory()->create([
         'role' => 'admin',
     ]);
 
     $this->actingAs($admin)
         ->get(route('dashboard'))
-        ->assertOk();
+        ->assertRedirect(route('fichar'));
 
     $this->actingAs($admin)
         ->get(route('profile.edit'))
