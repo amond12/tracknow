@@ -1,8 +1,8 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { MobilePageHeader } from '@/components/mobile-page-header';
 import InputError from '@/components/input-error';
+import { MobilePageHeader } from '@/components/mobile-page-header';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,

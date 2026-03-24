@@ -1,10 +1,10 @@
+import { ChevronDown } from 'lucide-react';
 import type {
     ComponentProps,
     ElementType,
     HTMLAttributes,
     ReactNode,
 } from 'react';
-import { ChevronDown } from 'lucide-react';
 import {
     createContext,
     useContext,

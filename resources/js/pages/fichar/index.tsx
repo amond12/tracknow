@@ -386,9 +386,7 @@ export default function FicharPage() {
         : employee?.remoto
           ? 'Se pedira tu ubicacion al marcar entrada, pausa o salida.'
           : 'Se validaran ubicacion y red del centro al marcar entrada, pausa o salida.';
-    const puedeIniciar = !estado;
     const puedePausar = estado === 'activa' || estado === 'pausa';
-    const puedeFinalizar = estado === 'activa' || estado === 'pausa';
 
     const accionLabels: Record<
         Exclude<AccionPendiente, null>,

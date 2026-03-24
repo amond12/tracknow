@@ -6,9 +6,10 @@ import {
     FileText,
     MapPin,
     TrendingUp,
-    Users,
-    type LucideIcon,
+    Users
+    
 } from 'lucide-react';
+import type {LucideIcon} from 'lucide-react';
 import type { NavItem, User } from '@/types';
 
 export const mainNavItems: NavItem[] = [
@@ -67,11 +68,11 @@ export function isEmployeeRole(user: Pick<User, 'role'>): boolean {
     return user.role === 'empleado';
 }
 
-export function getHomeHref(user: Pick<User, 'role'>): string {
+export function getHomeHref(): string {
     return '/fichar';
 }
 
-export function getVisibleMainNavItems(user: Pick<User, 'role'>): NavItem[] {
+export function getVisibleMainNavItems(): NavItem[] {
     return mainNavItems;
 }
 

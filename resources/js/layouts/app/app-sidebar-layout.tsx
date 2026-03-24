@@ -1,8 +1,8 @@
 import { AppContent } from '@/components/app-content';
-import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import type { AppLayoutProps } from '@/types';
 
 export default function AppSidebarLayout({

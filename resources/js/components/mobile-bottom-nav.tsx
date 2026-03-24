@@ -1,7 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
 import { Grid2x2Plus } from 'lucide-react';
 import { useCurrentUrl } from '@/hooks/use-current-url';
-import { getMobileTabItems, type MobileTabItem } from '@/lib/app-navigation';
+import { getMobileTabItems  } from '@/lib/app-navigation';
+import type {MobileTabItem} from '@/lib/app-navigation';
 import { cn } from '@/lib/utils';
 import type { Auth } from '@/types';
 import { useSidebar } from './ui/sidebar';

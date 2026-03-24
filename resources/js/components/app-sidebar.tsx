@@ -24,8 +24,8 @@ import type { Auth } from '@/types';
 export function AppSidebar() {
     const { auth } = usePage<{ auth: Auth }>().props;
     const isEmployee = isEmployeeRole(auth.user);
-    const homeHref = getHomeHref(auth.user);
-    const visibleMainNavItems = getVisibleMainNavItems(auth.user);
+    const homeHref = getHomeHref();
+    const visibleMainNavItems = getVisibleMainNavItems();
 
     return (
         <Sidebar collapsible="icon" variant="inset">
