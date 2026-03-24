@@ -5,6 +5,7 @@ use App\Models\Fichaje;
 use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
+use App\Support\WorkCenterTimezone;
 
 test('admin cannot create a manual fichaje with end time equal to start time', function () {
     [$admin, $employee] = createAdminEmployeeContext();
@@ -31,8 +32,8 @@ test('admin cannot move a workday end before its start', function () {
         'work_center_id' => $workCenter->id,
         'timezone' => 'Europe/Madrid',
         'fecha' => '2026-03-18',
-        'inicio_jornada' => '2026-03-18 08:00:00',
-        'fin_jornada' => '2026-03-18 17:00:00',
+        'inicio_jornada' => WorkCenterTimezone::localToUtc('2026-03-18T08:00:00', 'Europe/Madrid'),
+        'fin_jornada' => WorkCenterTimezone::localToUtc('2026-03-18T17:00:00', 'Europe/Madrid'),
         'duracion_jornada' => 32400,
         'estado' => 'finalizada',
     ]);
@@ -58,16 +59,16 @@ test('admin cannot add an overlapping pause to a fichaje', function () {
         'work_center_id' => $workCenter->id,
         'timezone' => 'Europe/Madrid',
         'fecha' => '2026-03-18',
-        'inicio_jornada' => '2026-03-18 08:00:00',
-        'fin_jornada' => '2026-03-18 17:00:00',
+        'inicio_jornada' => WorkCenterTimezone::localToUtc('2026-03-18T08:00:00', 'Europe/Madrid'),
+        'fin_jornada' => WorkCenterTimezone::localToUtc('2026-03-18T17:00:00', 'Europe/Madrid'),
         'duracion_jornada' => 31500,
         'estado' => 'finalizada',
     ]);
 
     Pausa::create([
         'fichaje_id' => $fichaje->id,
-        'inicio_pausa' => '2026-03-18 10:00:00',
-        'fin_pausa' => '2026-03-18 10:15:00',
+        'inicio_pausa' => WorkCenterTimezone::localToUtc('2026-03-18T10:00:00', 'Europe/Madrid'),
+        'fin_pausa' => WorkCenterTimezone::localToUtc('2026-03-18T10:15:00', 'Europe/Madrid'),
         'duracion_pausa' => 900,
     ]);
 
@@ -90,16 +91,16 @@ test('admin cannot move a pause outside the workday bounds', function () {
         'work_center_id' => $workCenter->id,
         'timezone' => 'Europe/Madrid',
         'fecha' => '2026-03-18',
-        'inicio_jornada' => '2026-03-18 08:00:00',
-        'fin_jornada' => '2026-03-18 17:00:00',
+        'inicio_jornada' => WorkCenterTimezone::localToUtc('2026-03-18T08:00:00', 'Europe/Madrid'),
+        'fin_jornada' => WorkCenterTimezone::localToUtc('2026-03-18T17:00:00', 'Europe/Madrid'),
         'duracion_jornada' => 31500,
         'estado' => 'finalizada',
     ]);
 
     $pausa = Pausa::create([
         'fichaje_id' => $fichaje->id,
-        'inicio_pausa' => '2026-03-18 10:00:00',
-        'fin_pausa' => '2026-03-18 10:15:00',
+        'inicio_pausa' => WorkCenterTimezone::localToUtc('2026-03-18T10:00:00', 'Europe/Madrid'),
+        'fin_pausa' => WorkCenterTimezone::localToUtc('2026-03-18T10:15:00', 'Europe/Madrid'),
         'duracion_pausa' => 900,
     ]);
 
