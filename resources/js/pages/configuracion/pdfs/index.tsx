@@ -21,6 +21,7 @@ import {
 } from '@/components/filter-panel';
 import { MobilePageHeader } from '@/components/mobile-page-header';
 import { PaginationNav } from '@/components/pagination-nav';
+import { PdfDownloadAction } from '@/components/pdf-download-action';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -571,15 +572,16 @@ export default function PdfsIndex({
                                     </div>
                                 </div>
 
-                                <a
+                                <PdfDownloadAction
                                     href={pdfUrl(row.id)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    fallbackFileName={`jornada_${row.apellido}_${row.nombre}_${mesSeleccionado}_${anioSeleccionado}.pdf`}
+                                    shareTitle="Compartir jornada PDF"
+                                    variant="default"
                                     className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                                 >
                                     <FileDown className="h-4 w-4" />
                                     Descargar PDF
-                                </a>
+                                </PdfDownloadAction>
                             </div>
                         ))}
                     </div>
@@ -692,15 +694,17 @@ export default function PdfsIndex({
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <a
+                                                <PdfDownloadAction
                                                     href={pdfUrl(row.id)}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
+                                                    fallbackFileName={`jornada_${row.apellido}_${row.nombre}_${mesSeleccionado}_${anioSeleccionado}.pdf`}
+                                                    shareTitle="Compartir jornada PDF"
+                                                    variant="default"
+                                                    size="sm"
                                                     className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                                                 >
                                                     <FileDown className="h-3.5 w-3.5" />
                                                     Descargar PDF
-                                                </a>
+                                                </PdfDownloadAction>
                                             </td>
                                         </tr>
                                     ))

@@ -19,6 +19,7 @@ import {
     filterDropdownListClassName,
     filterDropdownOptionClassName,
 } from '@/components/filter-panel';
+import { PdfDownloadAction } from '@/components/pdf-download-action';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -1055,20 +1056,17 @@ export default function CalendarioIndex({
                                 </span>
                             </div>
                             {empleadoId && (
-                                <a
+                                <PdfDownloadAction
                                     href={`/calendario/${empleadoId}/pdf?anio=${anio}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    fallbackFileName={`calendario_${empleadoId}_${anio}.pdf`}
+                                    shareTitle="Compartir calendario PDF"
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1.5"
                                 >
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="gap-1.5"
-                                    >
-                                        <Download className="h-3.5 w-3.5" />
-                                        Descargar PDF
-                                    </Button>
-                                </a>
+                                    <Download className="h-3.5 w-3.5" />
+                                    Descargar PDF
+                                </PdfDownloadAction>
                             )}
                         </div>
 

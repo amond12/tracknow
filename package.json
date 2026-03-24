@@ -34,7 +34,9 @@
     },
     "dependencies": {
         "@capacitor/core": "^7.4.3",
+        "@capacitor/filesystem": "^7.1.8",
         "@capacitor/ios": "^7.4.3",
+        "@capacitor/share": "^7.0.4",
         "@headlessui/react": "^2.2.0",
         "@inertiajs/react": "^2.3.7",
         "@radix-ui/react-avatar": "^1.1.3",
