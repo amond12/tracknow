@@ -754,6 +754,11 @@ export default function CalendarioIndex({
         nextEmpleadoId: number | null,
         nextAnio: string,
     ) {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) {
+            activeElement.blur();
+        }
+
         const params: Record<string, string> = {
             anio: nextAnio,
         };

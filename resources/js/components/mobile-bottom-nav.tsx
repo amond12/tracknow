@@ -28,8 +28,8 @@ export function MobileBottomNav() {
     );
 
     return (
-        <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 md:hidden">
-            <div className="pointer-events-auto mx-4 mb-3">
+        <nav className="mobile-bottom-nav-shell pointer-events-none">
+            <div className="mobile-bottom-nav-frame">
                 <div className="mobile-bottom-nav">
                     {items.map((item) => {
                         const active = isActiveTab(item, isCurrentOrParentUrl);
