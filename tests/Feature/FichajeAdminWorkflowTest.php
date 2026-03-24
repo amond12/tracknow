@@ -45,6 +45,39 @@ test('admin can create a final manual fichaje with pauses and computed summary',
         ->and(EdicionFichaje::query()->where('fichaje_id', $fichaje->id)->where('campo', 'creacion_admin')->exists())->toBeTrue();
 });
 
+test('admin can create a final overnight manual fichaje with overnight pause', function () {
+    [$admin, $employee] = createFichajeWorkflowContext();
+
+    $this->actingAs($admin)
+        ->post(route('fichajes.store'), [
+            'employee_id' => $employee->id,
+            'fecha' => '2026-03-12',
+            'inicio_jornada' => '2026-03-12T22:00:00',
+            'fin_jornada' => '2026-03-12T06:00:00',
+            'pausas' => [
+                [
+                    'inicio_pausa' => '2026-03-12T01:00:00',
+                    'fin_pausa' => '2026-03-12T01:15:00',
+                ],
+            ],
+            'motivo' => 'Alta manual nocturna',
+        ])
+        ->assertRedirect();
+
+    $fichaje = Fichaje::query()->with('pausas')->sole();
+    $pausa = $fichaje->pausas->sole();
+    $resumen = ResumenDiario::query()->where('user_id', $employee->id)->where('fecha', '2026-03-12')->firstOrFail();
+
+    expect(formatLocalDateTime($fichaje->inicio_jornada))->toBe('2026-03-12 22:00:00')
+        ->and(formatLocalDateTime($fichaje->fin_jornada))->toBe('2026-03-13 06:00:00')
+        ->and($fichaje->duracion_jornada)->toBe(27900)
+        ->and(formatLocalDateTime($pausa->inicio_pausa))->toBe('2026-03-13 01:00:00')
+        ->and(formatLocalDateTime($pausa->fin_pausa))->toBe('2026-03-13 01:15:00')
+        ->and($pausa->duracion_pausa)->toBe(900)
+        ->and($resumen->horas_trabajadas)->toBe(27900)
+        ->and($resumen->horas_extra)->toBe(-900);
+});
+
 test('admin can create an active manual fichaje with an open pause', function () {
     [$admin, $employee] = createFichajeWorkflowContext();
 
@@ -132,6 +165,42 @@ test('admin can set end time on an active workday and create its summary', funct
         ->and($resumen->horas_trabajadas)->toBe(32400)
         ->and($resumen->horas_extra)->toBe(3600)
         ->and(EdicionFichaje::query()->where('fichaje_id', $fichaje->id)->where('campo', 'fin_jornada')->exists())->toBeTrue();
+});
+
+test('admin can correct a delayed end time back to the fichaje day', function () {
+    [$admin, $employee, $workCenter] = createFichajeWorkflowContext();
+
+    $fichaje = Fichaje::create([
+        'user_id' => $employee->id,
+        'work_center_id' => $workCenter->id,
+        'timezone' => 'Europe/Madrid',
+        'fecha' => '2026-03-12',
+        'inicio_jornada' => localUtc('2026-03-12T14:00:00'),
+        'fin_jornada' => localUtc('2026-03-13T09:00:00'),
+        'duracion_jornada' => 68400,
+        'estado' => 'finalizada',
+    ]);
+
+    app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
+
+    $this->actingAs($admin)
+        ->put(route('fichajes.updateJornada', $fichaje), [
+            'campo' => 'fin_jornada',
+            'datetime' => '2026-03-13T22:00:00',
+            'motivo' => 'Corregir salida olvidada',
+        ])
+        ->assertRedirect();
+
+    $fichaje->refresh();
+    $resumen = ResumenDiario::query()
+        ->where('user_id', $employee->id)
+        ->where('fecha', '2026-03-12')
+        ->firstOrFail();
+
+    expect(formatLocalDateTime($fichaje->fin_jornada))->toBe('2026-03-12 22:00:00')
+        ->and($fichaje->duracion_jornada)->toBe(28800)
+        ->and($resumen->horas_trabajadas)->toBe(28800)
+        ->and($resumen->horas_extra)->toBe(0);
 });
 
 test('admin can move workday start and recalculate summary', function () {
@@ -222,6 +291,57 @@ test('admin can add and edit pauses on a finalised workday with duration recalcu
         ->and(EdicionFichaje::query()->where('fichaje_id', $fichaje->id)->where('campo', 'fin_pausa')->exists())->toBeTrue();
 });
 
+test('admin can add and edit overnight pauses on a finalised overnight workday', function () {
+    [$admin, $employee, $workCenter] = createFichajeWorkflowContext();
+
+    $fichaje = Fichaje::create([
+        'user_id' => $employee->id,
+        'work_center_id' => $workCenter->id,
+        'timezone' => 'Europe/Madrid',
+        'fecha' => '2026-03-12',
+        'inicio_jornada' => localUtc('2026-03-12T22:00:00'),
+        'fin_jornada' => localUtc('2026-03-13T06:00:00'),
+        'duracion_jornada' => 28800,
+        'estado' => 'finalizada',
+    ]);
+
+    app(HorasExtraService::class)->recalcularParaFichaje($fichaje);
+
+    $this->actingAs($admin)
+        ->post(route('fichajes.storePausa', $fichaje), [
+            'inicio_pausa' => '2026-03-12T01:00:00',
+            'fin_pausa' => '2026-03-12T01:15:00',
+            'motivo' => 'Pausa nocturna',
+        ])
+        ->assertRedirect();
+
+    $pausa = Pausa::query()->where('fichaje_id', $fichaje->id)->sole();
+    $fichaje->refresh();
+    $resumen = ResumenDiario::query()->where('user_id', $employee->id)->where('fecha', '2026-03-12')->firstOrFail();
+
+    expect(formatLocalDateTime($pausa->inicio_pausa))->toBe('2026-03-13 01:00:00')
+        ->and(formatLocalDateTime($pausa->fin_pausa))->toBe('2026-03-13 01:15:00')
+        ->and($fichaje->duracion_jornada)->toBe(27900)
+        ->and($resumen->horas_trabajadas)->toBe(27900);
+
+    $this->actingAs($admin)
+        ->put(route('fichajes.updatePausa', ['fichaje' => $fichaje, 'pausa' => $pausa]), [
+            'campo' => 'fin_pausa',
+            'datetime' => '2026-03-12T01:30:00',
+            'motivo' => 'Extender pausa nocturna',
+        ])
+        ->assertRedirect();
+
+    $pausa->refresh();
+    $fichaje->refresh();
+    $resumen->refresh();
+
+    expect(formatLocalDateTime($pausa->fin_pausa))->toBe('2026-03-13 01:30:00')
+        ->and($pausa->duracion_pausa)->toBe(1800)
+        ->and($fichaje->duracion_jornada)->toBe(27000)
+        ->and($resumen->horas_trabajadas)->toBe(27000);
+});
+
 test('admin can close an open pause and return the workday to active state', function () {
     [$admin, $employee, $workCenter] = createFichajeWorkflowContext();
 
@@ -254,6 +374,45 @@ test('admin can close an open pause and return the workday to active state', fun
         ->and(formatLocalDateTime($pausa->fin_pausa))->toBe('2026-03-12 11:20:00')
         ->and($fichaje->estado)->toBe('activa')
         ->and($fichaje->duracion_jornada)->toBeNull();
+});
+
+test('admin can close an overnight open pause the next day', function () {
+    [$admin, $employee, $workCenter] = createFichajeWorkflowContext();
+
+    $fichaje = Fichaje::create([
+        'user_id' => $employee->id,
+        'work_center_id' => $workCenter->id,
+        'timezone' => 'Europe/Madrid',
+        'fecha' => '2026-03-12',
+        'inicio_jornada' => localUtc('2026-03-12T22:00:00'),
+        'estado' => 'pausa',
+    ]);
+
+    $pausa = Pausa::create([
+        'fichaje_id' => $fichaje->id,
+        'inicio_pausa' => localUtc('2026-03-12T23:50:00'),
+    ]);
+
+    Carbon::setTestNow(Carbon::create(2026, 3, 13, 0, 30, 0, 'UTC'));
+
+    try {
+        $this->actingAs($admin)
+            ->put(route('fichajes.updatePausa', ['fichaje' => $fichaje, 'pausa' => $pausa]), [
+                'campo' => 'fin_pausa',
+                'datetime' => '2026-03-12T00:10:00',
+                'motivo' => 'Cerrar pausa nocturna',
+            ])
+            ->assertRedirect();
+    } finally {
+        Carbon::setTestNow();
+    }
+
+    $pausa->refresh();
+    $fichaje->refresh();
+
+    expect(formatLocalDateTime($pausa->fin_pausa))->toBe('2026-03-13 00:10:00')
+        ->and($pausa->duracion_pausa)->toBe(1200)
+        ->and($fichaje->estado)->toBe('activa');
 });
 
 test('admin can finalise a paused workday and the active pause is closed automatically', function () {

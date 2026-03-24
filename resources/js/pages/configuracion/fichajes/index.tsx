@@ -88,7 +88,9 @@ type FichajeConRelaciones = Fichaje & {
 interface Props {
     fichajes: Paginated<FichajeConRelaciones>;
     companies: Pick<Company, 'id' | 'nombre'>[];
-    workCenters: (Pick<WorkCenter, 'id' | 'nombre'> & { company_id: number })[];
+    workCenters: (Pick<WorkCenter, 'id' | 'nombre' | 'timezone'> & {
+        company_id: number;
+    })[];
     employees: (Pick<User, 'id' | 'name' | 'apellido' | 'remoto'> & {
         company_id: number;
         work_center_id: number;
@@ -127,6 +129,41 @@ function campoLabel(campo: string): string {
     return map[campo] ?? campo;
 }
 
+function addDaysToDateKey(dateKey: string, days: number): string {
+    const date = new Date(`${dateKey}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+
+    return date.toISOString().slice(0, 10);
+}
+
+function getEditBaseDate({
+    fecha,
+    hora,
+    valor,
+    anchorValor,
+    timeZone,
+}: {
+    fecha: string;
+    hora: string;
+    valor: string | null | undefined;
+    anchorValor?: string | null;
+    timeZone: string;
+}): string {
+    if (anchorValor) {
+        const anchorDate = getDateKeyInTimeZone(anchorValor, timeZone);
+        const anchorTime = getTimeInputValueInTimeZone(anchorValor, timeZone);
+        const canRollToNextDay = valor
+            ? getDateKeyInTimeZone(valor, timeZone) > anchorDate
+            : getCurrentDateKeyInTimeZone(timeZone) > anchorDate;
+
+        return canRollToNextDay && hora < anchorTime
+            ? addDaysToDateKey(anchorDate, 1)
+            : anchorDate;
+    }
+
+    return valor ? getDateKeyInTimeZone(valor, timeZone) : fecha;
+}
+
 // ─── Subcomponentes del modal ─────────────────────────────────────────────────
 
 function MapLink({
@@ -157,6 +194,7 @@ function HoraEditable({
     urlPut,
     campo,
     fecha,
+    anchorValor,
     timeZone,
     onSuccess,
 }: {
@@ -165,6 +203,7 @@ function HoraEditable({
     urlPut: string;
     campo: string;
     fecha: string;
+    anchorValor?: string | null;
     timeZone: string;
     onSuccess: () => void;
 }) {
@@ -178,7 +217,13 @@ function HoraEditable({
 
     function handleSave(e: React.FormEvent) {
         e.preventDefault();
-        const baseDate = valor ? getDateKeyInTimeZone(valor, timeZone) : fecha;
+        const baseDate = getEditBaseDate({
+            fecha,
+            hora,
+            valor,
+            anchorValor,
+            timeZone,
+        });
         const localIso = `${baseDate}T${hora}:00`;
 
         setProcessing(true);
@@ -1355,6 +1400,7 @@ function FichajeModal({
                                 urlPut={urlJornada}
                                 campo="fin_jornada"
                                 fecha={fichaje.fecha}
+                                anchorValor={fichaje.inicio_jornada}
                                 timeZone={timeZone}
                                 onSuccess={reload}
                             />
@@ -1433,6 +1479,9 @@ function FichajeModal({
                                                 urlPut={urlPausa}
                                                 campo="inicio_pausa"
                                                 fecha={fichaje.fecha}
+                                                anchorValor={
+                                                    fichaje.inicio_jornada
+                                                }
                                                 timeZone={timeZone}
                                                 onSuccess={reload}
                                             />
@@ -1444,6 +1493,7 @@ function FichajeModal({
                                                 urlPut={urlPausa}
                                                 campo="fin_pausa"
                                                 fecha={fichaje.fecha}
+                                                anchorValor={pausa.inicio_pausa}
                                                 timeZone={timeZone}
                                                 onSuccess={reload}
                                             />
@@ -1550,7 +1600,21 @@ export default function FichajesIndex({
             document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const today = getCurrentDateKeyInTimeZone(DEFAULT_WORK_CENTER_TIMEZONE);
+    const selectedFilterEmployee =
+        empleadoId === 'all'
+            ? null
+            : employees.find((employee) => employee.id === Number(empleadoId));
+    const selectedFilterWorkCenter =
+        centroId === 'all'
+            ? null
+            : workCenters.find(
+                  (workCenter) => workCenter.id === Number(centroId),
+              );
+    const filterTimeZone =
+        selectedFilterEmployee?.work_center?.timezone ??
+        selectedFilterWorkCenter?.timezone ??
+        DEFAULT_WORK_CENTER_TIMEZONE;
+    const today = getCurrentDateKeyInTimeZone(filterTimeZone);
     const [fechaDesde, setFechaDesde] = useState(filters.fecha_desde ?? today);
     const [fechaHasta, setFechaHasta] = useState(filters.fecha_hasta ?? today);
     const [selectedId, setSelectedId] = useState<number | null>(null);

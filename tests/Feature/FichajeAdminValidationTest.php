@@ -6,7 +6,7 @@ use App\Models\Pausa;
 use App\Models\User;
 use App\Models\WorkCenter;
 
-test('admin cannot create a manual fichaje with end time before start time', function () {
+test('admin cannot create a manual fichaje with end time equal to start time', function () {
     [$admin, $employee] = createAdminEmployeeContext();
 
     $this->actingAs($admin)
@@ -14,7 +14,7 @@ test('admin cannot create a manual fichaje with end time before start time', fun
             'employee_id' => $employee->id,
             'fecha' => '2026-03-18',
             'inicio_jornada' => '2026-03-18T18:00:00',
-            'fin_jornada' => '2026-03-18T09:00:00',
+            'fin_jornada' => '2026-03-18T18:00:00',
             'pausas' => [],
             'motivo' => 'Alta manual invalida',
         ])

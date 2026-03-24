@@ -40,6 +40,7 @@ class FichajeController extends Controller
                     'id' => $user->workCenter->id,
                     'company_id' => $user->workCenter->company_id,
                     'nombre' => $user->workCenter->nombre,
+                    'timezone' => $user->workCenter->timezone,
                 ]])
                 : collect();
             $employees = collect([[
@@ -76,7 +77,7 @@ class FichajeController extends Controller
             $companyIds = $companies->pluck('id');
 
             $workCenters = WorkCenter::whereIn('company_id', $companyIds)
-                ->get(['id', 'company_id', 'nombre']);
+                ->get(['id', 'company_id', 'nombre', 'timezone']);
 
             $employees = User::where(function ($q) use ($companyIds) {
                 $q->whereIn('company_id', $companyIds)
@@ -145,8 +146,14 @@ class FichajeController extends Controller
 
         $campo = $validated['campo'];
         $timezone = WorkCenterTimezone::resolve($fichaje->timezone ?: $fichaje->workCenter?->timezone);
-        $nuevaFecha = WorkCenterTimezone::localToUtc(
+        $localDateTime = $this->normalizeEditedJornadaDateTime(
             $validated['datetime'],
+            $campo,
+            $fichaje,
+            $timezone,
+        );
+        $nuevaFecha = WorkCenterTimezone::localToUtc(
+            $localDateTime,
             $timezone,
         );
         $valorAnterior = $fichaje->{$campo}?->toJSON();
@@ -211,12 +218,29 @@ class FichajeController extends Controller
         ]);
 
         $timezone = WorkCenterTimezone::resolve($fichaje->timezone ?: $fichaje->workCenter?->timezone);
-        $inicioPausa = WorkCenterTimezone::localToUtc(
+        $contextBoundary = $fichaje->fin_jornada ?: WorkCenterTimezone::nowUtc();
+        $inicioPausaLocal = $this->normalizeLocalDateTimeAgainstAnchor(
             $validated['inicio_pausa'],
+            $fichaje->inicio_jornada,
+            $timezone,
+            $fichaje->fin_jornada,
+            $contextBoundary,
+        );
+        $inicioPausa = WorkCenterTimezone::localToUtc(
+            $inicioPausaLocal,
             $timezone,
         );
-        $finPausa = $validated['fin_pausa']
-            ? WorkCenterTimezone::localToUtc($validated['fin_pausa'], $timezone)
+        $finPausaLocal = $validated['fin_pausa']
+            ? $this->normalizeLocalDateTimeAgainstAnchor(
+                $validated['fin_pausa'],
+                $inicioPausa,
+                $timezone,
+                $fichaje->fin_jornada,
+                $contextBoundary,
+            )
+            : null;
+        $finPausa = $finPausaLocal
+            ? WorkCenterTimezone::localToUtc($finPausaLocal, $timezone)
             : null;
 
         $fichaje->loadMissing('pausas');
@@ -278,8 +302,15 @@ class FichajeController extends Controller
 
         $campo = $validated['campo'];
         $timezone = WorkCenterTimezone::resolve($fichaje->timezone ?: $fichaje->workCenter?->timezone);
-        $nuevaFecha = WorkCenterTimezone::localToUtc(
+        $localDateTime = $this->normalizeEditedPausaDateTime(
             $validated['datetime'],
+            $campo,
+            $fichaje,
+            $pausa,
+            $timezone,
+        );
+        $nuevaFecha = WorkCenterTimezone::localToUtc(
+            $localDateTime,
             $timezone,
         );
         $valorAnterior = $pausa->{$campo}?->toJSON();
@@ -452,8 +483,17 @@ class FichajeController extends Controller
             $validated['inicio_jornada'],
             $timezone,
         );
-        $finJornada = $validated['fin_jornada']
-            ? WorkCenterTimezone::localToUtc($validated['fin_jornada'], $timezone)
+        $finJornadaLocal = $validated['fin_jornada']
+            ? $this->normalizeLocalDateTimeAgainstAnchor(
+                $validated['fin_jornada'],
+                $inicioJornada,
+                $timezone,
+                null,
+                $inicioJornada->copy()->addDay(),
+            )
+            : null;
+        $finJornada = $finJornadaLocal
+            ? WorkCenterTimezone::localToUtc($finJornadaLocal, $timezone)
             : null;
         $fecha = $inicioJornada->copy()->setTimezone($timezone)->toDateString();
 
@@ -626,14 +666,31 @@ class FichajeController extends Controller
         ?Carbon $finJornada,
     ): array {
         $draftPausas = [];
+        $contextBoundary = $finJornada ?: WorkCenterTimezone::nowUtc();
 
         foreach ($pausas as $index => $pausaData) {
-            $inicioPausa = WorkCenterTimezone::localToUtc(
+            $inicioPausaLocal = $this->normalizeLocalDateTimeAgainstAnchor(
                 $pausaData['inicio_pausa'],
+                $inicioJornada,
+                $timezone,
+                $finJornada,
+                $contextBoundary,
+            );
+            $inicioPausa = WorkCenterTimezone::localToUtc(
+                $inicioPausaLocal,
                 $timezone,
             );
-            $finPausa = ! empty($pausaData['fin_pausa'])
-                ? WorkCenterTimezone::localToUtc($pausaData['fin_pausa'], $timezone)
+            $finPausaLocal = ! empty($pausaData['fin_pausa'])
+                ? $this->normalizeLocalDateTimeAgainstAnchor(
+                    $pausaData['fin_pausa'],
+                    $inicioPausa,
+                    $timezone,
+                    $finJornada,
+                    $contextBoundary,
+                )
+                : null;
+            $finPausa = $finPausaLocal
+                ? WorkCenterTimezone::localToUtc($finPausaLocal, $timezone)
                 : null;
 
             $this->assertPauseFitsWithinJornada(
@@ -930,6 +987,102 @@ class FichajeController extends Controller
     private function secondsBetween(Carbon $inicio, Carbon $fin): int
     {
         return $fin->getTimestamp() - $inicio->getTimestamp();
+    }
+
+    private function normalizeEditedJornadaDateTime(
+        string $localDateTime,
+        string $campo,
+        Fichaje $fichaje,
+        string $timezone,
+    ): string {
+        if ($campo !== 'fin_jornada' || ! $fichaje->inicio_jornada) {
+            return $localDateTime;
+        }
+
+        return $this->normalizeLocalDateTimeAgainstAnchor(
+            $localDateTime,
+            $fichaje->inicio_jornada,
+            $timezone,
+            $fichaje->fin_jornada,
+            $fichaje->fin_jornada ? null : WorkCenterTimezone::nowUtc(),
+        );
+    }
+
+    private function normalizeEditedPausaDateTime(
+        string $localDateTime,
+        string $campo,
+        Fichaje $fichaje,
+        Pausa $pausa,
+        string $timezone,
+    ): string {
+        $contextBoundary = $fichaje->fin_jornada ?: WorkCenterTimezone::nowUtc();
+
+        if ($campo === 'inicio_pausa' && $fichaje->inicio_jornada) {
+            return $this->normalizeLocalDateTimeAgainstAnchor(
+                $localDateTime,
+                $fichaje->inicio_jornada,
+                $timezone,
+                $fichaje->fin_jornada,
+                $contextBoundary,
+            );
+        }
+
+        if ($campo !== 'fin_pausa' || ! $pausa->inicio_pausa) {
+            return $localDateTime;
+        }
+
+        return $this->normalizeLocalDateTimeAgainstAnchor(
+            $localDateTime,
+            $pausa->inicio_pausa,
+            $timezone,
+            $fichaje->fin_jornada,
+            $contextBoundary,
+        );
+    }
+
+    private function normalizeLocalDateTimeAgainstAnchor(
+        string $localDateTime,
+        Carbon $anchorUtc,
+        string $timezone,
+        ?Carbon $maxUtc = null,
+        ?Carbon $contextUtc = null,
+    ): string {
+        $anchor = WorkCenterTimezone::utcToLocal($anchorUtc, $timezone);
+        if (! $anchor) {
+            return $localDateTime;
+        }
+
+        $time = Carbon::parse($localDateTime, $timezone)->format('H:i:s');
+        $sameDay = Carbon::parse(
+            sprintf('%s %s', $anchor->toDateString(), $time),
+            $timezone,
+        );
+
+        if ($sameDay->gte($anchor)) {
+            return $sameDay->format('Y-m-d\TH:i:s');
+        }
+
+        $nextDay = $sameDay->copy()->addDay();
+
+        if ($maxUtc) {
+            $max = WorkCenterTimezone::utcToLocal($maxUtc, $timezone);
+
+            if ($max && $nextDay->lte($max)) {
+                return $nextDay->format('Y-m-d\TH:i:s');
+            }
+
+            return $sameDay->format('Y-m-d\TH:i:s');
+        }
+
+        if ($contextUtc) {
+            $context = WorkCenterTimezone::utcToLocal($contextUtc, $timezone);
+
+            if ($context && $context->toDateString() > $anchor->toDateString()) {
+                return $nextDay->format('Y-m-d\TH:i:s');
+            }
+        }
+
+        return $sameDay->format('Y-m-d\TH:i:s');
     }
 
     private function assertChronological(

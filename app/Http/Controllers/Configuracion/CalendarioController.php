@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Vacacion;
 use App\Models\WorkCenter;
 use App\Support\AdminScope;
+use App\Support\WorkCenterTimezone;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -114,6 +115,14 @@ class CalendarioController extends Controller
         }
 
         $user = $request->user();
+
+        if (
+            ! $validated['dia_completo']
+            && $validated['hora_fin'] <= $validated['hora_inicio']
+        ) {
+            return response()->json(['message' => 'La hora de fin debe ser posterior a la hora de inicio.'], 422);
+        }
+
         $companyIds = AdminScope::companyIdsFor($user);
         $empleado = User::findOrFail($validated['user_id']);
 
@@ -311,6 +320,7 @@ class CalendarioController extends Controller
         $totalAus = $eventos->where('tipo', 'ausencia')->count();
         $totalFes = $eventos->where('tipo', 'festivo')->count();
         $totalFic = count($fichajesSet);
+        $timezone = WorkCenterTimezone::resolve($empleado->workCenter);
 
         $pdf = Pdf::loadView('pdf.calendario', [
             'empleado' => $empleado,
@@ -321,7 +331,7 @@ class CalendarioController extends Controller
             'totalAus' => $totalAus,
             'totalFes' => $totalFes,
             'totalFic' => $totalFic,
-            'generadoEn' => now()->format('d/m/Y H:i'),
+            'generadoEn' => WorkCenterTimezone::nowUtc()->setTimezone($timezone)->format('d/m/Y H:i'),
         ])->setPaper('A4', 'landscape');
 
         $filename = sprintf('calendario_%s_%s_%d.pdf',
