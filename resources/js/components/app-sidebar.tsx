@@ -29,7 +29,7 @@ export function AppSidebar() {
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader className="px-2.5 pt-2.5 pb-1.5">
+            <SidebarHeader className="px-2.5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-1.5 md:pt-2.5">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton
