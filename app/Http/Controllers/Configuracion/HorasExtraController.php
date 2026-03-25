@@ -138,6 +138,7 @@ class HorasExtraController extends Controller
             'fecha' => 'required|date',
             'horas_extra' => 'required|integer',
         ]);
+        $horasExtra = max(0, (int) $validated['horas_extra']);
 
         $empleado = $this->resolveManagedUserOrFail(
             (int) $validated['user_id'],
@@ -161,7 +162,7 @@ class HorasExtraController extends Controller
             [
                 'horas_trabajadas' => $horasTrabajadas,
                 'segundos_previstos' => $segundosPrevistos,
-                'horas_extra' => $validated['horas_extra'],
+                'horas_extra' => $horasExtra,
                 'origen' => 'manual',
                 'admin_id' => $admin->id,
             ]
@@ -171,7 +172,7 @@ class HorasExtraController extends Controller
             'user_id' => $empleado->id,
             'fecha' => $fecha->toDateString(),
             'horas_trabajadas' => $horasTrabajadas,
-            'horas_extra' => $validated['horas_extra'],
+            'horas_extra' => $horasExtra,
             'accion' => 'creado',
             'admin_id' => $admin->id,
         ]);

@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
+import { publico as ficharPublico } from '@/routes/fichar';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -124,6 +125,17 @@ export default function Login({
                                 {processing && <Spinner />}
                                 Iniciar sesion
                             </Button>
+
+                            <Button
+                                asChild
+                                variant="outline"
+                                className="h-10 w-full rounded-xl border-blue-200 bg-white text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                                tabIndex={5}
+                            >
+                                <Link href={ficharPublico()}>
+                                    Ir a fichar
+                                </Link>
+                            </Button>
                         </div>
 
                         {canRegister && (
@@ -131,7 +143,7 @@ export default function Login({
                                 Todavia no tienes acceso?{' '}
                                 <TextLink
                                     href={register()}
-                                    tabIndex={5}
+                                    tabIndex={6}
                                     className="font-semibold text-blue-700 decoration-blue-200 hover:text-blue-800"
                                 >
                                     Crear cuenta

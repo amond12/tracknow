@@ -292,12 +292,14 @@ export default function HorasExtraIndex({
     });
 
     function handleAdd() {
+        const horasExtra = Math.max(0, parseHHMM(addForm.horas_extra));
+
         router.post(
             '/horas-extra',
             {
                 user_id: Number(addForm.user_id),
                 fecha: addForm.fecha,
-                horas_extra: parseHHMM(addForm.horas_extra),
+                horas_extra: horasExtra,
             },
             {
                 onSuccess: () => {
@@ -857,11 +859,11 @@ export default function HorasExtraIndex({
 
                                 <div className="grid gap-1.5">
                                     <Label className="text-xs font-medium">
-                                        Horas extra (HH:MM, negativo con -)
+                                        Horas extra (HH:MM)
                                     </Label>
                                     <Input
                                         type="text"
-                                        placeholder="01:30 o -00:30"
+                                        placeholder="01:30"
                                         value={addForm.horas_extra}
                                         onChange={(e) =>
                                             setAddForm((f) => ({

@@ -95,6 +95,26 @@ test('automatic extra-hours summaries cannot be deleted directly', function () {
         ->and($autoResumen->horas_extra)->toBe(3600);
 });
 
+test('manual extra-hours adjustments clamp negative values to zero', function () {
+    [$admin, $employee] = createHorasExtraContext();
+
+    $this->actingAs($admin)
+        ->post(route('horas-extra.store'), [
+            'user_id' => $employee->id,
+            'fecha' => '2026-03-12',
+            'horas_extra' => -1800,
+        ])
+        ->assertRedirect();
+
+    $manualResumen = ResumenDiario::query()
+        ->where('user_id', $employee->id)
+        ->where('fecha', '2026-03-12')
+        ->firstOrFail();
+
+    expect($manualResumen->origen)->toBe('manual')
+        ->and($manualResumen->horas_extra)->toBe(0);
+});
+
 function createHorasExtraContext(): array
 {
     $admin = User::factory()->create([

@@ -45,7 +45,7 @@ test('admin can create a final manual fichaje with pauses and computed summary',
         ->and(EdicionFichaje::query()->where('fichaje_id', $fichaje->id)->where('campo', 'creacion_admin')->exists())->toBeTrue();
 });
 
-test('admin can create a final overnight manual fichaje with overnight pause', function () {
+test('admin can create a final overnight manual fichaje with overnight pause without negative extra hours', function () {
     [$admin, $employee] = createFichajeWorkflowContext();
 
     $this->actingAs($admin)
@@ -75,7 +75,7 @@ test('admin can create a final overnight manual fichaje with overnight pause', f
         ->and(formatLocalDateTime($pausa->fin_pausa))->toBe('2026-03-13 01:15:00')
         ->and($pausa->duracion_pausa)->toBe(900)
         ->and($resumen->horas_trabajadas)->toBe(27900)
-        ->and($resumen->horas_extra)->toBe(-900);
+        ->and($resumen->horas_extra)->toBe(0);
 });
 
 test('admin can create an active manual fichaje with an open pause', function () {

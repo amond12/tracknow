@@ -71,7 +71,7 @@ class HorasExtraService
         }
 
         $previsto = $this->segundosPrevistosParaFecha($user, $fecha, $existing);
-        $extra = $totalTrabajado - $previsto;
+        $extra = max(0, $totalTrabajado - $previsto);
 
         ResumenDiario::updateOrCreate(
             ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
