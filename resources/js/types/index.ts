@@ -7,6 +7,7 @@ export type Company = {
     user_id: number;
     nombre: string;
     cif: string;
+    clock_code_prefix?: string | null;
     pais: string;
     ciudad: string;
     direccion: string;

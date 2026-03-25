@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ClockCodeService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +20,15 @@ class Company extends Model
         'ciudad',
         'direccion',
         'cp',
+        'clock_code_prefix',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Company $company): void {
+            app(ClockCodeService::class)->ensureCompanyPrefix($company);
+        });
+    }
 
     public function user(): BelongsTo
     {

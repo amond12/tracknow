@@ -1,6 +1,7 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { CopyCodeChip } from '@/components/copy-code-chip';
 import InputError from '@/components/input-error';
 import { MobilePageHeader } from '@/components/mobile-page-header';
 import { Button } from '@/components/ui/button';
@@ -241,6 +242,20 @@ export default function EmpresasIndex({ companies }: Props) {
                                             {company.empleados_count ?? 0}
                                         </span>
                                     </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Codigo empresa
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {company.clock_code_prefix ? (
+                                                <CopyCodeChip
+                                                    value={company.clock_code_prefix}
+                                                />
+                                            ) : (
+                                                '-'
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -257,6 +272,9 @@ export default function EmpresasIndex({ companies }: Props) {
                                 <th className="px-4 py-3 text-left font-medium">
                                     CIF/NIF
                                 </th>
+                                <th className="px-4 py-3 text-left font-medium">
+                                    Codigo empresa
+                                </th>
                                 {canManageCompanies && (
                                     <th className="px-4 py-3 text-right font-medium">
                                         Acciones
@@ -268,7 +286,7 @@ export default function EmpresasIndex({ companies }: Props) {
                             {companies.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={canManageCompanies ? 3 : 2}
+                                        colSpan={canManageCompanies ? 4 : 3}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         No hay empresas registradas
@@ -285,6 +303,15 @@ export default function EmpresasIndex({ companies }: Props) {
                                         </td>
                                         <td className="px-4 py-3">
                                             {company.cif}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {company.clock_code_prefix ? (
+                                                <CopyCodeChip
+                                                    value={company.clock_code_prefix}
+                                                />
+                                            ) : (
+                                                '-'
+                                            )}
                                         </td>
                                         {canManageCompanies && (
                                             <td className="px-4 py-3">

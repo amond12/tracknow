@@ -18,6 +18,58 @@ function isValidIp(value: unknown): value is string {
     );
 }
 
+function isReservedIpv4(ip: string): boolean {
+    const octets = ip.split('.').map((segment) => Number(segment));
+
+    if (
+        octets.length !== 4 ||
+        octets.some(
+            (octet) => Number.isNaN(octet) || octet < 0 || octet > 255,
+        )
+    ) {
+        return false;
+    }
+
+    const [first, second] = octets;
+
+    return (
+        first === 0 ||
+        first === 10 ||
+        first === 127 ||
+        (first === 100 && second >= 64 && second <= 127) ||
+        (first === 169 && second === 254) ||
+        (first === 172 && second >= 16 && second <= 31) ||
+        (first === 192 && second === 168)
+    );
+}
+
+function isReservedIpv6(ip: string): boolean {
+    const normalized = ip.toLowerCase();
+
+    return (
+        normalized === '::' ||
+        normalized === '::1' ||
+        normalized.startsWith('fc') ||
+        normalized.startsWith('fd') ||
+        normalized.startsWith('fe8') ||
+        normalized.startsWith('fe9') ||
+        normalized.startsWith('fea') ||
+        normalized.startsWith('feb')
+    );
+}
+
+function isRoutableIp(value: string): boolean {
+    if (value.includes('.')) {
+        return !isReservedIpv4(value);
+    }
+
+    if (value.includes(':')) {
+        return !isReservedIpv6(value);
+    }
+
+    return false;
+}
+
 async function fetchWithTimeout(
     input: RequestInfo | URL,
     init: RequestInit = {},
@@ -85,13 +137,13 @@ async function tryResolveExternalIp(url: string): Promise<string | null> {
 
 export async function resolveClientPublicIp(): Promise<string> {
     const internalIp = await tryResolveInternalIp();
-    if (internalIp) {
+    if (internalIp && isRoutableIp(internalIp)) {
         return internalIp;
     }
 
     for (const endpoint of EXTERNAL_IP_ENDPOINTS) {
         const externalIp = await tryResolveExternalIp(endpoint);
-        if (externalIp) {
+        if (externalIp && isRoutableIp(externalIp)) {
             return externalIp;
         }
     }

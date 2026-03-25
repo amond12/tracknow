@@ -12,6 +12,7 @@ import {
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { CopyCodeChip } from '@/components/copy-code-chip';
 import {
     FilterField,
     FilterPanel,
@@ -791,6 +792,20 @@ export default function EmpleadosIndex({
                                             {emp.nss || '-'}
                                         </span>
                                     </div>
+                                    <div className="mobile-list-item__row">
+                                        <span className="mobile-list-item__label">
+                                            Codigo
+                                        </span>
+                                        <span className="mobile-list-item__value">
+                                            {emp.clock_code ? (
+                                                <CopyCodeChip
+                                                    value={emp.clock_code}
+                                                />
+                                            ) : (
+                                                '-'
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -820,6 +835,9 @@ export default function EmpleadosIndex({
                                     NSS
                                 </th>
                                 <th className="px-4 py-3 text-left font-medium">
+                                    Codigo
+                                </th>
+                                <th className="px-4 py-3 text-left font-medium">
                                     Rol
                                 </th>
                                 <th className="px-4 py-3 text-left font-medium">
@@ -834,7 +852,7 @@ export default function EmpleadosIndex({
                             {filteredEmployees.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={9}
+                                        colSpan={10}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         {employees.length === 0
@@ -862,6 +880,15 @@ export default function EmpleadosIndex({
                                         </td>
                                         <td className="px-4 py-3">{emp.dni}</td>
                                         <td className="px-4 py-3">{emp.nss}</td>
+                                        <td className="px-4 py-3">
+                                            {emp.clock_code ? (
+                                                <CopyCodeChip
+                                                    value={emp.clock_code}
+                                                />
+                                            ) : (
+                                                '-'
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 capitalize">
                                             {emp.role}
                                         </td>

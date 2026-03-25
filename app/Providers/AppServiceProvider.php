@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\ClockCodeService;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -62,6 +63,33 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
+        RateLimiter::for('public-clock-lookup', function (Request $request): array {
+            $identifier = app(ClockCodeService::class)->normalizeIdentifier(
+                (string) ($request->input('identificador') ?? $request->query('identificador', '')),
+            );
+            $ipPart = $request->ip() ?? 'no-ip';
+            $key = "{$ipPart}|lookup|".($identifier !== '' ? $identifier : 'empty');
+
+            return [
+                Limit::perSecond(6)->by("burst:{$key}"),
+                Limit::perMinute(180)->by("minute:{$key}"),
+            ];
+        });
+
+        RateLimiter::for('public-clock-actions', function (Request $request): array {
+            $identifier = app(ClockCodeService::class)->normalizeIdentifier(
+                (string) $request->input('identificador', ''),
+            );
+            $ipPart = $request->ip() ?? 'no-ip';
+            $routePart = $request->route()?->getName() ?? $request->path();
+            $key = "{$ipPart}|{$routePart}|".($identifier !== '' ? $identifier : 'empty');
+
+            return [
+                Limit::perSecond(4)->by("burst:{$key}"),
+                Limit::perMinute(90)->by("minute:{$key}"),
+            ];
+        });
+
         RateLimiter::for('config-filters', function (Request $request): array {
             $userPart = $request->user()?->id ? 'user:'.$request->user()->id : 'guest';
             $ipPart = $request->ip() ?? 'no-ip';

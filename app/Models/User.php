@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\ClockCodeService;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -48,6 +50,7 @@ class User extends Authenticatable
         'company_id',
         'work_center_id',
         'remoto',
+        'clock_code_suffix',
         'horario_lunes',
         'horario_martes',
         'horario_miercoles',
@@ -89,6 +92,13 @@ class User extends Authenticatable
             'horario_sabado' => 'float',
             'horario_domingo' => 'float',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (User $user): void {
+            app(ClockCodeService::class)->ensureEmployeeSuffix($user);
+        });
     }
 
     /** Empresas que administra este usuario (admins) */
@@ -160,5 +170,26 @@ class User extends Authenticatable
     public function isEmployeeLike(): bool
     {
         return in_array($this->role, self::STAFF_ROLES, true);
+    }
+
+    protected function clockCode(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?string {
+                if (! $this->clock_code_suffix || ! $this->company_id) {
+                    return null;
+                }
+
+                $prefix = $this->relationLoaded('company')
+                    ? $this->company?->clock_code_prefix
+                    : $this->company()->value('clock_code_prefix');
+
+                if (! $prefix) {
+                    return null;
+                }
+
+                return $prefix.$this->clock_code_suffix;
+            },
+        );
     }
 }

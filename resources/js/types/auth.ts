@@ -10,6 +10,8 @@ export type User = {
     company_id?: number | null;
     work_center_id?: number | null;
     remoto?: boolean;
+    clock_code_suffix?: string | null;
+    clock_code?: string | null;
     horario_lunes?: number | null;
     horario_martes?: number | null;
     horario_miercoles?: number | null;
@@ -20,7 +22,7 @@ export type User = {
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
-    company?: { id: number; nombre: string };
+    company?: { id: number; nombre: string; clock_code_prefix?: string | null };
     work_center?: { id: number; nombre: string; timezone?: string | null };
     created_at: string;
     updated_at: string;

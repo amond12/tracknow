@@ -20,10 +20,12 @@ class EmpleadoController extends Controller
 
         $employees = User::whereIn('company_id', $companyIds)
             ->whereIn('role', ['empleado', 'encargado'])
-            ->with(['company:id,nombre', 'workCenter:id,nombre'])
+            ->with(['company:id,nombre,clock_code_prefix', 'workCenter:id,nombre'])
             ->orderBy('apellido')
             ->orderBy('name')
             ->get();
+
+        $employees->each->append('clock_code');
 
         $companies = AdminScope::companyQueryFor($user)
             ->orderBy('nombre')
