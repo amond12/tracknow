@@ -1,13 +1,14 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { VariantProps } from 'class-variance-authority';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import {
     isNativePdfShareAvailable,
     shareRemoteFile,
 } from '@/lib/native-file-share';
 import { cn } from '@/lib/utils';
 
-type ButtonVariantProps = ComponentProps<typeof Button>;
+type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 
 type Props = {
     href: string;

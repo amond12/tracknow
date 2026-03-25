@@ -72,6 +72,7 @@ export default [
         ignores: [
             'vendor',
             'node_modules',
+            'ios/**',
             'public',
             'bootstrap/ssr',
             'tailwind.config.js',

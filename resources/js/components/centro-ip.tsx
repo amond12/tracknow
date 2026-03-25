@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { resolveClientPublicIp } from '@/lib/public-ip';
 
 interface Props {
     ipsIniciales: string[];
@@ -18,9 +19,12 @@ export function CentroIP({ ipsIniciales, onIPs }: Props) {
         setError(null);
 
         try {
-            const res = await fetch('https://api.ipify.org?format=json');
-            const data = await res.json();
-            const ip: string = data.ip;
+            const ip = await resolveClientPublicIp();
+
+            if (!ip) {
+                setError('No se pudo detectar la IP. Comprueba tu conexion.');
+                return;
+            }
 
             if (ips.includes(ip)) {
                 setMensaje(`La IP ${ip} ya esta en la lista.`);

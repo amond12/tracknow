@@ -21,6 +21,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
+import { resolveClientPublicIp } from '@/lib/public-ip';
 import {
     DEFAULT_WORK_CENTER_TIMEZONE,
     formatDateTimeInTimeZone,
@@ -75,29 +76,6 @@ function formatClockLabelInTimeZone(value: number, timeZone: string): string {
         hour12: false,
         timeZone,
     }).format(value);
-}
-
-async function fetchPublicIp(): Promise<string> {
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 5000);
-
-    try {
-        const response = await fetch('https://api.ipify.org?format=json', {
-            signal: controller.signal,
-        });
-
-        if (!response.ok) {
-            return '';
-        }
-
-        const data = (await response.json()) as { ip?: string };
-
-        return typeof data.ip === 'string' ? data.ip : '';
-    } catch {
-        return '';
-    } finally {
-        window.clearTimeout(timeoutId);
-    }
 }
 
 function getLocationErrorMessage(error?: GeolocationPositionError): string {
@@ -333,7 +311,7 @@ export default function FicharPage() {
             return;
         }
 
-        const ipPublica = await fetchPublicIp();
+        const ipPublica = await resolveClientPublicIp();
         const payload = submitPayload(currentLocation, ipPublica);
         const requestOptions = {
             preserveScroll: true,

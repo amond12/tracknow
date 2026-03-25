@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Models\WorkCenter;
 use App\Services\HorasExtraService;
 use App\Support\WorkCenterTimezone;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class FicharController extends Controller
@@ -49,6 +51,13 @@ class FicharController extends Controller
             'fichajeActivo' => $fichajeActivo,
             'historial' => $historial,
             'setupMessage' => null,
+        ]);
+    }
+
+    public function contextoRed(Request $request): JsonResponse
+    {
+        return response()->json([
+            'ip' => $request->ip(),
         ]);
     }
 
@@ -359,13 +368,21 @@ class FicharController extends Controller
     {
         if ($employee->remoto) {
             if (! $request->filled('lat') || ! $request->filled('lng')) {
-                return 'Debes permitir la geolocalizacion para fichar en remoto.';
+                $error = 'Debes permitir la geolocalizacion para fichar en remoto.';
+                $this->logContextValidationFailure($request, $employee, $error);
+
+                return $error;
             }
 
             return null;
         }
 
-        return $this->verificarUbicacion($request, $employee);
+        $error = $this->verificarUbicacion($request, $employee);
+        if ($error) {
+            $this->logContextValidationFailure($request, $employee, $error);
+        }
+
+        return $error;
     }
 
     private function verificarUbicacion(Request $request, User $employee): ?string
@@ -403,6 +420,24 @@ class FicharController extends Controller
         }
 
         return 'No se pudo validar tu ubicacion para fichar.';
+    }
+
+    private function logContextValidationFailure(
+        Request $request,
+        User $employee,
+        string $reason,
+    ): void {
+        Log::warning('Fichaje context validation failed', [
+            'reason' => $reason,
+            'employee_id' => $employee->id,
+            'work_center_id' => $employee->work_center_id,
+            'is_remote' => $employee->remoto,
+            'request_ip' => $request->ip(),
+            'public_ip' => $request->input('ip_publica'),
+            'lat' => $request->input('lat'),
+            'lng' => $request->input('lng'),
+            'accuracy' => $request->input('accuracy'),
+        ]);
     }
 
     private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
