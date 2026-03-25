@@ -869,7 +869,7 @@ export default function CalendarioIndex({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Calendario" />
 
-            <div className="flex flex-col gap-6 p-6">
+            <div className="flex flex-col gap-5 px-3 py-4 md:gap-6 md:p-6">
                 {/* Header */}
                 <div>
                     <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
@@ -1026,7 +1026,7 @@ export default function CalendarioIndex({
                 {empleadoId ? (
                     <div className="rounded-xl border bg-card shadow-sm">
                         {/* Cabecera */}
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-3 md:px-4">
                             <div className="flex items-center gap-2">
                                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                                 <h2 className="text-sm font-semibold">
@@ -1071,7 +1071,7 @@ export default function CalendarioIndex({
                         </div>
 
                         {/* Leyenda */}
-                        <div className="flex flex-wrap items-center gap-4 border-b bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-4 border-b bg-muted/20 px-3 py-2 text-xs text-muted-foreground md:px-4">
                             <span className="flex items-center gap-1.5">
                                 <span className="inline-block h-3.5 w-5 rounded border border-green-400 bg-green-100"></span>{' '}
                                 Trabajado
@@ -1096,12 +1096,12 @@ export default function CalendarioIndex({
                         </div>
 
                         {/* Grid 12 meses */}
-                        <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-3 lg:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2.5 p-2.5 sm:grid-cols-3 md:gap-4 md:p-4 lg:grid-cols-4">
                             {Array.from({ length: 12 }, (_, i) => i + 1).map(
                                 (m) => (
                                     <div
                                         key={m}
-                                        className="rounded-lg border bg-white p-2.5 shadow-sm"
+                                        className="rounded-lg border bg-white p-2 shadow-sm md:p-2.5"
                                     >
                                         <MiniMes
                                             mes={m}
