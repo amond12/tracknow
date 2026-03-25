@@ -5,18 +5,25 @@ import {
     IdCard,
     Pencil,
     Plus,
+    Search,
     Shield,
     Trash2,
     User,
+    Users,
     Wifi,
     X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CopyCodeChip } from '@/components/copy-code-chip';
 import {
     FilterField,
+    FilterInput,
     FilterPanel,
     FilterSelectTrigger,
+    filterDropdownClassName,
+    filterDropdownEmptyClassName,
+    filterDropdownListClassName,
+    filterDropdownOptionClassName,
 } from '@/components/filter-panel';
 import InputError from '@/components/input-error';
 import { MobilePageHeader } from '@/components/mobile-page-header';
@@ -506,9 +513,28 @@ export default function EmpleadosIndex({
     const [deleteTarget, setDeleteTarget] = useState<UserType | null>(null);
     const [companyFilter, setCompanyFilter] = useState<string>('all');
     const [workCenterFilter, setWorkCenterFilter] = useState<string>('all');
+    const [employeeSearch, setEmployeeSearch] = useState('');
+    const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+    const employeeFilterRef = useRef<HTMLDivElement>(null);
 
     const createForm = useForm<EmpleadoFormData>(emptyForm);
     const editForm = useForm<EmpleadoFormData>(emptyForm);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                employeeFilterRef.current &&
+                !employeeFilterRef.current.contains(event.target as Node)
+            ) {
+                setShowEmployeeDropdown(false);
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside);
+
+        return () =>
+            document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const availableWorkCenters = useMemo(() => {
         if (companyFilter === 'all') {
@@ -520,7 +546,7 @@ export default function EmpleadosIndex({
         );
     }, [companyFilter, workCenters]);
 
-    const filteredEmployees = useMemo(() => {
+    const availableEmployees = useMemo(() => {
         return employees.filter((employee) => {
             const matchesCompany =
                 companyFilter === 'all' ||
@@ -532,6 +558,50 @@ export default function EmpleadosIndex({
             return matchesCompany && matchesWorkCenter;
         });
     }, [employees, companyFilter, workCenterFilter]);
+
+    const normalizedEmployeeSearch = employeeSearch
+        .trim()
+        .toLocaleLowerCase('es-ES');
+
+    const filteredEmployees = useMemo(() => {
+        if (normalizedEmployeeSearch.length === 0) {
+            return availableEmployees;
+        }
+
+        return availableEmployees.filter((employee) =>
+            `${employee.name} ${employee.apellido ?? ''}`
+                .trim()
+                .toLocaleLowerCase('es-ES')
+                .includes(normalizedEmployeeSearch),
+        );
+    }, [availableEmployees, normalizedEmployeeSearch]);
+
+    function handleCompanyFilterChange(value: string) {
+        setCompanyFilter(value);
+        setWorkCenterFilter('all');
+        setEmployeeSearch('');
+        setShowEmployeeDropdown(false);
+    }
+
+    function handleWorkCenterFilterChange(value: string) {
+        setWorkCenterFilter(value);
+        setEmployeeSearch('');
+        setShowEmployeeDropdown(false);
+    }
+
+    function handleEmployeeSearchChange(value: string) {
+        setEmployeeSearch(value);
+    }
+
+    function handleEmployeeReset() {
+        setEmployeeSearch('');
+        setShowEmployeeDropdown(false);
+    }
+
+    function handleEmployeeSelect(employee: UserType) {
+        setEmployeeSearch(`${employee.name} ${employee.apellido ?? ''}`.trim());
+        setShowEmployeeDropdown(false);
+    }
 
     function openEdit(emp: UserType) {
         editForm.setData({
@@ -585,6 +655,8 @@ export default function EmpleadosIndex({
     function handleResetFilters() {
         setCompanyFilter('all');
         setWorkCenterFilter('all');
+        setEmployeeSearch('');
+        setShowEmployeeDropdown(false);
     }
 
     return (
@@ -642,7 +714,7 @@ export default function EmpleadosIndex({
                         </Button>
                     }
                 >
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-3">
                         <FilterField
                             label="Empresa"
                             htmlFor="empresa_filter"
@@ -650,10 +722,7 @@ export default function EmpleadosIndex({
                         >
                             <Select
                                 value={companyFilter}
-                                onValueChange={(value) => {
-                                    setCompanyFilter(value);
-                                    setWorkCenterFilter('all');
-                                }}
+                                onValueChange={handleCompanyFilterChange}
                             >
                                 <FilterSelectTrigger id="empresa_filter">
                                     <SelectValue />
@@ -686,7 +755,7 @@ export default function EmpleadosIndex({
                         >
                             <Select
                                 value={workCenterFilter}
-                                onValueChange={setWorkCenterFilter}
+                                onValueChange={handleWorkCenterFilterChange}
                                 disabled={availableWorkCenters.length === 0}
                             >
                                 <FilterSelectTrigger id="centro_filter">
@@ -706,6 +775,105 @@ export default function EmpleadosIndex({
                                     ))}
                                 </SelectContent>
                             </Select>
+                        </FilterField>
+
+                        <FilterField
+                            label="Trabajador"
+                            htmlFor="trabajador_filter"
+                            icon={Users}
+                            hint={
+                                availableEmployees.length === 0
+                                    ? 'No hay trabajadores disponibles para esta seleccion.'
+                                    : undefined
+                            }
+                        >
+                            <div className="relative" ref={employeeFilterRef}>
+                                <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                                <FilterInput
+                                    id="trabajador_filter"
+                                    type="text"
+                                    value={employeeSearch}
+                                    onChange={(e) =>
+                                        handleEmployeeSearchChange(
+                                            e.target.value,
+                                        )
+                                    }
+                                    placeholder="Todos los trabajadores"
+                                    disabled={availableEmployees.length === 0}
+                                    className="pl-9"
+                                    onFocus={() =>
+                                        setShowEmployeeDropdown(true)
+                                    }
+                                />
+                                {showEmployeeDropdown && (
+                                    <div className={filterDropdownClassName}>
+                                        <div
+                                            className={
+                                                filterDropdownListClassName
+                                            }
+                                        >
+                                            <button
+                                                type="button"
+                                                className={filterDropdownOptionClassName(
+                                                    normalizedEmployeeSearch.length ===
+                                                        0,
+                                                    'blue',
+                                                )}
+                                                onClick={handleEmployeeReset}
+                                            >
+                                                Todos los trabajadores
+                                            </button>
+                                            {availableEmployees.length ===
+                                                0 && (
+                                                <p
+                                                    className={
+                                                        filterDropdownEmptyClassName
+                                                    }
+                                                >
+                                                    No hay trabajadores
+                                                    disponibles
+                                                </p>
+                                            )}
+                                            {availableEmployees.length > 0 &&
+                                                filteredEmployees.length ===
+                                                    0 && (
+                                                    <p
+                                                        className={
+                                                            filterDropdownEmptyClassName
+                                                        }
+                                                    >
+                                                        Sin resultados
+                                                    </p>
+                                                )}
+                                            {filteredEmployees.map(
+                                                (employee) => (
+                                                    <button
+                                                        key={employee.id}
+                                                        type="button"
+                                                        className={filterDropdownOptionClassName(
+                                                            normalizedEmployeeSearch ===
+                                                                `${employee.name} ${employee.apellido ?? ''}`
+                                                                    .trim()
+                                                                    .toLocaleLowerCase(
+                                                                        'es-ES',
+                                                                    ),
+                                                            'blue',
+                                                        )}
+                                                        onClick={() =>
+                                                            handleEmployeeSelect(
+                                                                employee,
+                                                            )
+                                                        }
+                                                    >
+                                                        {employee.name}{' '}
+                                                        {employee.apellido}
+                                                    </button>
+                                                ),
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </FilterField>
                     </div>
                 </FilterPanel>
@@ -812,117 +980,123 @@ export default function EmpleadosIndex({
                     </div>
                 )}
 
-                <div className="hidden overflow-hidden rounded-lg border md:block">
-                    <table className="w-full text-sm">
-                        <thead className="bg-muted/50">
-                            <tr>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    Nombre
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    Apellido
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    Email
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    Teléfono
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    DNI
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    NSS
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    Codigo
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    Rol
-                                </th>
-                                <th className="px-4 py-3 text-left font-medium">
-                                    Remoto
-                                </th>
-                                <th className="px-4 py-3 text-right font-medium">
-                                    Acciones
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {filteredEmployees.length === 0 ? (
+                <div className="hidden rounded-lg border md:block">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1120px] text-sm">
+                            <thead className="bg-muted/50">
                                 <tr>
-                                    <td
-                                        colSpan={10}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        {employees.length === 0
-                                            ? 'No hay empleados registrados'
-                                            : 'No hay empleados para los filtros seleccionados'}
-                                    </td>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        Nombre
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        Apellido
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        Email
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        Teléfono
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        DNI
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        NSS
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        Codigo
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        Rol
+                                    </th>
+                                    <th className="px-4 py-3 text-left font-medium">
+                                        Remoto
+                                    </th>
+                                    <th className="px-4 py-3 text-right font-medium">
+                                        Acciones
+                                    </th>
                                 </tr>
-                            ) : (
-                                filteredEmployees.map((emp) => (
-                                    <tr
-                                        key={emp.id}
-                                        className="hover:bg-muted/30"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
-                                            {emp.name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {emp.apellido}
-                                        </td>
-                                        <td className="px-4 py-3 text-muted-foreground">
-                                            {emp.email}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {emp.telefono}
-                                        </td>
-                                        <td className="px-4 py-3">{emp.dni}</td>
-                                        <td className="px-4 py-3">{emp.nss}</td>
-                                        <td className="px-4 py-3">
-                                            {emp.clock_code ? (
-                                                <CopyCodeChip
-                                                    value={emp.clock_code}
-                                                />
-                                            ) : (
-                                                '-'
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 capitalize">
-                                            {emp.role}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {emp.remoto ? 'Sí' : 'No'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    onClick={() =>
-                                                        openEdit(emp)
-                                                    }
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="text-destructive hover:text-destructive"
-                                                    onClick={() =>
-                                                        setDeleteTarget(emp)
-                                                    }
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                            </thead>
+                            <tbody className="divide-y">
+                                {filteredEmployees.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={10}
+                                            className="px-4 py-8 text-center text-muted-foreground"
+                                        >
+                                            {employees.length === 0
+                                                ? 'No hay empleados registrados'
+                                                : 'No hay empleados para los filtros seleccionados'}
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                ) : (
+                                    filteredEmployees.map((emp) => (
+                                        <tr
+                                            key={emp.id}
+                                            className="hover:bg-muted/30"
+                                        >
+                                            <td className="px-4 py-3 font-medium">
+                                                {emp.name}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {emp.apellido}
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground">
+                                                {emp.email}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {emp.telefono}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {emp.dni}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {emp.nss}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {emp.clock_code ? (
+                                                    <CopyCodeChip
+                                                        value={emp.clock_code}
+                                                    />
+                                                ) : (
+                                                    '-'
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 capitalize">
+                                                {emp.role}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {emp.remoto ? 'Sí' : 'No'}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        onClick={() =>
+                                                            openEdit(emp)
+                                                        }
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="text-destructive hover:text-destructive"
+                                                        onClick={() =>
+                                                            setDeleteTarget(emp)
+                                                        }
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
