@@ -14,8 +14,8 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import {
-    configNavItems,
     getHomeHref,
+    getVisibleConfigNavItems,
     getVisibleMainNavItems,
     isEmployeeRole,
 } from '@/lib/app-navigation';
@@ -24,8 +24,9 @@ import type { Auth } from '@/types';
 export function AppSidebar() {
     const { auth } = usePage<{ auth: Auth }>().props;
     const isEmployee = isEmployeeRole(auth.user);
-    const homeHref = getHomeHref();
-    const visibleMainNavItems = getVisibleMainNavItems();
+    const homeHref = getHomeHref(auth.user, auth.access);
+    const visibleMainNavItems = getVisibleMainNavItems(auth.user, auth.access);
+    const visibleConfigNavItems = getVisibleConfigNavItems(auth.access);
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -47,11 +48,11 @@ export function AppSidebar() {
 
             <SidebarContent className="gap-4 px-2 pb-2">
                 <NavMain items={visibleMainNavItems} />
-                {!isEmployee && (
+                {!isEmployee && visibleConfigNavItems.length > 0 && (
                     <NavCollapsible
-                        title="Configuración"
+                        title="Configuracion"
                         icon={Settings2}
-                        items={configNavItems}
+                        items={visibleConfigNavItems}
                     />
                 )}
             </SidebarContent>

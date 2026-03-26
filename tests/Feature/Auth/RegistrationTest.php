@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\User;
+use Carbon\Carbon;
+
 test('registration screen can be rendered', function () {
     $response = $this->get(route('register'));
 
@@ -26,4 +29,10 @@ test('new users can register', function () {
     expect($user->apellido)->toBe('Admin');
     expect($user->telefono)->toBe('600000000');
     expect($user->dni)->toBe('12345678A');
+    expect($user->role)->toBe(User::ROLE_ADMIN);
+    expect($user->trial_ends_at)->not->toBeNull();
+    expect($user->trial_ends_at?->between(
+        Carbon::now()->addDays(14)->startOfMinute(),
+        Carbon::now()->addDays(15)->addMinute(),
+    ))->toBeTrue();
 });

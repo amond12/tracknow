@@ -272,6 +272,35 @@ test('public workflow preserves the geofence validation for onsite employees', f
     expect(Fichaje::query()->where('user_id', $employee->id)->exists())->toBeFalse();
 });
 
+test('public workflow blocks clock actions when the owner trial is expired without subscription', function () {
+    [$company, $workCenter, $owner, $employee] = createPublicFichajeContext([
+        'remoto' => true,
+    ]);
+
+    $owner->forceFill([
+        'trial_ends_at' => now()->subDay(),
+    ])->save();
+
+    $identifier = $company->clock_code_prefix.$employee->clock_code_suffix;
+
+    $response = $this->post(route('fichar.publico.iniciar'), [
+        'identificador' => $identifier,
+        'lat' => $workCenter->lat,
+        'lng' => $workCenter->lng,
+        'accuracy' => 10,
+    ]);
+
+    $response->assertRedirect(route('fichar.publico', [
+        'identificador' => $identifier,
+    ]));
+    $response->assertSessionHasErrors('error');
+
+    expect(session('errors')->first('error'))->toBe(
+        'Tu empresa no tiene una suscripcion activa. Contacta con tu administrador.',
+    );
+    expect(Fichaje::query()->where('user_id', $employee->id)->exists())->toBeFalse();
+});
+
 test('public workflow allows onsite employees to fichar by IP without work center coordinates', function () {
     [$company, $workCenter, , $employee] = createPublicFichajeContext([
         'remoto' => false,

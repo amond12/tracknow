@@ -1,8 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
 import { Grid2x2Plus } from 'lucide-react';
 import { useCurrentUrl } from '@/hooks/use-current-url';
-import { getMobileTabItems  } from '@/lib/app-navigation';
-import type {MobileTabItem} from '@/lib/app-navigation';
+import { getMobileTabItems } from '@/lib/app-navigation';
+import type { MobileTabItem } from '@/lib/app-navigation';
 import { cn } from '@/lib/utils';
 import type { Auth } from '@/types';
 import { useSidebar } from './ui/sidebar';
@@ -22,7 +22,7 @@ export function MobileBottomNav() {
     const { auth } = usePage<{ auth: Auth }>().props;
     const { isCurrentOrParentUrl } = useCurrentUrl();
     const { setOpenMobile } = useSidebar();
-    const items = getMobileTabItems(auth.user);
+    const items = getMobileTabItems(auth.user, auth.access);
     const isMoreActive = !items.some((item) =>
         isActiveTab(item, isCurrentOrParentUrl),
     );

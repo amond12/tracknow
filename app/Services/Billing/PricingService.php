@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Contracts\BillingGateway;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\SubscriptionAccessService;
 use App\Support\AdminScope;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,7 @@ class PricingService
     public function __construct(
         protected BillingCatalog $catalog,
         protected BillingGateway $gateway,
+        protected SubscriptionAccessService $subscriptionAccess,
     ) {}
 
     public function pageProps(User $admin): array
@@ -202,18 +204,7 @@ class PricingService
 
     protected function currentSubscription(User $admin): ?Subscription
     {
-        /** @var Subscription|null $subscription */
-        $subscription = $admin->subscriptions()
-            ->where('type', $this->subscriptionType())
-            ->where('stripe_status', '!=', StripeSubscription::STATUS_INCOMPLETE_EXPIRED)
-            ->where(function ($query): void {
-                $query->whereNull('ends_at')
-                    ->orWhere('ends_at', '>', now());
-            })
-            ->latest('id')
-            ->first();
-
-        return $subscription;
+        return $this->subscriptionAccess->currentSubscriptionForOwner($admin);
     }
 
     protected function currentSubscriptionSummary(?Subscription $subscription): array

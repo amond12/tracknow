@@ -29,8 +29,18 @@ export type User = {
     [key: string]: unknown;
 };
 
+export type AuthAccess = {
+    ownerAdminId: number | null;
+    state: 'trial' | 'paid' | 'expired';
+    trialEndsAt: string | null;
+    hasPaidAccess: boolean;
+    canManageBilling: boolean;
+    canAccessLegalPdfs: boolean;
+};
+
 export type Auth = {
     user: User;
+    access?: AuthAccess | null;
 };
 
 export type TwoFactorSetupData = {

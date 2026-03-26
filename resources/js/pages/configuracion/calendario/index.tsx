@@ -675,7 +675,8 @@ export default function CalendarioIndex({
     fichajes,
 }: Props) {
     const { auth } = usePage<{ auth: Auth }>().props;
-    const canManage = auth.user.role !== 'empleado';
+    const isLegalReadOnly = auth.access?.state === 'expired';
+    const canManage = auth.user.role !== 'empleado' && !isLegalReadOnly;
     const [anioSeleccionado, setAnioSeleccionado] = useState(String(anio));
     const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<number | null>(
         empleadoId,
@@ -882,6 +883,17 @@ export default function CalendarioIndex({
                         jornada
                     </p>
                 </div>
+
+                {isLegalReadOnly && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 shadow-sm">
+                        <p className="font-semibold">
+                            Acceso limitado por suscripcion
+                        </p>
+                        <p className="mt-1 text-amber-800">
+                            Este calendario permanece disponible solo para consulta y descarga de PDFs por obligacion legal.
+                        </p>
+                    </div>
+                )}
 
                 {/* Filtros */}
                 <FilterPanel

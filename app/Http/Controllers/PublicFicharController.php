@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ClockCodeService;
 use App\Services\FichajeWorkflowService;
 use App\Services\PublicFichajeEmployeeLookupService;
+use App\Services\SubscriptionAccessService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,6 +19,7 @@ class PublicFicharController extends Controller
         private readonly PublicFichajeEmployeeLookupService $lookupService,
         private readonly FichajeWorkflowService $workflowService,
         private readonly ClockCodeService $clockCodeService,
+        private readonly SubscriptionAccessService $subscriptionAccess,
     ) {}
 
     public function index(Request $request): Response
@@ -110,6 +112,14 @@ class PublicFicharController extends Controller
 
         if (! $employee) {
             return $this->redirectWithLookupError($request);
+        }
+
+        if ($this->subscriptionAccess->isExpired($employee)) {
+            return to_route('fichar.publico', [
+                'identificador' => $this->normalizedIdentifierFromRequest($request),
+            ])->withErrors([
+                'error' => 'Tu empresa no tiene una suscripcion activa. Contacta con tu administrador.',
+            ]);
         }
 
         $error = $this->workflowService->{$action}($employee, $request);

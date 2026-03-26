@@ -2,11 +2,12 @@
 
 use App\Http\Controllers\FicharController;
 use App\Http\Controllers\PublicFicharController;
+use App\Http\Middleware\EnsureSubscriptionAccess;
 use Illuminate\Support\Facades\Route;
 
 Route::get('fichar/contexto-red', [FicharController::class, 'contextoRed'])->name('fichar.contexto-red');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', EnsureSubscriptionAccess::class])->group(function () {
     Route::get('fichar', [FicharController::class, 'index'])->name('fichar');
     Route::post('fichar/iniciar', [FicharController::class, 'iniciar'])->name('fichar.iniciar');
     Route::post('fichar/pausa', [FicharController::class, 'pausa'])->name('fichar.pausa');

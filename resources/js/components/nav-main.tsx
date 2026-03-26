@@ -15,6 +15,10 @@ const navButtonClassName =
 export function NavMain({ items = [] }: { items: NavItem[] }) {
     const { isCurrentUrl } = useCurrentUrl();
 
+    if (items.length === 0) {
+        return null;
+    }
+
     return (
         <SidebarGroup className="px-1 py-0">
             <SidebarGroupLabel className="px-2.5 pb-1 text-[10px] font-semibold tracking-[0.18em] text-sidebar-foreground/45 uppercase">

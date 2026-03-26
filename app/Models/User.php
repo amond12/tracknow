@@ -87,6 +87,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'trial_ends_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'remoto' => 'boolean',
             'horario_lunes' => 'float',
@@ -101,6 +102,12 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        static::creating(function (User $user): void {
+            if ($user->isAdmin() && ! $user->trial_ends_at) {
+                $user->trial_ends_at = now()->addDays(15);
+            }
+        });
+
         static::saving(function (User $user): void {
             app(ClockCodeService::class)->ensureEmployeeSuffix($user);
         });

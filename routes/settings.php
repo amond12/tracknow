@@ -7,10 +7,11 @@ use App\Http\Controllers\Settings\TrabajoController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use App\Http\Middleware\BlockEmployeeAccess;
 use App\Http\Middleware\EnsureAdminAccess;
+use App\Http\Middleware\EnsureSubscriptionAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', EnsureSubscriptionAccess::class])->group(function () {
     Route::get('settings', function (Request $request) {
         if ($request->user()?->isEmpleado()) {
             return redirect('/settings/password');
@@ -28,7 +29,7 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', EnsureSubscriptionAccess::class])->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])
         ->middleware(BlockEmployeeAccess::class)
         ->name('profile.destroy');

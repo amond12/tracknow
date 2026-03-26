@@ -10,9 +10,10 @@ use App\Http\Controllers\Configuracion\PdfController;
 use App\Http\Middleware\BlockEmployeeAccess;
 use App\Http\Middleware\EnsureAdminAccess;
 use App\Http\Middleware\EnsureManagerAccess;
+use App\Http\Middleware\EnsureSubscriptionAccess;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', BlockEmployeeAccess::class])->prefix('configuracion')->name('configuracion.')->group(function () {
+Route::middleware(['auth', 'verified', EnsureSubscriptionAccess::class, BlockEmployeeAccess::class])->prefix('configuracion')->name('configuracion.')->group(function () {
     Route::get('empresas', [EmpresaController::class, 'index'])->name('empresas.index');
     Route::get('centros', [CentroController::class, 'index'])->name('centros.index');
     Route::get('empleados', [EmpleadoController::class, 'index'])->name('empleados.index');
@@ -31,7 +32,7 @@ Route::middleware(['auth', 'verified', BlockEmployeeAccess::class])->prefix('con
     });
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', EnsureSubscriptionAccess::class])->group(function () {
     Route::get('fichajes', [FichajeController::class, 'index'])->middleware('throttle:config-filters')->name('fichajes.index');
     Route::get('pdfs', [PdfController::class, 'index'])->middleware('throttle:config-filters')->name('pdfs.index');
     Route::get('pdfs/{empleado}/download', [PdfController::class, 'download'])->name('pdfs.download');

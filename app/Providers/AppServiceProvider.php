@@ -10,6 +10,7 @@ use App\Services\Billing\PricingService;
 use App\Services\Billing\StripeBillingGateway;
 use App\Services\Billing\SyncSubscriptionStateFromStripeWebhook;
 use App\Services\ClockCodeService;
+use App\Services\SubscriptionAccessService;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(BillingCatalog::class);
         $this->app->singleton(BillingGateway::class, StripeBillingGateway::class);
         $this->app->singleton(PricingService::class);
+        $this->app->singleton(SubscriptionAccessService::class);
         $this->app->singleton(SyncSubscriptionStateFromStripeWebhook::class);
     }
 
