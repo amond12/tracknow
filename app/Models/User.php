@@ -10,12 +10,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use Billable, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     public const ROLE_ADMIN = 'admin';
 
@@ -58,6 +59,10 @@ class User extends Authenticatable
         'horario_viernes',
         'horario_sabado',
         'horario_domingo',
+        'stripe_id',
+        'pm_type',
+        'pm_last_four',
+        'trial_ends_at',
     ];
 
     /**
@@ -170,6 +175,24 @@ class User extends Authenticatable
     public function isEmployeeLike(): bool
     {
         return in_array($this->role, self::STAFF_ROLES, true);
+    }
+
+    public function stripeName()
+    {
+        return trim(implode(' ', array_filter([$this->name, $this->apellido])));
+    }
+
+    public function stripePhone(): ?string
+    {
+        return $this->telefono;
+    }
+
+    public function stripeMetadata(): ?array
+    {
+        return [
+            'app_user_id' => (string) $this->id,
+            'role' => (string) $this->role,
+        ];
     }
 
     protected function clockCode(): Attribute

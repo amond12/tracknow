@@ -2,16 +2,26 @@
 
 namespace App\Providers;
 
+use App\Contracts\BillingGateway;
+use App\Models\Subscription;
+use App\Models\User;
+use App\Services\Billing\BillingCatalog;
+use App\Services\Billing\PricingService;
+use App\Services\Billing\StripeBillingGateway;
+use App\Services\Billing\SyncSubscriptionStateFromStripeWebhook;
 use App\Services\ClockCodeService;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Events\WebhookHandled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +30,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(BillingCatalog::class);
+        $this->app->singleton(BillingGateway::class, StripeBillingGateway::class);
+        $this->app->singleton(PricingService::class);
+        $this->app->singleton(SyncSubscriptionStateFromStripeWebhook::class);
     }
 
     /**
@@ -30,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureRateLimiting();
+        $this->configureBilling();
 
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
@@ -102,6 +116,18 @@ class AppServiceProvider extends ServiceProvider
                 // Sustained rate limit.
                 Limit::perMinute(120)->by("minute:{$key}"),
             ];
+        });
+    }
+
+    protected function configureBilling(): void
+    {
+        Cashier::useCustomerModel(User::class);
+        Cashier::useSubscriptionModel(Subscription::class);
+
+        Event::listen(WebhookHandled::class, function (WebhookHandled $event): void {
+            $this->app->make(SyncSubscriptionStateFromStripeWebhook::class)->handle(
+                $event->payload,
+            );
         });
     }
 }

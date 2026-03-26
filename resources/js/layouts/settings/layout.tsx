@@ -15,6 +15,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const { isCurrentOrParentUrl } = useCurrentUrl();
     const isEmployee = auth.user.role === 'empleado';
+    const isAdmin = auth.user.role === 'admin';
     const sidebarNavItems: NavItem[] = [
         ...(!isEmployee
             ? [
@@ -28,6 +29,15 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                       href: '/settings/trabajo',
                       icon: null,
                   },
+                  ...(isAdmin
+                      ? [
+                            {
+                                title: 'Pricing',
+                                href: '/settings/pricing',
+                                icon: null,
+                            },
+                        ]
+                      : []),
               ]
             : []),
         {
