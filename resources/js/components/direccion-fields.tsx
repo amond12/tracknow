@@ -7,7 +7,6 @@ import {
     useState,
 } from 'react';
 import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -34,6 +33,8 @@ interface Props {
     errors: AddressErrors;
     onFieldChange: (field: AddressField, value: string) => void;
     onAddressResolved: (result: MapboxAddressResult) => void;
+    deferDerivedFields?: boolean;
+    forceManualEntry?: boolean;
 }
 
 const addressInputProps = {
@@ -83,6 +84,8 @@ export function DireccionFields({
     errors,
     onFieldChange,
     onAddressResolved,
+    deferDerivedFields = false,
+    forceManualEntry = false,
 }: Props) {
     const mapboxAvailable = hasMapboxToken();
     const [suggestions, setSuggestions] = useState<MapboxAddressSuggestion[]>(
@@ -106,10 +109,22 @@ export function DireccionFields({
     );
 
     useEffect(() => {
-        if (!mapboxAvailable || hasDerivedFieldErrors) {
+        if (
+            forceManualEntry ||
+            !mapboxAvailable ||
+            hasDerivedFieldErrors ||
+            lookupState === 'error' ||
+            (lookupState === 'empty' && values.direccion.trim().length >= 3)
+        ) {
             setManualEntryEnabled(true);
         }
-    }, [hasDerivedFieldErrors, mapboxAvailable]);
+    }, [
+        forceManualEntry,
+        hasDerivedFieldErrors,
+        lookupState,
+        mapboxAvailable,
+        values.direccion,
+    ]);
 
     useEffect(() => {
         return () => {
@@ -268,8 +283,8 @@ export function DireccionFields({
     }
 
     const infoText = manualEntryEnabled
-        ? 'Escribe la direccion y completa manualmente pais, provincia, poblacion y codigo postal si Mapbox no puede rellenarlos.'
-        : 'Escribe la direccion y selecciona una sugerencia de Mapbox. Pais, provincia, poblacion y codigo postal se rellenan automaticamente.';
+        ? 'Revisa los datos postales si Mapbox no ha completado todo.'
+        : 'Escribe la direccion y el resto se rellenara automaticamente si Mapbox la reconoce.';
 
     const fallbackMessage = !mapboxAvailable
         ? 'Mapbox no esta disponible ahora mismo. Completa manualmente los datos postales obligatorios.'
@@ -284,12 +299,19 @@ export function DireccionFields({
     const derivedInputClassName = cn(
         !manualEntryEnabled && 'bg-muted/40 text-muted-foreground',
     );
+    const shouldShowDerivedFields =
+        !deferDerivedFields ||
+        manualEntryEnabled ||
+        !mapboxAvailable ||
+        hasDerivedFieldErrors ||
+        lookupState === 'error' ||
+        (lookupState === 'empty' && values.direccion.trim().length >= 3);
 
     return (
         <div className="grid gap-3">
-            <div className="rounded-xl border border-blue-200/80 bg-blue-50/80 px-3 py-2 text-xs text-blue-800">
+            <p className="text-xs text-muted-foreground">
                 {infoText}
-            </div>
+            </p>
 
             <div className="grid gap-1.5">
                 <Label
@@ -358,128 +380,127 @@ export function DireccionFields({
             </div>
 
             {fallbackMessage && (
-                <div className="flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 sm:flex-row sm:items-center sm:justify-between">
-                    <span>{fallbackMessage}</span>
-                    {!manualEntryEnabled && mapboxAvailable && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setManualEntryEnabled(true)}
-                            className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
-                        >
-                            Completar manualmente
-                        </Button>
-                    )}
+                <div className="rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800">
+                    {fallbackMessage}
                 </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                    <Label
-                        htmlFor="pais"
-                        className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-                    >
-                        Pais
-                    </Label>
-                    <Input
-                        id="pais"
-                        value={values.pais}
-                        onChange={(e) =>
-                            handleFieldChange('pais', e.target.value)
-                        }
-                        placeholder={
-                            manualEntryEnabled
-                                ? 'Ej: Espana'
-                                : 'Se rellena automaticamente'
-                        }
-                        readOnly={!manualEntryEnabled}
-                        aria-readonly={!manualEntryEnabled}
-                        className={derivedInputClassName}
-                        {...addressInputProps}
-                    />
-                    <InputError message={errors.pais} />
-                </div>
-                <div className="grid gap-1.5">
-                    <Label
-                        htmlFor="provincia"
-                        className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-                    >
-                        Provincia
-                    </Label>
-                    <Input
-                        id="provincia"
-                        value={values.provincia}
-                        onChange={(e) =>
-                            handleFieldChange('provincia', e.target.value)
-                        }
-                        placeholder={
-                            manualEntryEnabled
-                                ? 'Ej: Madrid'
-                                : 'Se rellena automaticamente'
-                        }
-                        readOnly={!manualEntryEnabled}
-                        aria-readonly={!manualEntryEnabled}
-                        className={derivedInputClassName}
-                        {...addressInputProps}
-                    />
-                    <InputError message={errors.provincia} />
-                </div>
-            </div>
+            {shouldShowDerivedFields && (
+                <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="pais"
+                                className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                            >
+                                Pais
+                            </Label>
+                            <Input
+                                id="pais"
+                                value={values.pais}
+                                onChange={(e) =>
+                                    handleFieldChange('pais', e.target.value)
+                                }
+                                placeholder={
+                                    manualEntryEnabled
+                                        ? 'Ej: Espana'
+                                        : 'Se rellena automaticamente'
+                                }
+                                readOnly={!manualEntryEnabled}
+                                aria-readonly={!manualEntryEnabled}
+                                className={derivedInputClassName}
+                                {...addressInputProps}
+                            />
+                            <InputError message={errors.pais} />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="provincia"
+                                className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                            >
+                                Provincia
+                            </Label>
+                            <Input
+                                id="provincia"
+                                value={values.provincia}
+                                onChange={(e) =>
+                                    handleFieldChange(
+                                        'provincia',
+                                        e.target.value,
+                                    )
+                                }
+                                placeholder={
+                                    manualEntryEnabled
+                                        ? 'Ej: Madrid'
+                                        : 'Se rellena automaticamente'
+                                }
+                                readOnly={!manualEntryEnabled}
+                                aria-readonly={!manualEntryEnabled}
+                                className={derivedInputClassName}
+                                {...addressInputProps}
+                            />
+                            <InputError message={errors.provincia} />
+                        </div>
+                    </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                    <Label
-                        htmlFor="poblacion"
-                        className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-                    >
-                        Poblacion
-                    </Label>
-                    <Input
-                        id="poblacion"
-                        value={values.poblacion}
-                        onChange={(e) =>
-                            handleFieldChange('poblacion', e.target.value)
-                        }
-                        placeholder={
-                            manualEntryEnabled
-                                ? 'Ej: Madrid'
-                                : 'Se rellena automaticamente'
-                        }
-                        readOnly={!manualEntryEnabled}
-                        aria-readonly={!manualEntryEnabled}
-                        className={derivedInputClassName}
-                        {...addressInputProps}
-                    />
-                    <InputError message={errors.poblacion} />
-                </div>
-                <div className="grid gap-1.5">
-                    <Label
-                        htmlFor="cp"
-                        className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-                    >
-                        Codigo postal
-                    </Label>
-                    <Input
-                        id="cp"
-                        value={values.cp}
-                        onChange={(e) =>
-                            handleFieldChange('cp', e.target.value)
-                        }
-                        placeholder={
-                            manualEntryEnabled
-                                ? 'Ej: 28013'
-                                : 'Se rellena automaticamente'
-                        }
-                        inputMode="numeric"
-                        readOnly={!manualEntryEnabled}
-                        aria-readonly={!manualEntryEnabled}
-                        className={derivedInputClassName}
-                        {...addressInputProps}
-                    />
-                    <InputError message={errors.cp} />
-                </div>
-            </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="poblacion"
+                                className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                            >
+                                Poblacion
+                            </Label>
+                            <Input
+                                id="poblacion"
+                                value={values.poblacion}
+                                onChange={(e) =>
+                                    handleFieldChange(
+                                        'poblacion',
+                                        e.target.value,
+                                    )
+                                }
+                                placeholder={
+                                    manualEntryEnabled
+                                        ? 'Ej: Madrid'
+                                        : 'Se rellena automaticamente'
+                                }
+                                readOnly={!manualEntryEnabled}
+                                aria-readonly={!manualEntryEnabled}
+                                className={derivedInputClassName}
+                                {...addressInputProps}
+                            />
+                            <InputError message={errors.poblacion} />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label
+                                htmlFor="cp"
+                                className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                            >
+                                Codigo postal
+                            </Label>
+                            <Input
+                                id="cp"
+                                value={values.cp}
+                                onChange={(e) =>
+                                    handleFieldChange('cp', e.target.value)
+                                }
+                                placeholder={
+                                    manualEntryEnabled
+                                        ? 'Ej: 28013'
+                                        : 'Se rellena automaticamente'
+                                }
+                                inputMode="numeric"
+                                readOnly={!manualEntryEnabled}
+                                aria-readonly={!manualEntryEnabled}
+                                className={derivedInputClassName}
+                                {...addressInputProps}
+                            />
+                            <InputError message={errors.cp} />
+                        </div>
+                    </div>
+                </>
+            )}
 
             {feedback && (
                 <FeedbackMessage tone={feedback.tone} text={feedback.text} />

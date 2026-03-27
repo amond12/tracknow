@@ -3,12 +3,11 @@ import { Button } from '@/components/ui/button';
 import { resolveClientPublicIp } from '@/lib/public-ip';
 
 interface Props {
-    ipsIniciales: string[];
+    ips: string[];
     onIPs: (ips: string[]) => void;
 }
 
-export function CentroIP({ ipsIniciales, onIPs }: Props) {
-    const [ips, setIps] = useState<string[]>(ipsIniciales);
+export function CentroIP({ ips, onIPs }: Props) {
     const [detecting, setDetecting] = useState(false);
     const [mensaje, setMensaje] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -31,9 +30,7 @@ export function CentroIP({ ipsIniciales, onIPs }: Props) {
                 return;
             }
 
-            const newIps = [...ips, ip];
-            setIps(newIps);
-            onIPs(newIps);
+            onIPs([...ips, ip]);
             setMensaje(`IP ${ip} anadida.`);
         } catch {
             setError('Error al detectar la IP. Comprueba tu conexion.');
@@ -43,9 +40,7 @@ export function CentroIP({ ipsIniciales, onIPs }: Props) {
     }
 
     function handleRemove(ip: string) {
-        const newIps = ips.filter((item) => item !== ip);
-        setIps(newIps);
-        onIPs(newIps);
+        onIPs(ips.filter((item) => item !== ip));
         setMensaje(null);
     }
 

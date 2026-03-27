@@ -3,6 +3,7 @@ import {
     Building2,
     Clock,
     IdCard,
+    Info,
     Pencil,
     Plus,
     Search,
@@ -46,6 +47,11 @@ import {
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import type {
     BreadcrumbItem,
@@ -106,7 +112,73 @@ const emptyForm: EmpleadoFormData = {
     horario_domingo: '0',
 };
 
+const STEP_ONE_FIELDS: (keyof EmpleadoFormData)[] = [
+    'company_id',
+    'work_center_id',
+    'rol',
+    'remoto',
+];
+
+const STEP_TWO_FIELDS: (keyof EmpleadoFormData)[] = [
+    'nombre',
+    'apellido',
+    'email',
+    'telefono',
+    'dni',
+    'nss',
+    'horario_lunes',
+    'horario_martes',
+    'horario_miercoles',
+    'horario_jueves',
+    'horario_viernes',
+    'horario_sabado',
+    'horario_domingo',
+];
+
+const WEEKLY_HOURS_FIELDS: { key: keyof EmpleadoFormData; label: string }[] = [
+    { key: 'horario_lunes', label: 'Lun' },
+    { key: 'horario_martes', label: 'Mar' },
+    { key: 'horario_miercoles', label: 'Mie' },
+    { key: 'horario_jueves', label: 'Jue' },
+    { key: 'horario_viernes', label: 'Vie' },
+    { key: 'horario_sabado', label: 'Sab' },
+    { key: 'horario_domingo', label: 'Dom' },
+];
+
+const selectContentClassName =
+    'w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]';
+
+function StepIndicator({ currentStep }: { currentStep: 1 | 2 }) {
+    return (
+        <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-foreground">
+                Paso {currentStep} de 2
+            </span>
+            <div className="flex items-center gap-2">
+                <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                        currentStep === 1 ? 'bg-foreground' : 'bg-border'
+                    }`}
+                />
+                <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                        currentStep === 2 ? 'bg-foreground' : 'bg-border'
+                    }`}
+                />
+            </div>
+        </div>
+    );
+}
+
+function hasAnyFieldError(
+    errors: Partial<Record<keyof EmpleadoFormData, string>>,
+    fields: (keyof EmpleadoFormData)[],
+) {
+    return fields.some((field) => Boolean(errors[field]));
+}
+
 function EmpleadoForm({
+    mode,
     data,
     setData,
     errors,
@@ -116,10 +188,13 @@ function EmpleadoForm({
     submitLabel,
     companies,
     workCenters,
-    isEdit = false,
 }: {
+    mode: 'create' | 'edit';
     data: EmpleadoFormData;
-    setData: (field: keyof EmpleadoFormData, value: string | boolean) => void;
+    setData: <K extends keyof EmpleadoFormData>(
+        field: K,
+        value: EmpleadoFormData[K],
+    ) => void;
     errors: Partial<Record<keyof EmpleadoFormData, string>>;
     processing: boolean;
     onSubmit: (e: React.FormEvent) => void;
@@ -127,49 +202,522 @@ function EmpleadoForm({
     submitLabel: string;
     companies: Pick<Company, 'id' | 'nombre'>[];
     workCenters: (Pick<WorkCenter, 'id' | 'nombre'> & { company_id: number })[];
-    isEdit?: boolean;
 }) {
+    const [activeStep, setActiveStep] = useState<1 | 2>(1);
+    const [localErrors, setLocalErrors] = useState<
+        Partial<Record<keyof EmpleadoFormData, string>>
+    >({});
     const filteredCenters = data.company_id
         ? workCenters.filter((wc) => wc.company_id === Number(data.company_id))
         : [];
+    const mergedErrors = { ...localErrors, ...errors };
+    const currentStep: 1 | 2 = hasAnyFieldError(errors, STEP_ONE_FIELDS)
+        ? 1
+        : hasAnyFieldError(errors, STEP_TWO_FIELDS)
+          ? 2
+          : activeStep;
 
-    function handleCompanyChange(value: string) {
-        setData('company_id', value);
-        setData('work_center_id', '');
+    function updateField<K extends keyof EmpleadoFormData>(
+        field: K,
+        value: EmpleadoFormData[K],
+    ) {
+        setData(field, value);
+        setLocalErrors((currentErrors) => {
+            if (!currentErrors[field]) return currentErrors;
+
+            const nextErrors = { ...currentErrors };
+            delete nextErrors[field];
+            return nextErrors;
+        });
     }
 
-    const initials = [data.nombre, data.apellido]
-        .filter(Boolean)
-        .map((s) => s[0])
-        .join('')
-        .toUpperCase();
+    function handleCompanyChange(value: string) {
+        updateField('company_id', value);
+        updateField('work_center_id', '');
+    }
+
+    function validateStepOne() {
+        const nextErrors: Partial<Record<keyof EmpleadoFormData, string>> = {};
+
+        if (!data.company_id.trim()) {
+            nextErrors.company_id = 'Selecciona una empresa.';
+        }
+
+        if (!data.work_center_id.trim()) {
+            nextErrors.work_center_id = data.company_id
+                ? 'Selecciona un centro de trabajo.'
+                : 'Selecciona primero una empresa.';
+        }
+
+        setLocalErrors(nextErrors);
+
+        return Object.keys(nextErrors).length === 0;
+    }
+
+    function handleContinue() {
+        if (!validateStepOne()) return;
+
+        setActiveStep(2);
+    }
+
+    function handleFormSubmit(e: React.FormEvent) {
+        if (currentStep === 1) {
+            e.preventDefault();
+            handleContinue();
+            return;
+        }
+
+        onSubmit(e);
+    }
+
+    const isEdit = mode === 'edit';
+    const renderLegacySections = false;
 
     return (
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            {/* Preview empleado */}
-            {(data.nombre || data.apellido) && (
-                <div className="flex items-center gap-3 rounded-xl bg-primary/5 px-4 py-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                        {initials}
-                    </div>
-                    <div className="min-w-0">
-                        <p className="leading-tight font-semibold">
-                            {data.nombre} {data.apellido}
-                        </p>
-                        {data.email && (
-                            <p className="truncate text-xs text-muted-foreground">
-                                {data.email}
-                            </p>
-                        )}
-                    </div>
-                    {data.remoto && (
-                        <span className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                            <Wifi className="h-3 w-3" />
-                            Remoto
-                        </span>
+        <form
+            onSubmit={handleFormSubmit}
+            className="flex min-h-0 flex-1 flex-col"
+            autoComplete="off"
+        >
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+                <div className="grid gap-4">
+                    <StepIndicator currentStep={currentStep} />
+
+                    {currentStep === 1 ? (
+                        <section className="rounded-2xl border border-border/70 bg-background/90 p-4 shadow-sm sm:p-5">
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="grid gap-1.5">
+                                    <Label
+                                        htmlFor="company_id"
+                                        className="text-xs font-medium"
+                                    >
+                                        Empresa{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Select
+                                        value={data.company_id}
+                                        onValueChange={handleCompanyChange}
+                                        required
+                                    >
+                                        <SelectTrigger
+                                            id="company_id"
+                                            className="w-full"
+                                        >
+                                            <SelectValue placeholder="Selecciona una empresa" />
+                                        </SelectTrigger>
+                                        <SelectContent
+                                            className={selectContentClassName}
+                                        >
+                                            {companies.map((company) => (
+                                                <SelectItem
+                                                    key={company.id}
+                                                    value={String(company.id)}
+                                                >
+                                                    {company.nombre}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError
+                                        message={mergedErrors.company_id}
+                                    />
+                                </div>
+
+                                <div className="grid gap-1.5">
+                                    <Label
+                                        htmlFor="work_center_id"
+                                        className="text-xs font-medium"
+                                    >
+                                        Centro de trabajo{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Select
+                                        value={data.work_center_id}
+                                        onValueChange={(value) =>
+                                            updateField(
+                                                'work_center_id',
+                                                value,
+                                            )
+                                        }
+                                        disabled={!data.company_id}
+                                        required
+                                    >
+                                        <SelectTrigger
+                                            id="work_center_id"
+                                            className="w-full"
+                                        >
+                                            <SelectValue
+                                                placeholder={
+                                                    data.company_id
+                                                        ? 'Selecciona un centro'
+                                                        : 'Selecciona primero una empresa'
+                                                }
+                                            />
+                                        </SelectTrigger>
+                                        <SelectContent
+                                            className={selectContentClassName}
+                                        >
+                                            {filteredCenters.map((workCenter) => (
+                                                <SelectItem
+                                                    key={workCenter.id}
+                                                    value={String(workCenter.id)}
+                                                >
+                                                    {workCenter.nombre}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError
+                                        message={mergedErrors.work_center_id}
+                                    />
+                                </div>
+
+                                <div className="grid gap-1.5">
+                                    <Label
+                                        htmlFor="rol"
+                                        className="text-xs font-medium"
+                                    >
+                                        Rol{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
+                                    </Label>
+                                    <Select
+                                        value={data.rol}
+                                        onValueChange={(value) =>
+                                            updateField('rol', value)
+                                        }
+                                        required
+                                    >
+                                        <SelectTrigger
+                                            id="rol"
+                                            className="w-full"
+                                        >
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent
+                                            className={selectContentClassName}
+                                        >
+                                            <SelectItem value="empleado">
+                                                Empleado
+                                            </SelectItem>
+                                            <SelectItem value="encargado">
+                                                Encargado
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={mergedErrors.rol} />
+                                </div>
+
+                                <div className="grid gap-1.5">
+                                    <Label
+                                        htmlFor="remoto"
+                                        className="inline-flex items-center gap-1.5 text-xs font-medium"
+                                    >
+                                        Trabajo remoto
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    type="button"
+                                                    aria-label="Informacion sobre trabajo remoto"
+                                                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                                                >
+                                                    <Info className="h-3.5 w-3.5" />
+                                                </button>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="max-w-60">
+                                                <p>
+                                                    Activalo si el empleado va
+                                                    a fichar fuera del centro.
+                                                    Asi la app le pedira
+                                                    ubicacion al registrar la
+                                                    jornada.
+                                                </p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </Label>
+                                    <div className="flex min-h-10 items-center justify-between rounded-lg border px-3">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <Wifi className="h-4 w-4 text-muted-foreground" />
+                                            <span>
+                                                {data.remoto
+                                                    ? 'Activo'
+                                                    : 'No activo'}
+                                            </span>
+                                        </div>
+                                        <Switch
+                                            id="remoto"
+                                            checked={data.remoto}
+                                            onCheckedChange={(checked) =>
+                                                updateField(
+                                                    'remoto',
+                                                    checked,
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                    <InputError message={mergedErrors.remoto} />
+                                </div>
+                            </div>
+                        </section>
+                    ) : (
+                        <div className="grid gap-4">
+                            <section className="rounded-2xl border border-border/70 bg-background/90 p-4 shadow-sm sm:p-5">
+                                <div className="grid gap-3">
+                                    <p className="text-sm font-medium">
+                                        Datos personales
+                                    </p>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="nombre"
+                                                className="text-xs font-medium"
+                                            >
+                                                Nombre{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <Input
+                                                id="nombre"
+                                                value={data.nombre}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        'nombre',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                            <InputError
+                                                message={mergedErrors.nombre}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="apellido"
+                                                className="text-xs font-medium"
+                                            >
+                                                Apellido{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <Input
+                                                id="apellido"
+                                                value={data.apellido}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        'apellido',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                            <InputError
+                                                message={mergedErrors.apellido}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="email"
+                                                className="text-xs font-medium"
+                                            >
+                                                Correo electronico{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                value={data.email}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        'email',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                            <InputError
+                                                message={mergedErrors.email}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="telefono"
+                                                className="text-xs font-medium"
+                                            >
+                                                Telefono{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <Input
+                                                id="telefono"
+                                                value={data.telefono}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        'telefono',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                            <InputError
+                                                message={mergedErrors.telefono}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="rounded-2xl border border-border/70 bg-background/90 p-4 shadow-sm sm:p-5">
+                                <div className="grid gap-3">
+                                    <p className="text-sm font-medium">
+                                        Identificacion
+                                    </p>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="dni"
+                                                className="text-xs font-medium"
+                                            >
+                                                DNI / NIE{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <Input
+                                                id="dni"
+                                                value={data.dni}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        'dni',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                            <InputError
+                                                message={mergedErrors.dni}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-1.5">
+                                            <Label
+                                                htmlFor="nss"
+                                                className="text-xs font-medium"
+                                            >
+                                                Num. Seg. Social{' '}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </Label>
+                                            <Input
+                                                id="nss"
+                                                value={data.nss}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        'nss',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                            />
+                                            <InputError
+                                                message={mergedErrors.nss}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {mode === 'create' && (
+                                        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                            <Shield className="h-3.5 w-3.5 shrink-0" />
+                                            La contrasena inicial del empleado
+                                            sera su DNI.
+                                        </p>
+                                    )}
+                                </div>
+                            </section>
+
+                            <section className="rounded-2xl border border-border/70 bg-background/90 p-4 shadow-sm sm:p-5">
+                                <div className="grid gap-3">
+                                    <div className="space-y-1">
+                                        <p className="inline-flex items-center gap-1.5 text-sm font-medium">
+                                            Horario semanal
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Informacion sobre horario semanal"
+                                                        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                                                    >
+                                                        <Info className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="max-w-60">
+                                                    <p>
+                                                        Sirve para definir las
+                                                        horas previstas de cada
+                                                        día y usarlas para calcular
+                                                        horas extras automáticas.
+                                                    </p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            Usa decimales para medias horas: 7.5
+                                            = 7 h 30 min. Introduce 0 para dias
+                                            no laborables.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 md:grid-cols-7">
+                                        {WEEKLY_HOURS_FIELDS.map(
+                                            ({ key, label }) => (
+                                                <div
+                                                    key={key}
+                                                    className="grid gap-1.5"
+                                                >
+                                                    <Label className="text-xs font-medium md:text-center">
+                                                        {label}
+                                                    </Label>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        max="24"
+                                                        step="0.5"
+                                                        value={
+                                                            data[key] as string
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateField(
+                                                                key,
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className="text-center"
+                                                    />
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
                     )}
-                </div>
-            )}
+
+                    {renderLegacySections && (
+                        <>
 
             {/* Sección: Datos personales */}
             <div className="overflow-hidden rounded-xl border">
@@ -499,6 +1047,56 @@ function EmpleadoForm({
                     {submitLabel}
                 </Button>
             </DialogFooter>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <DialogFooter className="border-t border-border/70 px-4 py-4 sm:px-6 sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                    {currentStep === 1
+                        ? 'Primero asigna empresa, centro, rol y modalidad.'
+                        : 'Completa los datos personales, la identificacion y el horario semanal.'}
+                </p>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onCancel}
+                        className="w-full sm:w-auto"
+                    >
+                        Cancelar
+                    </Button>
+                    {currentStep === 1 ? (
+                        <Button
+                            type="button"
+                            onClick={handleContinue}
+                            className="w-full sm:w-auto"
+                        >
+                            Continuar
+                        </Button>
+                    ) : (
+                        <>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setActiveStep(1)}
+                                className="w-full sm:w-auto"
+                            >
+                                Volver
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={processing}
+                                className="w-full gap-2 sm:w-auto"
+                            >
+                                {processing && <Spinner />}
+                                {submitLabel}
+                            </Button>
+                        </>
+                    )}
+                </div>
+            </DialogFooter>
         </form>
     );
 }
@@ -509,7 +1107,9 @@ export default function EmpleadosIndex({
     workCenters,
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
+    const [createSession, setCreateSession] = useState(0);
     const [editTarget, setEditTarget] = useState<UserType | null>(null);
+    const [editSession, setEditSession] = useState(0);
     const [deleteTarget, setDeleteTarget] = useState<UserType | null>(null);
     const [companyFilter, setCompanyFilter] = useState<string>('all');
     const [workCenterFilter, setWorkCenterFilter] = useState<string>('all');
@@ -519,6 +1119,8 @@ export default function EmpleadosIndex({
 
     const createForm = useForm<EmpleadoFormData>(emptyForm);
     const editForm = useForm<EmpleadoFormData>(emptyForm);
+    const employeeDialogClassName =
+        'left-1/2 right-auto flex max-h-[92vh] w-[calc(100vw-1rem)] -translate-x-1/2 flex-col gap-0 overflow-hidden border-border/70 p-0 shadow-2xl sm:w-[min(680px,calc(100vw-2rem))] sm:max-w-[680px]';
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -603,7 +1205,19 @@ export default function EmpleadosIndex({
         setShowEmployeeDropdown(false);
     }
 
+    function openCreateDialog() {
+        createForm.resetAndClearErrors();
+        setCreateSession((current) => current + 1);
+        setCreateOpen(true);
+    }
+
+    function closeCreateDialog() {
+        setCreateOpen(false);
+        createForm.resetAndClearErrors();
+    }
+
     function openEdit(emp: UserType) {
+        editForm.resetAndClearErrors();
         editForm.setData({
             nombre: emp.name,
             apellido: emp.apellido ?? '',
@@ -624,16 +1238,19 @@ export default function EmpleadosIndex({
             horario_sabado: String(emp.horario_sabado ?? 0),
             horario_domingo: String(emp.horario_domingo ?? 0),
         });
+        setEditSession((current) => current + 1);
         setEditTarget(emp);
+    }
+
+    function closeEditDialog() {
+        setEditTarget(null);
+        editForm.resetAndClearErrors();
     }
 
     function handleCreate(e: React.FormEvent) {
         e.preventDefault();
         createForm.post('/configuracion/empleados', {
-            onSuccess: () => {
-                setCreateOpen(false);
-                createForm.reset();
-            },
+            onSuccess: () => closeCreateDialog(),
         });
     }
 
@@ -641,7 +1258,7 @@ export default function EmpleadosIndex({
         e.preventDefault();
         if (!editTarget) return;
         editForm.put(`/configuracion/empleados/${editTarget.id}`, {
-            onSuccess: () => setEditTarget(null),
+            onSuccess: () => closeEditDialog(),
         });
     }
 
@@ -670,7 +1287,7 @@ export default function EmpleadosIndex({
                     eyebrow="Equipo"
                     action={
                         <Button
-                            onClick={() => setCreateOpen(true)}
+                            onClick={openCreateDialog}
                             disabled={companies.length === 0}
                             className="h-11 w-full justify-center rounded-2xl"
                         >
@@ -688,7 +1305,7 @@ export default function EmpleadosIndex({
                         </p>
                     </div>
                     <Button
-                        onClick={() => setCreateOpen(true)}
+                        onClick={openCreateDialog}
                         disabled={companies.length === 0}
                     >
                         <Plus className="mr-2 h-4 w-4" />
@@ -1096,31 +1713,25 @@ export default function EmpleadosIndex({
             </div>
 
             {/* Dialog: Crear */}
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-2xl">
-                    <DialogHeader>
-                        <div className="-mx-6 -mt-6 mb-2 flex items-center gap-3 rounded-t-lg border-b bg-muted/40 px-6 py-4">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                <Plus className="h-4 w-4 text-primary" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-base font-semibold">
-                                    Nuevo empleado
-                                </DialogTitle>
-                                <p className="text-xs text-muted-foreground">
-                                    Completa los datos para crear una cuenta de
-                                    empleado
-                                </p>
-                            </div>
-                        </div>
+            <Dialog
+                open={createOpen}
+                onOpenChange={(open) => !open && closeCreateDialog()}
+            >
+                <DialogContent className={employeeDialogClassName}>
+                    <DialogHeader className="border-b border-border/70 px-4 py-4 sm:px-6">
+                        <DialogTitle className="text-base font-semibold">
+                            Nuevo empleado
+                        </DialogTitle>
                     </DialogHeader>
                     <EmpleadoForm
+                        key={`create-${createSession}`}
+                        mode="create"
                         data={createForm.data}
                         setData={createForm.setData}
                         errors={createForm.errors}
                         processing={createForm.processing}
                         onSubmit={handleCreate}
-                        onCancel={() => setCreateOpen(false)}
+                        onCancel={closeCreateDialog}
                         submitLabel="Crear empleado"
                         companies={companies}
                         workCenters={workCenters}
@@ -1131,37 +1742,26 @@ export default function EmpleadosIndex({
             {/* Dialog: Editar */}
             <Dialog
                 open={!!editTarget}
-                onOpenChange={(open) => !open && setEditTarget(null)}
+                onOpenChange={(open) => !open && closeEditDialog()}
             >
-                <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-2xl">
-                    <DialogHeader>
-                        <div className="-mx-6 -mt-6 mb-2 flex items-center gap-3 rounded-t-lg border-b bg-muted/40 px-6 py-4">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-                                <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-base font-semibold">
-                                    Editar empleado
-                                </DialogTitle>
-                                <p className="text-xs text-muted-foreground">
-                                    {editTarget
-                                        ? `${editTarget.name} ${editTarget.apellido}`
-                                        : 'Modifica los datos del empleado'}
-                                </p>
-                            </div>
-                        </div>
+                <DialogContent className={employeeDialogClassName}>
+                    <DialogHeader className="border-b border-border/70 px-4 py-4 sm:px-6">
+                        <DialogTitle className="text-base font-semibold">
+                            Editar empleado
+                        </DialogTitle>
                     </DialogHeader>
                     <EmpleadoForm
+                        key={`edit-${editSession}-${editTarget?.id ?? 'none'}`}
+                        mode="edit"
                         data={editForm.data}
                         setData={editForm.setData}
                         errors={editForm.errors}
                         processing={editForm.processing}
                         onSubmit={handleEdit}
-                        onCancel={() => setEditTarget(null)}
+                        onCancel={closeEditDialog}
                         submitLabel="Guardar cambios"
                         companies={companies}
                         workCenters={workCenters}
-                        isEdit
                     />
                 </DialogContent>
             </Dialog>

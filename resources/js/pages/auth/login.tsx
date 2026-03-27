@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
-import { publico as ficharPublico } from '@/routes/fichar';
 import { register } from '@/routes';
+import { publico as ficharPublico } from '@/routes/fichar';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 

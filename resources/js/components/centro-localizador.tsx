@@ -233,29 +233,6 @@ export function CentroLocalizador({
                             />
                         </MapContainer>
                     </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="grid gap-1">
-                            <Label className="text-xs text-muted-foreground">
-                                Latitud
-                            </Label>
-                            <Input
-                                readOnly
-                                value={lat.toFixed(6)}
-                                className="h-8 rounded-lg border-border/70 bg-background/70 font-mono text-sm"
-                            />
-                        </div>
-                        <div className="grid gap-1">
-                            <Label className="text-xs text-muted-foreground">
-                                Longitud
-                            </Label>
-                            <Input
-                                readOnly
-                                value={lng.toFixed(6)}
-                                className="h-8 rounded-lg border-border/70 bg-background/70 font-mono text-sm"
-                            />
-                        </div>
-                    </div>
                 </>
             )}
 
