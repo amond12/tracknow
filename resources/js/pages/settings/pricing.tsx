@@ -61,7 +61,7 @@ type PageErrors = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Pricing', href: '/settings/pricing' },
+    { title: 'Planes', href: '/settings/pricing' },
 ];
 
 export default function PricingSettings({
@@ -312,13 +312,13 @@ export default function PricingSettings({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Pricing" />
+            <Head title="Planes" />
 
             <SettingsLayout>
                 <div className="space-y-8">
                     <Heading
                         variant="small"
-                        title="Pricing"
+                        title="Planes"
                         description="Elige el plan que mejor encaja con tu cuenta y gestiona la facturacion desde Stripe."
                     />
 

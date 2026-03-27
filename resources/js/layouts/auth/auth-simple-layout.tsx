@@ -18,7 +18,7 @@ export default function AuthSimpleLayout({
     maxWidth = 'sm',
 }: AuthLayoutProps) {
     const { name } = usePage<{ name?: string }>().props;
-    const brandName = name && name !== 'Laravel' ? name : 'TrackNow';
+    const brandName = name || 'TrackNow';
 
     return (
         <div className="min-h-svh bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.16),transparent_30%),linear-gradient(180deg,#f8fbff_0%,#eef4ff_55%,#f8fafc_100%)]">

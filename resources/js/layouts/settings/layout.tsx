@@ -5,9 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
-import { edit as editAppearance } from '@/routes/appearance';
 import { edit } from '@/routes/profile';
-import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
 import type { Auth, NavItem } from '@/types';
 
@@ -21,12 +19,12 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
         ? isAdmin
             ? [
                   {
-                      title: 'Profile',
+                      title: 'Perfil',
                       href: edit(),
                       icon: null,
                   },
                   {
-                      title: 'Pricing',
+                      title: 'Planes',
                       href: '/settings/pricing',
                       icon: null,
                   },
@@ -36,7 +34,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
               ...(!isEmployee
                   ? [
                         {
-                            title: 'Profile',
+                            title: 'Perfil',
                             href: edit(),
                             icon: null,
                         },
@@ -48,7 +46,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         ...(isAdmin
                             ? [
                                   {
-                                      title: 'Pricing',
+                                      title: 'Planes',
                                       href: '/settings/pricing',
                                       icon: null,
                                   },
@@ -57,23 +55,12 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                     ]
                   : []),
               {
-                  title: 'Password',
+                  title: 'Contraseña',
                   href: editPassword(),
-                  icon: null,
-              },
-              {
-                  title: 'Two-factor auth',
-                  href: show(),
-                  icon: null,
-              },
-              {
-                  title: 'Appearance',
-                  href: editAppearance(),
                   icon: null,
               },
           ];
 
-    // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
         return null;
     }
@@ -81,8 +68,8 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     return (
         <div className="px-4 py-3 md:py-6">
             <Heading
-                title="Settings"
-                description="Manage your profile and account settings"
+                title="Ajustes"
+                description="Gestiona tu perfil y las opciones de tu cuenta"
             />
 
             <div className="flex flex-col gap-5 lg:flex-row lg:space-x-12">
@@ -91,7 +78,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                         <aside className="w-full max-w-xl lg:w-48">
                             <nav
                                 className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:space-y-1 lg:space-x-0 lg:overflow-visible lg:pb-0"
-                                aria-label="Settings"
+                                aria-label="Ajustes"
                             >
                                 {sidebarNavItems.map((item, index) => (
                                     <Button
@@ -123,7 +110,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                 )}
 
                 <div className="flex-1 md:max-w-2xl">
-                    <section className="mobile-surface max-w-xl space-y-8 p-4 md:space-y-12 md:border-none md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
+                    <section className="settings-surface max-w-xl space-y-8 md:space-y-12">
                         {children}
                     </section>
                 </div>

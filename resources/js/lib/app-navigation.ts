@@ -94,7 +94,7 @@ export function getVisibleMainNavItems(
     if (user.role === 'admin') {
         return [
             {
-                title: 'Pricing',
+                title: 'Planes',
                 href: '/settings/pricing',
                 icon: CreditCard,
             },
@@ -143,7 +143,7 @@ export function getMobileTabItems(
         if (user.role === 'admin') {
             return [
                 {
-                    title: 'Pricing',
+                    title: 'Planes',
                     href: '/settings/pricing',
                     icon: CreditCard,
                 },

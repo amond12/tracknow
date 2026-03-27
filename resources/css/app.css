@@ -203,6 +203,10 @@
         @apply overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/88 shadow-[0_24px_48px_-34px_rgba(15,23,42,0.3)] backdrop-blur dark:border-slate-700/60 dark:bg-slate-900/84;
     }
 
+    .settings-surface {
+        @apply rounded-[1.1rem] border border-slate-200/80 bg-white/92 px-5 py-5 shadow-[0_18px_36px_-30px_rgba(15,23,42,0.2)] dark:border-slate-700/60 dark:bg-slate-900/82;
+    }
+
     .mobile-list-stack {
         @apply flex flex-col gap-3;
     }
@@ -270,6 +274,10 @@
 
         .mobile-page-header-card {
             display: none;
+        }
+
+        .settings-surface {
+            @apply rounded-none border-none bg-transparent px-0 py-0 shadow-none;
         }
     }
 

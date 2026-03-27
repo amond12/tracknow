@@ -54,7 +54,7 @@ export default function Login({
                                     htmlFor="email"
                                     className={labelClassName}
                                 >
-                                    Email
+                                    Correo electronico
                                 </Label>
                                 <Input
                                     id="email"
@@ -76,7 +76,7 @@ export default function Login({
                                         htmlFor="password"
                                         className={labelClassName}
                                     >
-                                        Contrasena
+                                        Contraseña
                                     </Label>
                                     {canResetPassword && (
                                         <TextLink
@@ -84,7 +84,7 @@ export default function Login({
                                             className="ml-auto text-sm font-medium text-blue-700 decoration-blue-200 hover:text-blue-800"
                                             tabIndex={5}
                                         >
-                                            Has olvidado tu contrasena?
+                                            Has olvidado tu contraseña?
                                         </TextLink>
                                     )}
                                 </div>
@@ -95,7 +95,7 @@ export default function Login({
                                     required
                                     tabIndex={2}
                                     autoComplete="current-password"
-                                    placeholder="Introduce tu contrasena"
+                                    placeholder="Introduce tu contraseña"
                                     className={inputClassName}
                                 />
                                 <InputError message={errors.password} />

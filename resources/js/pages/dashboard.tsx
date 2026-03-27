@@ -7,7 +7,7 @@ import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Dashboard',
+        title: 'Inicio',
         href: dashboard(),
     },
 ];
@@ -15,10 +15,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function Dashboard() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Dashboard" />
+            <Head title="Inicio" />
             <div className="mobile-page-shell">
                 <MobilePageHeader
-                    title="Dashboard"
+                    title="Inicio"
                     description="Vista principal con espaciado y superficies adaptadas a movil."
                     eyebrow="Inicio"
                 />

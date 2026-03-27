@@ -117,7 +117,7 @@ export default function Register() {
                                     htmlFor="email"
                                     className={labelClassName}
                                 >
-                                    Email
+                                    Correo electronico
                                 </Label>
                                 <Input
                                     id="email"
@@ -137,7 +137,7 @@ export default function Register() {
                                     htmlFor="password"
                                     className={labelClassName}
                                 >
-                                    Contrasena
+                                    Contraseña
                                 </Label>
                                 <Input
                                     id="password"
@@ -146,7 +146,7 @@ export default function Register() {
                                     tabIndex={6}
                                     autoComplete="new-password"
                                     name="password"
-                                    placeholder="Crea una contrasena segura"
+                                    placeholder="Crea una contraseña segura"
                                     className={inputClassName}
                                 />
                                 <InputError message={errors.password} />
@@ -157,7 +157,7 @@ export default function Register() {
                                     htmlFor="password_confirmation"
                                     className={labelClassName}
                                 >
-                                    Confirmar contrasena
+                                    Confirmar contraseña
                                 </Label>
                                 <Input
                                     id="password_confirmation"
@@ -166,7 +166,7 @@ export default function Register() {
                                     tabIndex={7}
                                     autoComplete="new-password"
                                     name="password_confirmation"
-                                    placeholder="Repite la contrasena"
+                                    placeholder="Repite la contraseña"
                                     className={inputClassName}
                                 />
                                 <InputError

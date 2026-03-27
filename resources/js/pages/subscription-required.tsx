@@ -118,7 +118,7 @@ export default function SubscriptionRequired() {
                                     >
                                         <Link href="/settings/pricing">
                                             <CreditCard className="mr-2 h-4 w-4" />
-                                            Ir a pricing
+                                            Ir a planes
                                         </Link>
                                     </Button>
                                 )}

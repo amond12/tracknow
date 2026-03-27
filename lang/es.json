@@ -1,0 +1,17 @@
+{
+    "(and :count more error)": "(y :count error mas)",
+    "(and :count more errors)": "(y :count errores mas)",
+    "Whoops!": "Vaya!",
+    "Hello!": "Hola!",
+    "Regards,": "Un saludo,",
+    "All rights reserved.": "Todos los derechos reservados.",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:": "Si tienes problemas para pulsar el boton \":actionText\", copia y pega la siguiente URL\nen tu navegador:",
+    "Reset Password Notification": "Notificacion de restablecimiento de contraseña",
+    "You are receiving this email because we received a password reset request for your account.": "Has recibido este correo porque se solicito un restablecimiento de contraseña para tu cuenta.",
+    "This password reset link will expire in :count minutes.": "Este enlace para restablecer la contraseña caducara en :count minutos.",
+    "If you did not request a password reset, no further action is required.": "Si no solicitaste este cambio, no es necesario que hagas nada mas.",
+    "Reset Password": "Restablecer contraseña",
+    "Verify Email Address": "Verificar direccion de correo",
+    "Please click the button below to verify your email address.": "Haz clic en el siguiente boton para verificar tu direccion de correo.",
+    "If you did not create an account, no further action is required.": "Si no creaste esta cuenta, no es necesario que hagas nada mas."
+}
