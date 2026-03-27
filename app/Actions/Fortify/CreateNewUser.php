@@ -15,13 +15,18 @@ class CreateNewUser implements CreatesNewUsers
     /**
      * Validate and create a newly registered user.
      *
-     * @param  array<string, string>  $input
+     * @param  array<string, mixed>  $input
      */
     public function create(array $input): User
     {
+        $acceptedAt = now();
+
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
+            'legal_documents' => ['accepted'],
+        ], [], [
+            'legal_documents' => 'terminos y politica de privacidad',
         ])->validate();
 
         return User::create([
@@ -32,6 +37,8 @@ class CreateNewUser implements CreatesNewUsers
             'dni' => $input['dni'],
             'password' => $input['password'],
             'role' => 'admin',
+            'terms_accepted_at' => $acceptedAt,
+            'privacy_policy_accepted_at' => $acceptedAt,
         ]);
     }
 }

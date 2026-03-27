@@ -14,8 +14,8 @@ return new class extends Migration
             $table->foreignId('pausa_id')->nullable()->constrained('pausas')->nullOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('campo')->comment('inicio_jornada|fin_jornada|inicio_pausa|fin_pausa|finalizacion_admin');
-            $table->string('valor_anterior')->nullable();
-            $table->string('valor_nuevo');
+            $table->text('valor_anterior')->nullable();
+            $table->text('valor_nuevo');
             $table->text('motivo');
             $table->timestamps();
         });

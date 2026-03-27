@@ -21,6 +21,8 @@ export type User = {
     horario_domingo?: number | null;
     avatar?: string;
     email_verified_at: string | null;
+    terms_accepted_at?: string | null;
+    privacy_policy_accepted_at?: string | null;
     two_factor_enabled?: boolean;
     company?: { id: number; nombre: string; clock_code_prefix?: string | null };
     work_center?: { id: number; nombre: string; timezone?: string | null };

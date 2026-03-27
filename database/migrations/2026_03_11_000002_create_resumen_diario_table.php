@@ -13,7 +13,10 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->date('fecha');
             $table->unsignedInteger('horas_trabajadas')->default(0);
+            $table->unsignedInteger('segundos_previstos')->default(0);
             $table->integer('horas_extra')->default(0);
+            $table->string('origen', 10)->default('auto');
+            $table->foreignId('admin_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->unique(['user_id', 'fecha']);

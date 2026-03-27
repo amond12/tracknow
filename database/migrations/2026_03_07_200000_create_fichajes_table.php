@@ -10,8 +10,9 @@ return new class extends Migration
     {
         Schema::create('fichajes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('work_center_id')->constrained()->cascadeOnDelete();
+            $table->string('timezone')->default('Europe/Madrid');
             $table->date('fecha');
             $table->dateTime('inicio_jornada');
             $table->dateTime('fin_jornada')->nullable();
@@ -24,6 +25,7 @@ return new class extends Migration
             $table->decimal('lng_fin', 10, 7)->nullable();
             $table->string('ip_fin')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('poblacion');
             $table->string('direccion');
             $table->string('cp', 10);
+            $table->string('timezone')->default('Europe/Madrid');
             $table->decimal('lat', 10, 7)->nullable();
             $table->decimal('lng', 10, 7)->nullable();
             $table->integer('radio')->nullable()->default(100);

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('ciudad');
             $table->string('direccion');
             $table->string('cp', 10);
+            $table->string('clock_code_prefix', 4)->nullable()->unique();
             $table->timestamps();
         });
     }

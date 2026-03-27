@@ -32,7 +32,7 @@ export default function AuthSimpleLayout({
                     <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#93c5fd_0%,#2563eb_45%,#1d4ed8_100%)]" />
 
                     <div className="relative flex flex-col gap-5">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <Link
                                 href={home()}
                                 className="inline-flex items-center gap-3"
@@ -49,10 +49,6 @@ export default function AuthSimpleLayout({
                                     </p>
                                 </div>
                             </Link>
-
-                            <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-700">
-                                Seguro
-                            </span>
                         </div>
 
                         <div className="space-y-1">

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Services\ClockCodeService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use Billable, HasFactory, Notifiable, TwoFactorAuthenticatable;
@@ -63,6 +63,8 @@ class User extends Authenticatable
         'pm_type',
         'pm_last_four',
         'trial_ends_at',
+        'terms_accepted_at',
+        'privacy_policy_accepted_at',
     ];
 
     /**
@@ -88,6 +90,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'trial_ends_at' => 'datetime',
+            'terms_accepted_at' => 'datetime',
+            'privacy_policy_accepted_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
             'remoto' => 'boolean',
             'horario_lunes' => 'float',

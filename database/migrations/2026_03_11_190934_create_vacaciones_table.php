@@ -15,6 +15,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->date('fecha');
+            $table->enum('tipo', ['vacacion', 'ausencia', 'festivo'])->default('vacacion');
+            $table->text('motivo')->nullable();
+            $table->boolean('dia_completo')->default(true);
+            $table->time('hora_inicio')->nullable();
+            $table->time('hora_fin')->nullable();
             $table->timestamps();
             $table->unique(['user_id', 'fecha']);
         });

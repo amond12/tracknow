@@ -6,23 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('role')->default('admin')->after('password');
+            $table->foreign('company_id')->references('id')->on('companies')->nullOnDelete();
+            $table->foreign('work_center_id')->references('id')->on('work_centers')->nullOnDelete();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('role');
+            $table->dropForeign(['company_id']);
+            $table->dropForeign(['work_center_id']);
         });
     }
 };
