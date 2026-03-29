@@ -15,7 +15,7 @@ test('new users can register', function () {
         'apellido' => 'Admin',
         'email' => 'test@example.com',
         'telefono' => '600000000',
-        'dni' => '12345678A',
+        'dni' => '12.345.678-a',
         'password' => 'password',
         'password_confirmation' => 'password',
         'legal_documents' => '1',
@@ -54,6 +54,29 @@ test('new users must accept legal documents to register', function () {
     $response
         ->assertRedirect(route('register'))
         ->assertSessionHasErrors(['legal_documents']);
+
+    $this->assertGuest();
+});
+
+test('registration rejects a dni that matches an existing user after normalization', function () {
+    User::factory()->create([
+        'dni' => '12345678A',
+    ]);
+
+    $response = $this->from(route('register'))->post(route('register.store'), [
+        'name' => 'Test User',
+        'apellido' => 'Admin',
+        'email' => 'duplicate@example.com',
+        'telefono' => '600000000',
+        'dni' => '12 345 678-a',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'legal_documents' => '1',
+    ]);
+
+    $response
+        ->assertRedirect(route('register'))
+        ->assertSessionHasErrors(['dni']);
 
     $this->assertGuest();
 });

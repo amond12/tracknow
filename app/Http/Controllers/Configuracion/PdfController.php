@@ -23,6 +23,11 @@ class PdfController extends Controller
         $user = $request->user();
         $mes = (int) $request->input('mes', now()->month);
         $anio = (int) $request->input('anio', now()->year);
+
+        abort_if($mes < 1 || $mes > 12, 422);
+        abort_if($anio < 2000 || $anio > 2100, 422);
+
+        [$fechaInicio, $fechaFin] = $this->monthDateRange($anio, $mes);
         if ($user->isEmpleado()) {
             $user->loadMissing(['company:id,nombre', 'workCenter:id,company_id,nombre']);
 
@@ -46,11 +51,12 @@ class PdfController extends Controller
             ]]);
 
             $resumen = User::whereKey($user->id)
-                ->with(['fichajes' => function ($query) use ($mes, $anio) {
-                    $query->whereMonth('fecha', $mes)
-                        ->whereYear('fecha', $anio)
-                        ->orderBy('fecha');
+                ->withCount(['fichajes as total_dias' => function ($query) use ($fechaInicio, $fechaFin) {
+                    $query->whereBetween('fecha', [$fechaInicio, $fechaFin]);
                 }])
+                ->withSum(['fichajes as total_segundos' => function ($query) use ($fechaInicio, $fechaFin) {
+                    $query->whereBetween('fecha', [$fechaInicio, $fechaFin]);
+                }], 'duracion_jornada')
                 ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
                 ->withQueryString()
                 ->through(fn ($employee) => [
@@ -58,9 +64,9 @@ class PdfController extends Controller
                     'nombre' => $employee->name,
                     'apellido' => $employee->apellido,
                     'dni' => $employee->dni,
-                    'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
-                    'total_dias' => $employee->fichajes->count(),
-                    'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
+                    'total_segundos' => (int) ($employee->total_segundos ?? 0),
+                    'total_dias' => (int) ($employee->total_dias ?? 0),
+                    'tiene_fichajes' => (int) ($employee->total_dias ?? 0) > 0,
                 ]);
         } else {
             $companies = AdminScope::companyQueryFor($user)->get(['id', 'nombre']);
@@ -98,11 +104,12 @@ class PdfController extends Controller
             }
 
             $resumen = $query
-                ->with(['fichajes' => function ($query) use ($mes, $anio) {
-                    $query->whereMonth('fecha', $mes)
-                        ->whereYear('fecha', $anio)
-                        ->orderBy('fecha');
+                ->withCount(['fichajes as total_dias' => function ($query) use ($fechaInicio, $fechaFin) {
+                    $query->whereBetween('fecha', [$fechaInicio, $fechaFin]);
                 }])
+                ->withSum(['fichajes as total_segundos' => function ($query) use ($fechaInicio, $fechaFin) {
+                    $query->whereBetween('fecha', [$fechaInicio, $fechaFin]);
+                }], 'duracion_jornada')
                 ->orderBy('apellido')
                 ->orderBy('name')
                 ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
@@ -112,9 +119,9 @@ class PdfController extends Controller
                     'nombre' => $employee->name,
                     'apellido' => $employee->apellido,
                     'dni' => $employee->dni,
-                    'total_segundos' => $employee->fichajes->sum('duracion_jornada'),
-                    'total_dias' => $employee->fichajes->count(),
-                    'tiene_fichajes' => $employee->fichajes->isNotEmpty(),
+                    'total_segundos' => (int) ($employee->total_segundos ?? 0),
+                    'total_dias' => (int) ($employee->total_dias ?? 0),
+                    'tiene_fichajes' => (int) ($employee->total_dias ?? 0) > 0,
                 ]);
         }
 
@@ -146,6 +153,7 @@ class PdfController extends Controller
 
         abort_if($mes < 1 || $mes > 12, 422);
         abort_if($anio < 2000 || $anio > 2100, 422);
+        [$fechaInicio, $fechaFin] = $this->monthDateRange($anio, $mes);
 
         $empleado->load(['company', 'workCenter']);
 
@@ -154,15 +162,13 @@ class PdfController extends Controller
         $timezone = WorkCenterTimezone::resolve($centro);
 
         $fichajes = Fichaje::where('user_id', $empleado->id)
-            ->whereMonth('fecha', $mes)
-            ->whereYear('fecha', $anio)
+            ->whereBetween('fecha', [$fechaInicio, $fechaFin])
             ->with('pausas')
             ->orderBy('fecha')
             ->get();
 
         $resumenPorFecha = ResumenDiario::where('user_id', $empleado->id)
-            ->whereMonth('fecha', $mes)
-            ->whereYear('fecha', $anio)
+            ->whereBetween('fecha', [$fechaInicio, $fechaFin])
             ->get()
             ->keyBy(fn ($resumen) => $resumen->fecha->toDateString());
 
@@ -170,8 +176,7 @@ class PdfController extends Controller
         $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
         $eventos = Vacacion::where('user_id', $empleado->id)
-            ->whereMonth('fecha', $mes)
-            ->whereYear('fecha', $anio)
+            ->whereBetween('fecha', [$fechaInicio, $fechaFin])
             ->get(['fecha', 'tipo', 'motivo', 'dia_completo', 'hora_inicio', 'hora_fin']);
 
         $eventosPorFecha = $eventos->keyBy(fn ($evento) => Carbon::parse($evento->fecha)->toDateString());
@@ -296,5 +301,16 @@ class PdfController extends Controller
         $minutes = intdiv($seconds % 3600, 60);
 
         return $minutes > 0 ? "{$hours}h {$minutes}min" : "{$hours}h";
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function monthDateRange(int $anio, int $mes): array
+    {
+        $inicio = Carbon::create($anio, $mes, 1)->startOfMonth();
+        $fin = $inicio->copy()->endOfMonth();
+
+        return [$inicio->toDateString(), $fin->toDateString()];
     }
 }

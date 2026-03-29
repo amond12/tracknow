@@ -14,7 +14,6 @@ test('profile page is displayed', function () {
 
 test('profile information can be updated', function () {
     $user = User::factory()->create();
-    $originalDni = $user->dni;
 
     $response = $this
         ->actingAs($user)
@@ -23,7 +22,7 @@ test('profile information can be updated', function () {
             'apellido' => 'Actualizado',
             'email' => 'test@example.com',
             'telefono' => '611223344',
-            'dni' => $originalDni,
+            'dni' => '12.345.678-a',
         ]);
 
     $response
@@ -36,7 +35,7 @@ test('profile information can be updated', function () {
     expect($user->apellido)->toBe('Actualizado');
     expect($user->email)->toBe('test@example.com');
     expect($user->telefono)->toBe('611223344');
-    expect($user->dni)->toBe($originalDni);
+    expect($user->dni)->toBe('12345678A');
     expect($user->email_verified_at)->toBeNull();
 });
 

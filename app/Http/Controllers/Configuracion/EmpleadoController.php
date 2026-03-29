@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\WorkCenter;
 use App\Support\AdminScope;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,33 +18,79 @@ class EmpleadoController extends Controller
     {
         $user = $request->user();
         $companyIds = AdminScope::companyIdsFor($user);
+        $trabajador = trim((string) $request->input('trabajador', ''));
 
-        $employees = User::whereIn('company_id', $companyIds)
+        $employeeOptions = User::whereIn('company_id', $companyIds)
             ->whereIn('role', ['empleado', 'encargado'])
-            ->with(['company:id,nombre,clock_code_prefix', 'workCenter:id,nombre'])
             ->orderBy('apellido')
             ->orderBy('name')
-            ->get();
-
-        $employees->each->append('clock_code');
+            ->get(['id', 'company_id', 'work_center_id', 'name', 'apellido']);
 
         $companies = AdminScope::companyQueryFor($user)
             ->orderBy('nombre')
             ->get(['id', 'nombre']);
 
-        $workCenters = \App\Models\WorkCenter::whereIn('company_id', $companyIds)
+        $workCenters = WorkCenter::whereIn('company_id', $companyIds)
             ->orderBy('nombre')
             ->get(['id', 'company_id', 'nombre']);
 
+        $employees = User::whereIn('company_id', $companyIds)
+            ->whereIn('role', ['empleado', 'encargado'])
+            ->with(['company:id,nombre,clock_code_prefix', 'workCenter:id,nombre'])
+            ->when($request->filled('empresa_id'), function ($query) use ($request) {
+                $query->where('company_id', (int) $request->input('empresa_id'));
+            })
+            ->when($request->filled('centro_id'), function ($query) use ($request) {
+                $query->where('work_center_id', (int) $request->input('centro_id'));
+            })
+            ->when($trabajador !== '', function ($query) use ($trabajador) {
+                $searchTerms = collect(preg_split('/\s+/', $trabajador))
+                    ->map(fn (?string $term) => trim((string) $term))
+                    ->filter()
+                    ->values();
+
+                $query->where(function ($employeeQuery) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $like = '%'.$term.'%';
+                        $normalizedDni = User::normalizeDni($term);
+
+                        $employeeQuery->where(function ($termQuery) use ($like, $normalizedDni) {
+                            $termQuery
+                                ->where('name', 'like', $like)
+                                ->orWhere('apellido', 'like', $like)
+                                ->orWhere('email', 'like', $like)
+                                ->orWhere('dni', 'like', $like)
+                                ->orWhere('nss', 'like', $like);
+
+                            if ($normalizedDni !== null && $normalizedDni !== $term) {
+                                $termQuery->orWhere('dni', 'like', '%'.$normalizedDni.'%');
+                            }
+                        });
+                    }
+                });
+            })
+            ->orderBy('apellido')
+            ->orderBy('name')
+            ->paginate(10)
+            ->withQueryString();
+
+        $employees->getCollection()->each->append('clock_code');
+
         return Inertia::render('configuracion/empleados/index', [
             'employees' => $employees,
+            'employeeOptions' => $employeeOptions,
             'companies' => $companies,
             'workCenters' => $workCenters,
+            'filters' => $request->only(['empresa_id', 'centro_id', 'trabajador']),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $request->merge([
+            'dni' => User::normalizeDni($request->input('dni')),
+        ]);
+
         $validated = $request->validate([
             'nombre' => ['required', 'string', 'max:100'],
             'apellido' => ['required', 'string', 'max:100'],
@@ -95,6 +142,10 @@ class EmpleadoController extends Controller
         $companyIds = AdminScope::companyIdsFor($request->user());
         abort_if(! $companyIds->contains($empleado->company_id), 403);
         abort_if($empleado->role === 'admin', 403, 'No se puede gestionar un usuario administrador desde empleados.');
+
+        $request->merge([
+            'dni' => User::normalizeDni($request->input('dni')),
+        ]);
 
         $validated = $request->validate([
             'nombre' => ['required', 'string', 'max:100'],

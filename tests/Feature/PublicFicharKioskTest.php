@@ -38,7 +38,7 @@ test('public page resolves an employee by dni', function () {
     ]);
 
     $this->get(route('fichar.publico', [
-        'identificador' => '12345678Z',
+        'identificador' => '12.345.678-z',
     ]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page

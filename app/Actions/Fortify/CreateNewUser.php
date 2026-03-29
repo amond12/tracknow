@@ -20,6 +20,7 @@ class CreateNewUser implements CreatesNewUsers
     public function create(array $input): User
     {
         $acceptedAt = now();
+        $input['dni'] = User::normalizeDni($input['dni'] ?? null);
 
         Validator::make($input, [
             ...$this->profileRules(),

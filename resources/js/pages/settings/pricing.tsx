@@ -300,11 +300,6 @@ export default function PricingSettings({
                     >
                         {processingKey === key ? 'Redirigiendo...' : action.label}
                     </Button>
-                    {!currentSubscription.planSlug && (
-                        <p className="text-xs text-slate-500">
-                            El alta inicial se completa en Stripe Checkout.
-                        </p>
-                    )}
                 </CardFooter>
             </Card>
         );

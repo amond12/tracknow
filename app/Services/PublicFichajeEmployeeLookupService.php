@@ -63,10 +63,7 @@ class PublicFichajeEmployeeLookupService
                 User::ROLE_ENCARGADO,
                 User::ROLE_ADMIN,
             ])
-            ->whereRaw(
-                "REPLACE(REPLACE(UPPER(dni), ' ', ''), '-', '') = ?",
-                [$identifier],
-            )
+            ->where('dni', $identifier)
             ->first();
 
         return $user ? $this->prepareResolvedUser($user) : null;

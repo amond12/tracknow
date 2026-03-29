@@ -28,6 +28,7 @@ import {
 } from '@/components/filter-panel';
 import InputError from '@/components/input-error';
 import { MobilePageHeader } from '@/components/mobile-page-header';
+import { PaginationNav } from '@/components/pagination-nav';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -56,6 +57,7 @@ import AppLayout from '@/layouts/app-layout';
 import type {
     BreadcrumbItem,
     Company,
+    Paginated,
     User as UserType,
     WorkCenter,
 } from '@/types';
@@ -67,10 +69,21 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface Props {
-    employees: UserType[];
+    employees: Paginated<UserType>;
+    employeeOptions: EmployeeFilterOption[];
     companies: Pick<Company, 'id' | 'nombre'>[];
     workCenters: (Pick<WorkCenter, 'id' | 'nombre'> & { company_id: number })[];
+    filters: {
+        empresa_id?: string;
+        centro_id?: string;
+        trabajador?: string;
+    };
 }
+
+type EmployeeFilterOption = Pick<UserType, 'id' | 'name' | 'apellido'> & {
+    company_id: number | null;
+    work_center_id: number | null;
+};
 
 type EmpleadoFormData = {
     nombre: string;
@@ -1102,18 +1115,27 @@ function EmpleadoForm({
 }
 
 export default function EmpleadosIndex({
-    employees,
+    employees: employeesPage,
+    employeeOptions,
     companies,
     workCenters,
+    filters,
 }: Props) {
+    const employees = employeesPage.data;
     const [createOpen, setCreateOpen] = useState(false);
     const [createSession, setCreateSession] = useState(0);
     const [editTarget, setEditTarget] = useState<UserType | null>(null);
     const [editSession, setEditSession] = useState(0);
     const [deleteTarget, setDeleteTarget] = useState<UserType | null>(null);
-    const [companyFilter, setCompanyFilter] = useState<string>('all');
-    const [workCenterFilter, setWorkCenterFilter] = useState<string>('all');
-    const [employeeSearch, setEmployeeSearch] = useState('');
+    const [companyFilter, setCompanyFilter] = useState<string>(
+        filters.empresa_id ?? 'all',
+    );
+    const [workCenterFilter, setWorkCenterFilter] = useState<string>(
+        filters.centro_id ?? 'all',
+    );
+    const [employeeSearch, setEmployeeSearch] = useState(
+        filters.trabajador ?? '',
+    );
     const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
     const employeeFilterRef = useRef<HTMLDivElement>(null);
 
@@ -1138,6 +1160,13 @@ export default function EmpleadosIndex({
             document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        setCompanyFilter(filters.empresa_id ?? 'all');
+        setWorkCenterFilter(filters.centro_id ?? 'all');
+        setEmployeeSearch(filters.trabajador ?? '');
+        setShowEmployeeDropdown(false);
+    }, [filters.centro_id, filters.empresa_id, filters.trabajador]);
+
     const availableWorkCenters = useMemo(() => {
         if (companyFilter === 'all') {
             return workCenters;
@@ -1148,8 +1177,8 @@ export default function EmpleadosIndex({
         );
     }, [companyFilter, workCenters]);
 
-    const availableEmployees = useMemo(() => {
-        return employees.filter((employee) => {
+    const availableEmployeeOptions = useMemo(() => {
+        return employeeOptions.filter((employee) => {
             const matchesCompany =
                 companyFilter === 'all' ||
                 employee.company_id === Number(companyFilter);
@@ -1159,24 +1188,32 @@ export default function EmpleadosIndex({
 
             return matchesCompany && matchesWorkCenter;
         });
-    }, [employees, companyFilter, workCenterFilter]);
+    }, [employeeOptions, companyFilter, workCenterFilter]);
 
     const normalizedEmployeeSearch = employeeSearch
         .trim()
         .toLocaleLowerCase('es-ES');
 
-    const filteredEmployees = useMemo(() => {
+    const filteredEmployeeOptions = useMemo(() => {
         if (normalizedEmployeeSearch.length === 0) {
-            return availableEmployees;
+            return availableEmployeeOptions;
         }
 
-        return availableEmployees.filter((employee) =>
+        return availableEmployeeOptions.filter((employee) =>
             `${employee.name} ${employee.apellido ?? ''}`
                 .trim()
                 .toLocaleLowerCase('es-ES')
                 .includes(normalizedEmployeeSearch),
         );
-    }, [availableEmployees, normalizedEmployeeSearch]);
+    }, [availableEmployeeOptions, normalizedEmployeeSearch]);
+
+    const hasActiveFilters =
+        companyFilter !== 'all' ||
+        workCenterFilter !== 'all' ||
+        normalizedEmployeeSearch.length > 0;
+    const emptyStateMessage = hasActiveFilters
+        ? 'No hay empleados para los filtros seleccionados'
+        : 'No hay empleados registrados';
 
     function handleCompanyFilterChange(value: string) {
         setCompanyFilter(value);
@@ -1200,9 +1237,35 @@ export default function EmpleadosIndex({
         setShowEmployeeDropdown(false);
     }
 
-    function handleEmployeeSelect(employee: UserType) {
+    function handleEmployeeSelect(employee: EmployeeFilterOption) {
         setEmployeeSearch(`${employee.name} ${employee.apellido ?? ''}`.trim());
         setShowEmployeeDropdown(false);
+    }
+
+    function buildFilterParams(): Record<string, string> {
+        const params: Record<string, string> = {};
+
+        if (companyFilter !== 'all') {
+            params.empresa_id = companyFilter;
+        }
+
+        if (workCenterFilter !== 'all') {
+            params.centro_id = workCenterFilter;
+        }
+
+        if (employeeSearch.trim() !== '') {
+            params.trabajador = employeeSearch.trim();
+        }
+
+        return params;
+    }
+
+    function handleApplyFilters() {
+        router.get('/configuracion/empleados', buildFilterParams(), {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     }
 
     function openCreateDialog() {
@@ -1274,6 +1337,12 @@ export default function EmpleadosIndex({
         setWorkCenterFilter('all');
         setEmployeeSearch('');
         setShowEmployeeDropdown(false);
+
+        router.get('/configuracion/empleados', {}, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     }
 
     return (
@@ -1315,20 +1384,30 @@ export default function EmpleadosIndex({
 
                 <FilterPanel
                     title="Filtros de plantilla"
-                    description="Acota la lista por empresa y centro de trabajo para revisar la plantilla con más contexto."
+                    description="Acota la lista por empresa, centro o trabajador y pulsa Actualizar para aplicar los cambios."
                     eyebrow="Organización"
                     icon={Building2}
                     tone="blue"
                     meta={
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleResetFilters}
-                            className="gap-2 rounded-xl"
-                        >
-                            <X className="h-3.5 w-3.5" />
-                            Limpiar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleApplyFilters}
+                                className="gap-2 rounded-xl"
+                            >
+                                <Search className="h-3.5 w-3.5" />
+                                Actualizar
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleResetFilters}
+                                className="gap-2 rounded-xl"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar
+                            </Button>
+                        </div>
                     }
                 >
                     <div className="grid gap-3 md:grid-cols-3">
@@ -1411,7 +1490,9 @@ export default function EmpleadosIndex({
                                         )
                                     }
                                     placeholder="Todos los trabajadores"
-                                    disabled={availableEmployees.length === 0}
+                                    disabled={
+                                        availableEmployeeOptions.length === 0
+                                    }
                                     className="pl-9"
                                     onFocus={() =>
                                         setShowEmployeeDropdown(true)
@@ -1435,7 +1516,7 @@ export default function EmpleadosIndex({
                                             >
                                                 Todos los trabajadores
                                             </button>
-                                            {availableEmployees.length ===
+                                            {availableEmployeeOptions.length ===
                                                 0 && (
                                                 <p
                                                     className={
@@ -1446,8 +1527,9 @@ export default function EmpleadosIndex({
                                                     disponibles
                                                 </p>
                                             )}
-                                            {availableEmployees.length > 0 &&
-                                                filteredEmployees.length ===
+                                            {availableEmployeeOptions.length >
+                                                0 &&
+                                                filteredEmployeeOptions.length ===
                                                     0 && (
                                                     <p
                                                         className={
@@ -1457,7 +1539,7 @@ export default function EmpleadosIndex({
                                                         Sin resultados
                                                     </p>
                                                 )}
-                                            {filteredEmployees.map(
+                                            {filteredEmployeeOptions.map(
                                                 (employee) => (
                                                     <button
                                                         key={employee.id}
@@ -1490,12 +1572,10 @@ export default function EmpleadosIndex({
                     </div>
                 </FilterPanel>
 
-                {filteredEmployees.length === 0 ? (
+                {employees.length === 0 ? (
                     <div className="mobile-surface px-4 py-10 text-center md:hidden">
                         <p className="text-sm font-medium text-slate-900">
-                            {employees.length === 0
-                                ? 'No hay empleados registrados'
-                                : 'No hay empleados para los filtros seleccionados'}
+                            {emptyStateMessage}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
                             Ajusta los filtros o crea un empleado nuevo.
@@ -1503,7 +1583,7 @@ export default function EmpleadosIndex({
                     </div>
                 ) : (
                     <div className="mobile-list-stack md:hidden">
-                        {filteredEmployees.map((emp) => (
+                        {employees.map((emp) => (
                             <div key={emp.id} className="mobile-list-item">
                                 <div className="mobile-list-item__header">
                                     <div>
@@ -1592,7 +1672,24 @@ export default function EmpleadosIndex({
                     </div>
                 )}
 
-                <div className="hidden rounded-lg border md:block">
+                {employeesPage.last_page > 1 && (
+                    <div className="overflow-hidden rounded-lg border bg-card md:hidden">
+                        <PaginationNav
+                            path="/configuracion/empleados"
+                            pagination={employeesPage}
+                            query={filters}
+                        />
+                    </div>
+                )}
+
+                <div className="hidden overflow-hidden rounded-lg border bg-card md:block">
+                    <div className="flex items-center justify-between border-b px-4 py-3">
+                        <h2 className="text-sm font-semibold">
+                            {employeesPage.total > 0
+                                ? `${employeesPage.total} empleado${employeesPage.total !== 1 ? 's' : ''}`
+                                : 'Empleados'}
+                        </h2>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[1120px] text-sm">
                             <thead className="bg-muted/50">
@@ -1630,19 +1727,17 @@ export default function EmpleadosIndex({
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {filteredEmployees.length === 0 ? (
+                                {employees.length === 0 ? (
                                     <tr>
                                         <td
                                             colSpan={10}
                                             className="px-4 py-8 text-center text-muted-foreground"
                                         >
-                                            {employees.length === 0
-                                                ? 'No hay empleados registrados'
-                                                : 'No hay empleados para los filtros seleccionados'}
+                                            {emptyStateMessage}
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredEmployees.map((emp) => (
+                                    employees.map((emp) => (
                                         <tr
                                             key={emp.id}
                                             className="hover:bg-muted/30"
@@ -1709,6 +1804,11 @@ export default function EmpleadosIndex({
                             </tbody>
                         </table>
                     </div>
+                    <PaginationNav
+                        path="/configuracion/empleados"
+                        pagination={employeesPage}
+                        query={filters}
+                    />
                 </div>
             </div>
 

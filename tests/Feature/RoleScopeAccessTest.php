@@ -123,7 +123,7 @@ test('encargados pueden crear empleados en cualquier empresa del admin propietar
             'apellido' => 'Empleado',
             'email' => 'nuevo-empleado@example.com',
             'telefono' => '600000123',
-            'dni' => '12345678Z',
+            'dni' => '12.345.678-z',
             'nss' => '280000009999',
             'rol' => 'empleado',
             'remoto' => false,
@@ -145,4 +145,5 @@ test('encargados pueden crear empleados en cualquier empresa del admin propietar
     expect($created->company_id)->toBe($companyB->id);
     expect($created->work_center_id)->toBe($workCenterB->id);
     expect($created->role)->toBe('empleado');
+    expect($created->dni)->toBe('12345678Z');
 });

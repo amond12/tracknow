@@ -104,6 +104,17 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
+    public static function normalizeDni(?string $value): ?string
+    {
+        $normalized = preg_replace(
+            '/[^A-Z0-9]/',
+            '',
+            strtoupper(trim((string) $value)),
+        );
+
+        return $normalized !== null && $normalized !== '' ? $normalized : null;
+    }
+
     protected static function booted(): void
     {
         static::creating(function (User $user): void {
@@ -224,6 +235,13 @@ class User extends Authenticatable implements MustVerifyEmail
 
                 return $prefix.$this->clock_code_suffix;
             },
+        );
+    }
+
+    protected function dni(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => self::normalizeDni($value),
         );
     }
 }
