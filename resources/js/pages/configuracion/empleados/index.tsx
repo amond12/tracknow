@@ -1160,13 +1160,6 @@ export default function EmpleadosIndex({
             document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        setCompanyFilter(filters.empresa_id ?? 'all');
-        setWorkCenterFilter(filters.centro_id ?? 'all');
-        setEmployeeSearch(filters.trabajador ?? '');
-        setShowEmployeeDropdown(false);
-    }, [filters.centro_id, filters.empresa_id, filters.trabajador]);
-
     const availableWorkCenters = useMemo(() => {
         if (companyFilter === 'all') {
             return workCenters;
@@ -1262,7 +1255,6 @@ export default function EmpleadosIndex({
 
     function handleApplyFilters() {
         router.get('/configuracion/empleados', buildFilterParams(), {
-            preserveState: true,
             preserveScroll: true,
             replace: true,
         });
@@ -1339,7 +1331,6 @@ export default function EmpleadosIndex({
         setShowEmployeeDropdown(false);
 
         router.get('/configuracion/empleados', {}, {
-            preserveState: true,
             preserveScroll: true,
             replace: true,
         });
