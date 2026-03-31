@@ -19,13 +19,19 @@ import {
     getVisibleMainNavItems,
     isEmployeeRole,
 } from '@/lib/app-navigation';
+import { useIsNativeApp } from '@/hooks/use-native-app';
 import type { Auth } from '@/types';
 
 export function AppSidebar() {
     const { auth } = usePage<{ auth: Auth }>().props;
+    const isNativeApp = useIsNativeApp();
     const isEmployee = isEmployeeRole(auth.user);
     const homeHref = getHomeHref(auth.user, auth.access);
-    const visibleMainNavItems = getVisibleMainNavItems(auth.user, auth.access);
+    const visibleMainNavItems = getVisibleMainNavItems(
+        auth.user,
+        auth.access,
+        isNativeApp,
+    );
     const visibleConfigNavItems = getVisibleConfigNavItems(auth.access);
 
     return (

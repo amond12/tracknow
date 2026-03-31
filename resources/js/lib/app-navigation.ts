@@ -86,12 +86,28 @@ export function getHomeHref(
 export function getVisibleMainNavItems(
     user: Pick<User, 'role'>,
     access?: AuthAccess | null,
+    isNativeApp = false,
 ): NavItem[] {
     if (! isExpired(access)) {
         return defaultMainNavItems;
     }
 
     if (user.role === 'admin') {
+        if (isNativeApp) {
+            return [
+                {
+                    title: 'PDFs',
+                    href: '/pdfs',
+                    icon: FileText,
+                },
+                {
+                    title: 'Calendario',
+                    href: '/calendario',
+                    icon: CalendarDays,
+                },
+            ];
+        }
+
         return [
             {
                 title: 'Planes',
@@ -138,9 +154,25 @@ export function getVisibleConfigNavItems(
 export function getMobileTabItems(
     user: Pick<User, 'role'>,
     access?: AuthAccess | null,
+    isNativeApp = false,
 ): MobileTabItem[] {
     if (isExpired(access)) {
         if (user.role === 'admin') {
+            if (isNativeApp) {
+                return [
+                    {
+                        title: 'PDFs',
+                        href: '/pdfs',
+                        icon: FileText,
+                    },
+                    {
+                        title: 'Calendario',
+                        href: '/calendario',
+                        icon: CalendarDays,
+                    },
+                ];
+            }
+
             return [
                 {
                     title: 'Planes',

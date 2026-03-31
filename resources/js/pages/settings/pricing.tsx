@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { AlertCircle, CreditCard, ShieldAlert } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +20,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useIsNativeApp } from '@/hooks/use-native-app';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { edit as editProfile } from '@/routes/profile';
 import type { Auth, BreadcrumbItem } from '@/types';
 
 type Plan = {
@@ -69,7 +71,8 @@ export default function PricingSettings({
     currentSubscription,
     usage,
 }: Props) {
-    const { errors } = usePage<{ auth: Auth; errors: PageErrors }>().props;
+    const { auth, errors } = usePage<{ auth: Auth; errors: PageErrors }>().props;
+    const isNativeApp = useIsNativeApp();
     const defaultPlan =
         (currentSubscription.planSlug &&
             plans.find((plan) => plan.slug === currentSubscription.planSlug)) ||
@@ -87,6 +90,26 @@ export default function PricingSettings({
         currentSubscription.hasPaymentIssue || currentSubscription.isCustomPlan;
     const hasActiveSubscription = currentSubscription.status !== null;
     const currentPlanName = currentPlan?.name ?? 'Plan personalizado';
+    const shouldRedirectToProfile = isNativeApp && auth.user.role === 'admin';
+
+    useEffect(() => {
+        if (!shouldRedirectToProfile) {
+            return;
+        }
+
+        router.get(
+            editProfile.url(),
+            {},
+            {
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    }, [shouldRedirectToProfile]);
+
+    if (shouldRedirectToProfile) {
+        return null;
+    }
 
     function formatMoney(amount: number) {
         return new Intl.NumberFormat('es-ES', {

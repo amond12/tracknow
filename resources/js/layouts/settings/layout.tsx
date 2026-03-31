@@ -4,6 +4,7 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { useIsNativeApp } from '@/hooks/use-native-app';
 import { cn, toUrl } from '@/lib/utils';
 import { edit } from '@/routes/profile';
 import { edit as editPassword } from '@/routes/user-password';
@@ -12,6 +13,7 @@ import type { Auth, NavItem } from '@/types';
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const { isCurrentOrParentUrl } = useCurrentUrl();
+    const isNativeApp = useIsNativeApp();
     const isEmployee = auth.user.role === 'empleado';
     const isAdmin = auth.user.role === 'admin';
     const isExpired = auth.access?.state === 'expired';
@@ -23,11 +25,15 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                       href: edit(),
                       icon: null,
                   },
-                  {
-                      title: 'Planes',
-                      href: '/settings/pricing',
-                      icon: null,
-                  },
+                  ...(!isNativeApp
+                      ? [
+                            {
+                                title: 'Planes',
+                                href: '/settings/pricing',
+                                icon: null,
+                            },
+                        ]
+                      : []),
               ]
             : []
         : [
@@ -43,7 +49,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                             href: '/settings/trabajo',
                             icon: null,
                         },
-                        ...(isAdmin
+                        ...(isAdmin && !isNativeApp
                             ? [
                                   {
                                       title: 'Planes',

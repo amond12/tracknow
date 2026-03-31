@@ -1,4 +1,4 @@
-import { Capacitor } from '@capacitor/core';
+import { isNativeAppPlatform } from '@/lib/native-app';
 
 type ShareRemoteFileOptions = {
     url: string;
@@ -75,7 +75,7 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 export function isNativePdfShareAvailable(): boolean {
-    return Capacitor.isNativePlatform();
+    return isNativeAppPlatform();
 }
 
 export async function shareRemoteFile({

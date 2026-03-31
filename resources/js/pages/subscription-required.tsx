@@ -7,6 +7,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import Heading from '@/components/heading';
+import { NativeBillingRequiredModal } from '@/components/native-billing-required-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +17,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { useIsNativeApp } from '@/hooks/use-native-app';
 import AppLayout from '@/layouts/app-layout';
 import type { Auth, BreadcrumbItem } from '@/types';
 
@@ -37,12 +39,19 @@ function formatDate(value: string | null): string | null {
 
 export default function SubscriptionRequired() {
     const { auth } = usePage<{ auth: Auth }>().props;
+    const isNativeApp = useIsNativeApp();
     const isAdmin = auth.user.role === 'admin';
     const trialEndsAt = formatDate(auth.access?.trialEndsAt ?? null);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Acceso limitado" />
+            <NativeBillingRequiredModal
+                isAdmin={isAdmin}
+                userId={auth.user.id}
+                accessState={auth.access?.state ?? null}
+                trialEndsAt={auth.access?.trialEndsAt ?? null}
+            />
 
             <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-4 md:py-8">
                 <Heading
@@ -111,7 +120,7 @@ export default function SubscriptionRequired() {
                             </div>
 
                             <div className="flex flex-col gap-3 sm:flex-row">
-                                {isAdmin && (
+                                {isAdmin && !isNativeApp && (
                                     <Button
                                         asChild
                                         className="h-11 rounded-2xl px-5"
