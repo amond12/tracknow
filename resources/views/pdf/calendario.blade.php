@@ -45,7 +45,7 @@
 </head>
 <body>
 
-<div class="watermark">Calendario Laboral {{ $anio }} — {{ config('app.name', 'nubelist') }}</div>
+<div class="watermark">Calendario Laboral {{ $anio }} — {{ config('app.name', 'Horario Digital') }}</div>
 
 {{-- ═══════════════ CABECERA ═══════════════ --}}
 <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
@@ -54,7 +54,7 @@
             <svg style="vertical-align:middle; margin-right:6px;" width="26" height="20" viewBox="0 0 50 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M38.5 14.5C38.17 8.7 33.38 4 27.5 4C23.04 4 19.16 6.6 17.3 10.38C16.42 10.14 15.48 10 14.5 10C9.25 10 5 14.25 5 19.5C5 24.75 9.25 29 14.5 29H38.5C42.64 29 46 25.64 46 21.5C46 17.56 42.94 14.34 39.02 14.03L38.5 14.5Z" fill="#3DBFA8"/>
             </svg>
-            <span style="font-size:14pt; font-weight:bold; color:#1a1a1a; vertical-align:middle;">{{ config('app.name', 'nubelist') }}</span>
+            <span style="font-size:14pt; font-weight:bold; color:#1a1a1a; vertical-align:middle;">{{ config('app.name', 'Horario Digital') }}</span>
         </td>
         <td style="width:45%; vertical-align:middle; text-align:right;">
             <div style="font-size:13pt; font-weight:bold; color:#1a1a1a; line-height:1.2;">Calendario Laboral</div>

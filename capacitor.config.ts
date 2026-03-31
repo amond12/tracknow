@@ -41,7 +41,7 @@ const serverUrl = process.env.CAPACITOR_SERVER_URL || env.APP_URL || 'http://127
 
 const config: CapacitorConfig = {
     appId: 'com.tracknow.app',
-    appName: 'TrackNow',
+    appName: 'Horario Digital',
     webDir: 'public',
     server: {
         allowNavigation: ['*'],

@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'TrackNow'),
+    'name' => env('APP_NAME', 'Horario Digital'),
 
     /*
     |--------------------------------------------------------------------------

@@ -79,13 +79,13 @@ php artisan queue:work redis --queue=default --sleep=1 --tries=3 --timeout=120 -
 
 ## 5. Supervisor
 
-Ejemplo de fichero `/etc/supervisor/conf.d/tracknow-worker.conf`:
+Ejemplo de fichero `/etc/supervisor/conf.d/horario-digital-worker.conf`:
 
 ```ini
-[program:tracknow-worker]
+[program:horario-digital-worker]
 process_name=%(program_name)s_%(process_num)02d
-command=php /var/www/tracknow/artisan queue:work redis --queue=default --sleep=1 --tries=3 --timeout=120 --max-time=3600
-directory=/var/www/tracknow
+command=php /var/www/horario-digital/artisan queue:work redis --queue=default --sleep=1 --tries=3 --timeout=120 --max-time=3600
+directory=/var/www/horario-digital
 autostart=true
 autorestart=true
 stopasgroup=true
@@ -93,7 +93,7 @@ killasgroup=true
 user=www-data
 numprocs=1
 redirect_stderr=true
-stdout_logfile=/var/www/tracknow/storage/logs/worker.log
+stdout_logfile=/var/www/horario-digital/storage/logs/worker.log
 stopwaitsecs=3600
 ```
 

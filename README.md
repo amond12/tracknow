@@ -1,4 +1,4 @@
-# tracknow
+# Horario Digital
 
 ## App movil con Capacitor
 
@@ -56,4 +56,4 @@ En Xcode:
 - Si cambias `APP_URL`, vuelve a ejecutar `npm run cap:sync`.
 - Si el iPhone no carga la app, confirma que ambos dispositivos estan en la misma red.
 - La configuracion actual permite `http://` para facilitar pruebas locales en desarrollo.
-- Si ya tienes el backend desplegado, puedes poner `APP_URL=https://tracknow-production.up.railway.app` y usar la app iOS directamente contra produccion.
+- Si ya tienes el backend desplegado, puedes poner `APP_URL=https://tu-backend.example.com` y usar la app iOS directamente contra produccion.
