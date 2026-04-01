@@ -174,6 +174,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return (int) round(($map[$fecha->dayOfWeekIso] ?? 0) * 3600);
     }
 
+    public function jornadaPdfSignatures(): HasMany
+    {
+        return $this->hasMany(JornadaPdfSignature::class, 'employee_id');
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;

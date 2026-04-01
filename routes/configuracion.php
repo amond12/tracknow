@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified', EnsureSubscriptionAccess::class])->group(
     Route::get('fichajes', [FichajeController::class, 'index'])->middleware('throttle:config-filters')->name('fichajes.index');
     Route::get('pdfs', [PdfController::class, 'index'])->middleware('throttle:config-filters')->name('pdfs.index');
     Route::get('pdfs/{empleado}/download', [PdfController::class, 'download'])->name('pdfs.download');
+    Route::post('pdfs/{empleado}/sign', [PdfController::class, 'sign'])->name('pdfs.sign');
     Route::get('horas-extra', [HorasExtraController::class, 'index'])->middleware('throttle:config-filters')->name('horas-extra.index');
     Route::get('calendario', [CalendarioController::class, 'index'])->name('calendario.index');
     Route::get('calendario/{empleado}/pdf', [CalendarioController::class, 'downloadPdf'])->name('calendario.downloadPdf');

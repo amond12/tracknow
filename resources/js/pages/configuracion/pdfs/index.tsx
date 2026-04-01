@@ -1,9 +1,10 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     Building2,
     Calendar,
     FileDown,
     Filter,
+    Pencil,
     Search,
     Users,
     X,
@@ -22,6 +23,8 @@ import {
 import { MobilePageHeader } from '@/components/mobile-page-header';
 import { PaginationNav } from '@/components/pagination-nav';
 import { PdfDownloadAction } from '@/components/pdf-download-action';
+import { PdfSignatureModal } from '@/components/pdf-signature-modal';
+import type { PdfSignatureState } from '@/components/pdf-signature-modal';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -31,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import type {
+    Auth,
     BreadcrumbItem,
     Company,
     Paginated,
@@ -74,6 +78,7 @@ interface ResumenEmpleado {
     total_segundos: number;
     total_dias: number;
     tiene_fichajes: boolean;
+    firmas: PdfSignatureState;
 }
 
 interface Props {
@@ -104,6 +109,28 @@ function formatSeconds(seconds: number): string {
     return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 }
 
+function SignatureBadges({ firmas }: { firmas: PdfSignatureState }) {
+    return (
+        <div className="mt-1 flex flex-wrap gap-1.5">
+            <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${firmas.companySigned ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
+            >
+                Empresa {firmas.companySigned ? 'firmada' : 'pendiente'}
+            </span>
+            <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${firmas.employeeSigned ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}
+            >
+                Empleado {firmas.employeeSigned ? 'firmada' : 'pendiente'}
+            </span>
+            {firmas.locked && (
+                <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[11px] font-medium text-white">
+                    Cerrado
+                </span>
+            )}
+        </div>
+    );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function PdfsIndex({
@@ -115,11 +142,17 @@ export default function PdfsIndex({
     mes,
     anio,
 }: Props) {
+    const { auth } = usePage<{ auth: Auth }>().props;
     const resumen = resumenPage.data;
+    const currentUserId = auth.user.id;
+    const isManager = auth.user.role !== 'empleado';
 
     const [empresaId, setEmpresaId] = useState(filters.empresa_id ?? 'all');
     const [centroId, setCentroId] = useState(filters.centro_id ?? 'all');
     const [empleadoId, setEmpleadoId] = useState(filters.empleado_id ?? 'all');
+    const [signatureEmployeeId, setSignatureEmployeeId] = useState<
+        number | null
+    >(null);
 
     const initialEmpleado = filters.empleado_id
         ? employees.find((e) => e.id === Number(filters.empleado_id))
@@ -172,6 +205,11 @@ export default function PdfsIndex({
                       .toLocaleLowerCase('es-ES')
                       .includes(normalizedSearch),
               );
+
+    const signatureTarget =
+        signatureEmployeeId === null
+            ? null
+            : resumen.find((row) => row.id === signatureEmployeeId) ?? null;
 
     function handleEmpresaChange(value: string) {
         setEmpresaId(value);
@@ -246,6 +284,19 @@ export default function PdfsIndex({
 
     function pdfUrl(id: number): string {
         return `/pdfs/${id}/download?mes=${mes}&anio=${anio}`;
+    }
+
+    function canSignCompany(row: ResumenEmpleado): boolean {
+        return (
+            isManager &&
+            !row.firmas.locked &&
+            (!row.firmas.companySigned ||
+                row.firmas.companySignerUserId === currentUserId)
+        );
+    }
+
+    function canSignEmployee(row: ResumenEmpleado): boolean {
+        return currentUserId === row.id && !row.firmas.locked;
     }
 
     const mesLabel = MESES.find((m) => m.value === String(mes))?.label ?? '';
@@ -571,17 +622,31 @@ export default function PdfsIndex({
                                         </span>
                                     </div>
                                 </div>
+                                <SignatureBadges firmas={row.firmas} />
 
-                                <PdfDownloadAction
-                                    href={pdfUrl(row.id)}
-                                    fallbackFileName={`jornada_${row.apellido}_${row.nombre}_${mesSeleccionado}_${anioSeleccionado}.pdf`}
-                                    shareTitle="Compartir jornada PDF"
-                                    variant="default"
-                                    className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                                >
-                                    <FileDown className="h-4 w-4" />
-                                    Descargar PDF
-                                </PdfDownloadAction>
+                                <div className="mt-4 flex flex-col gap-2">
+                                    <PdfDownloadAction
+                                        href={pdfUrl(row.id)}
+                                        fallbackFileName={`jornada_${row.apellido}_${row.nombre}_${mesSeleccionado}_${anioSeleccionado}.pdf`}
+                                        shareTitle="Compartir jornada PDF"
+                                        variant="default"
+                                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                                    >
+                                        <FileDown className="h-4 w-4" />
+                                        Descargar PDF
+                                    </PdfDownloadAction>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="h-11 w-full justify-center gap-2 rounded-2xl"
+                                        onClick={() =>
+                                            setSignatureEmployeeId(row.id)
+                                        }
+                                    >
+                                        <Pencil className="h-4 w-4" />
+                                        Firmar
+                                    </Button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -663,6 +728,9 @@ export default function PdfsIndex({
                                                                 sin registros
                                                             </span>
                                                         )}
+                                                        <SignatureBadges
+                                                            firmas={row.firmas}
+                                                        />
                                                     </div>
                                                 </div>
                                             </td>
@@ -694,17 +762,33 @@ export default function PdfsIndex({
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <PdfDownloadAction
-                                                    href={pdfUrl(row.id)}
-                                                    fallbackFileName={`jornada_${row.apellido}_${row.nombre}_${mesSeleccionado}_${anioSeleccionado}.pdf`}
-                                                    shareTitle="Compartir jornada PDF"
-                                                    variant="default"
-                                                    size="sm"
-                                                    className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                                                >
-                                                    <FileDown className="h-3.5 w-3.5" />
-                                                    Descargar PDF
-                                                </PdfDownloadAction>
+                                                <div className="flex items-center gap-2">
+                                                    <PdfDownloadAction
+                                                        href={pdfUrl(row.id)}
+                                                        fallbackFileName={`jornada_${row.apellido}_${row.nombre}_${mesSeleccionado}_${anioSeleccionado}.pdf`}
+                                                        shareTitle="Compartir jornada PDF"
+                                                        variant="default"
+                                                        size="sm"
+                                                        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                                                    >
+                                                        <FileDown className="h-3.5 w-3.5" />
+                                                        Descargar PDF
+                                                    </PdfDownloadAction>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="gap-1.5 rounded-md"
+                                                        onClick={() =>
+                                                            setSignatureEmployeeId(
+                                                                row.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Pencil className="h-3.5 w-3.5" />
+                                                        Firmar
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -719,6 +803,25 @@ export default function PdfsIndex({
                     />
                 </div>
             </div>
+
+            <PdfSignatureModal
+                open={signatureTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSignatureEmployeeId(null);
+                    }
+                }}
+                target={signatureTarget}
+                mes={mes}
+                anio={anio}
+                periodLabel={`${mesLabel} ${anio}`}
+                canSignCompany={
+                    signatureTarget ? canSignCompany(signatureTarget) : false
+                }
+                canSignEmployee={
+                    signatureTarget ? canSignEmployee(signatureTarget) : false
+                }
+            />
         </AppLayout>
     );
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Configuracion;
 
 use App\Http\Controllers\Controller;
 use App\Models\Fichaje;
+use App\Models\JornadaPdfSignature;
 use App\Models\ResumenDiario;
 use App\Models\User;
 use App\Models\Vacacion;
@@ -13,7 +14,11 @@ use App\Support\WorkCenterTimezone;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class PdfController extends Controller
@@ -28,6 +33,7 @@ class PdfController extends Controller
         abort_if($anio < 2000 || $anio > 2100, 422);
 
         [$fechaInicio, $fechaFin] = $this->monthDateRange($anio, $mes);
+
         if ($user->isEmpleado()) {
             $user->loadMissing(['company:id,nombre', 'workCenter:id,company_id,nombre']);
 
@@ -58,16 +64,7 @@ class PdfController extends Controller
                     $query->whereBetween('fecha', [$fechaInicio, $fechaFin]);
                 }], 'duracion_jornada')
                 ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
-                ->withQueryString()
-                ->through(fn ($employee) => [
-                    'id' => $employee->id,
-                    'nombre' => $employee->name,
-                    'apellido' => $employee->apellido,
-                    'dni' => $employee->dni,
-                    'total_segundos' => (int) ($employee->total_segundos ?? 0),
-                    'total_dias' => (int) ($employee->total_dias ?? 0),
-                    'tiene_fichajes' => (int) ($employee->total_dias ?? 0) > 0,
-                ]);
+                ->withQueryString();
         } else {
             $companies = AdminScope::companyQueryFor($user)->get(['id', 'nombre']);
             $companyIds = $companies->pluck('id');
@@ -113,23 +110,14 @@ class PdfController extends Controller
                 ->orderBy('apellido')
                 ->orderBy('name')
                 ->paginate(20, ['id', 'company_id', 'work_center_id', 'name', 'apellido', 'dni'])
-                ->withQueryString()
-                ->through(fn ($employee) => [
-                    'id' => $employee->id,
-                    'nombre' => $employee->name,
-                    'apellido' => $employee->apellido,
-                    'dni' => $employee->dni,
-                    'total_segundos' => (int) ($employee->total_segundos ?? 0),
-                    'total_dias' => (int) ($employee->total_dias ?? 0),
-                    'tiene_fichajes' => (int) ($employee->total_dias ?? 0) > 0,
-                ]);
+                ->withQueryString();
         }
 
         return Inertia::render('configuracion/pdfs/index', [
             'companies' => $companies,
             'workCenters' => $workCenters,
             'employees' => $employees,
-            'resumen' => $resumen,
+            'resumen' => $this->transformResumen($resumen, $anio, $mes),
             'filters' => $request->only(['empresa_id', 'centro_id', 'empleado_id', 'mes', 'anio']),
             'mes' => $mes,
             'anio' => $anio,
@@ -140,13 +128,7 @@ class PdfController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isEmpleado()) {
-            abort_if($empleado->id !== $user->id, 403);
-        } else {
-            $companyIds = AdminScope::companyIdsFor($user);
-            $esPropioUsuario = $empleado->id === $user->id;
-            abort_if(! $esPropioUsuario && ! $companyIds->contains($empleado->company_id), 403);
-        }
+        $this->ensureCanAccessPdf($user, $empleado);
 
         $mes = (int) $request->query('mes', now()->month);
         $anio = (int) $request->query('anio', now()->year);
@@ -260,6 +242,11 @@ class PdfController extends Controller
         $totalSegundos = $fichajes->sum('duracion_jornada');
         $totalHoras = $this->formatSecondsLong($totalSegundos);
         $mesNombre = $meses[$mes];
+        $firma = JornadaPdfSignature::query()
+            ->where('employee_id', $empleado->id)
+            ->where('month', $mes)
+            ->where('year', $anio)
+            ->first();
 
         $pdf = Pdf::loadView('pdf.jornada', [
             'empleado' => $empleado,
@@ -272,6 +259,7 @@ class PdfController extends Controller
             'mesNombre' => $mesNombre,
             'generadoEn' => WorkCenterTimezone::nowUtc()->setTimezone($timezone)->format('d/m/Y H:i'),
             'esAdmin' => $empleado->role === 'admin',
+            'firmas' => $this->signaturePdfData($firma, $empleado, $empresa),
         ])->setPaper('A4', 'portrait');
 
         $filename = sprintf(
@@ -283,6 +271,70 @@ class PdfController extends Controller
         );
 
         return $pdf->download($filename);
+    }
+
+    public function sign(Request $request, User $empleado)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'mes' => ['required', 'integer', 'between:1,12'],
+            'anio' => ['required', 'integer', 'between:2000,2100'],
+            'side' => ['required', 'string', 'in:company,employee'],
+            'signature' => ['required', 'string', 'max:2000000'],
+        ]);
+
+        $mes = (int) $validated['mes'];
+        $anio = (int) $validated['anio'];
+        $side = $validated['side'];
+
+        $this->ensureCanAccessPdf($user, $empleado);
+        $this->ensureCanSignSide($user, $empleado, $side);
+
+        $signature = JornadaPdfSignature::query()->firstOrNew([
+            'employee_id' => $empleado->id,
+            'month' => $mes,
+            'year' => $anio,
+        ]);
+
+        if ($signature->exists && $signature->isLocked()) {
+            throw ValidationException::withMessages([
+                'signature' => 'Este documento ya tiene ambas firmas y ha quedado bloqueado.',
+            ]);
+        }
+
+        if ($side === 'company'
+            && $signature->company_signer_user_id !== null
+            && $signature->company_signer_user_id !== $user->id
+        ) {
+            throw ValidationException::withMessages([
+                'signature' => 'La firma de empresa solo puede reemplazarla el mismo firmante mientras el documento siga abierto.',
+            ]);
+        }
+
+        $binary = $this->decodeSignaturePayload($validated['signature']);
+        $path = $this->signaturePathFor($empleado->id, $anio, $mes, $side);
+
+        Storage::disk('public')->put($path, $binary);
+
+        if ($side === 'company') {
+            $signature->company_signer_user_id = $user->id;
+            $signature->company_signer_name = $this->fullName($user);
+            $signature->company_signer_title = $this->companySignerTitle($user);
+            $signature->company_signature_path = $path;
+            $signature->company_signed_at = now();
+        } else {
+            $signature->employee_signer_user_id = $user->id;
+            $signature->employee_signer_name = $this->fullName($user);
+            $signature->employee_signature_path = $path;
+            $signature->employee_signed_at = now();
+        }
+
+        $signature->locked_at = $this->shouldLockSignature($signature)
+            ? ($signature->locked_at ?? now())
+            : null;
+        $signature->save();
+
+        return back();
     }
 
     private function formatSeconds(int $seconds): string
@@ -301,6 +353,184 @@ class PdfController extends Controller
         $minutes = intdiv($seconds % 3600, 60);
 
         return $minutes > 0 ? "{$hours}h {$minutes}min" : "{$hours}h";
+    }
+
+    private function transformResumen(LengthAwarePaginator $paginator, int $anio, int $mes): LengthAwarePaginator
+    {
+        $signatures = $this->signatureMapFor($paginator->getCollection()->pluck('id'), $anio, $mes);
+
+        $paginator->setCollection($paginator->getCollection()->map(
+            fn (User $employee) => [
+                'id' => $employee->id,
+                'nombre' => $employee->name,
+                'apellido' => $employee->apellido,
+                'dni' => $employee->dni,
+                'total_segundos' => (int) ($employee->total_segundos ?? 0),
+                'total_dias' => (int) ($employee->total_dias ?? 0),
+                'tiene_fichajes' => (int) ($employee->total_dias ?? 0) > 0,
+                'firmas' => $this->signatureSummary($signatures->get($employee->id)),
+            ],
+        ));
+
+        return $paginator;
+    }
+
+    private function signatureMapFor(Collection $employeeIds, int $anio, int $mes): Collection
+    {
+        if ($employeeIds->isEmpty()) {
+            return collect();
+        }
+
+        return JornadaPdfSignature::query()
+            ->whereIn('employee_id', $employeeIds->all())
+            ->where('year', $anio)
+            ->where('month', $mes)
+            ->get()
+            ->keyBy('employee_id');
+    }
+
+    /**
+     * @return array{
+     *     companySigned: bool,
+     *     employeeSigned: bool,
+     *     locked: bool,
+     *     companySignerName: string|null,
+     *     companySignerTitle: string|null,
+     *     companySignerUserId: int|null,
+     *     companySignedAt: string|null,
+     *     employeeSignerName: string|null,
+     *     employeeSignerUserId: int|null,
+     *     employeeSignedAt: string|null
+     * }
+     */
+    private function signatureSummary(?JornadaPdfSignature $signature): array
+    {
+        return [
+            'companySigned' => $signature?->company_signed_at !== null,
+            'employeeSigned' => $signature?->employee_signed_at !== null,
+            'locked' => $signature?->isLocked() ?? false,
+            'companySignerName' => $signature?->company_signer_name,
+            'companySignerTitle' => $signature?->company_signer_title,
+            'companySignerUserId' => $signature?->company_signer_user_id,
+            'companySignedAt' => $signature?->company_signed_at?->toIso8601String(),
+            'employeeSignerName' => $signature?->employee_signer_name,
+            'employeeSignerUserId' => $signature?->employee_signer_user_id,
+            'employeeSignedAt' => $signature?->employee_signed_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     locked: bool,
+     *     company: array{signed: bool, name: string|null, title: string|null, signed_at: string|null, image: string|null, company_name: string|null},
+     *     employee: array{signed: bool, name: string|null, signed_at: string|null, image: string|null}
+     * }
+     */
+    private function signaturePdfData(?JornadaPdfSignature $signature, User $empleado, ?object $empresa): array
+    {
+        return [
+            'locked' => $signature?->isLocked() ?? false,
+            'company' => [
+                'signed' => $signature?->company_signed_at !== null,
+                'name' => $signature?->company_signer_name,
+                'title' => $signature?->company_signer_title,
+                'signed_at' => $signature?->company_signed_at?->format('d/m/Y'),
+                'image' => $this->signatureImageData($signature?->company_signature_path),
+                'company_name' => $empresa?->nombre,
+            ],
+            'employee' => [
+                'signed' => $signature?->employee_signed_at !== null,
+                'name' => $signature?->employee_signer_name ?: $this->fullName($empleado),
+                'signed_at' => $signature?->employee_signed_at?->format('d/m/Y'),
+                'image' => $this->signatureImageData($signature?->employee_signature_path),
+            ],
+        ];
+    }
+
+    private function signatureImageData(?string $path): ?string
+    {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode(Storage::disk('public')->get($path));
+    }
+
+    private function ensureCanAccessPdf(User $user, User $empleado): void
+    {
+        if ($user->isEmpleado()) {
+            abort_if($empleado->id !== $user->id, 403);
+
+            return;
+        }
+
+        $companyIds = AdminScope::companyIdsFor($user);
+        $esPropioUsuario = $empleado->id === $user->id;
+
+        abort_if(! $esPropioUsuario && ! $companyIds->contains($empleado->company_id), 403);
+    }
+
+    private function ensureCanSignSide(User $user, User $empleado, string $side): void
+    {
+        if ($side === 'employee') {
+            abort_if($empleado->id !== $user->id, 403);
+
+            return;
+        }
+
+        abort_if(! $user->isManager(), 403);
+
+        $companyIds = AdminScope::companyIdsFor($user);
+        $esPropioUsuario = $empleado->id === $user->id;
+
+        abort_if(! $esPropioUsuario && ! $companyIds->contains($empleado->company_id), 403);
+    }
+
+    private function shouldLockSignature(JornadaPdfSignature $signature): bool
+    {
+        return $signature->company_signed_at !== null && $signature->employee_signed_at !== null;
+    }
+
+    private function decodeSignaturePayload(string $payload): string
+    {
+        $prefix = 'data:image/png;base64,';
+
+        if (! str_starts_with($payload, $prefix)) {
+            throw ValidationException::withMessages([
+                'signature' => 'La firma debe enviarse como una imagen PNG válida.',
+            ]);
+        }
+
+        $binary = base64_decode(substr($payload, strlen($prefix)), true);
+
+        if ($binary === false || $binary === '') {
+            throw ValidationException::withMessages([
+                'signature' => 'No se pudo procesar la firma enviada.',
+            ]);
+        }
+
+        return $binary;
+    }
+
+    private function signaturePathFor(int $employeeId, int $anio, int $mes, string $side): string
+    {
+        return sprintf(
+            'pdf-signatures/jornada/%d/%04d/%02d/%s.png',
+            $employeeId,
+            $anio,
+            $mes,
+            $side,
+        );
+    }
+
+    private function fullName(User $user): string
+    {
+        return trim(implode(' ', array_filter([$user->name, $user->apellido])));
+    }
+
+    private function companySignerTitle(User $user): string
+    {
+        return $user->isAdmin() ? 'Administrador' : 'Encargado';
     }
 
     /**

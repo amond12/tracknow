@@ -19,6 +19,7 @@ class EnsureSubscriptionAccess
         'pricing.cancel',
         'pdfs.index',
         'pdfs.download',
+        'pdfs.sign',
         'calendario.index',
         'calendario.downloadPdf',
     ];

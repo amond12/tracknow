@@ -6,21 +6,11 @@
     <title>Registro de Jornada — {{ $empleado->name }} {{ $empleado->apellido }} — {{ $mesNombre }} {{ $anio }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 9pt; color: #1a1a1a; background: #fff; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 9pt; color: #1a1a1a; background: #fff; padding: 0 3mm; }
 
-        @page { margin: 14mm 13mm 18mm 13mm; }
+        @page { margin: 14mm 24mm 18mm 24mm; }
 
         /* ── MARCA DE AGUA LATERAL ─────────────────────────────── */
-        .watermark {
-            position: fixed;
-            left: -38px;
-            top: 50%;
-            transform: rotate(-90deg) translateX(-50%);
-            font-size: 6.5pt;
-            color: #bbb;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
 
         /* ── CABECERA PRINCIPAL ────────────────────────────────── */
         .top-header { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
@@ -119,7 +109,13 @@
             border: 1px solid #ccc;
             border-radius: 3px;
             padding: 8px 10px 10px;
-            min-height: 70px;
+            height: 118px;
+        }
+        .firma-image-wrap { height: 44px; margin-bottom: 4px; }
+        .firma-image {
+            display: block;
+            max-width: 100%;
+            max-height: 42px;
         }
         .firma-label { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; color: #333; letter-spacing: 0.4px; margin-bottom: 22px; }
         .firma-line  { border: none; border-bottom: 1px solid #aaa; margin-bottom: 5px; }
@@ -141,7 +137,6 @@
 <body>
 
 {{-- MARCA DE AGUA LATERAL --}}
-<div class="watermark">Documento generado conforme al RDL 8/2019 — Registro de Jornada</div>
 
 {{-- ═══════════════════════════════════════════════════════════════
      CABECERA — Logo + Título
@@ -288,18 +283,29 @@
             <td class="firma-cell">
                 <div class="firma-box">
                     <div class="firma-label">Firma y/o cuño del representante de la empresa</div>
-                    <hr class="firma-line">
-                    <div class="firma-name">{{ $empresa->nombre }}</div>
-                    <div class="firma-sub">Cargo: ____________________________</div>
-                    <div class="firma-sub">Fecha: ___ / ___ / ______</div>
+                    @if($firmas['company']['image'])
+                        <div class="firma-image-wrap">
+                            <img class="firma-image" src="{{ $firmas['company']['image'] }}" alt="Firma empresa">
+                        </div>
+                    @else
+                        <hr class="firma-line">
+                    @endif
+                    <div class="firma-name">{{ $firmas['company']['name'] ?: $empresa->nombre }}</div>
+                    <div class="firma-sub">Fecha: {{ $firmas['company']['signed_at'] ?: '___ / ___ / ______' }}</div>
                 </div>
             </td>
             <td class="firma-cell">
                 <div class="firma-box">
                     <div class="firma-label">Firma de/la trabajador/a</div>
-                    <hr class="firma-line">
-                    <div class="firma-name">{{ $empleado->name }} {{ $empleado->apellido }}</div>
-                    <div class="firma-sub">Fecha: ___ / ___ / ______</div>
+                    @if($firmas['employee']['image'])
+                        <div class="firma-image-wrap">
+                            <img class="firma-image" src="{{ $firmas['employee']['image'] }}" alt="Firma trabajador">
+                        </div>
+                    @else
+                        <hr class="firma-line">
+                    @endif
+                    <div class="firma-name">{{ $firmas['employee']['name'] ?: $empleado->name.' '.$empleado->apellido }}</div>
+                    <div class="firma-sub">Fecha: {{ $firmas['employee']['signed_at'] ?: '___ / ___ / ______' }}</div>
                 </div>
             </td>
         </tr>
@@ -311,8 +317,6 @@
 ═══════════════════════════════════════════════════════════════ --}}
 <div class="footer">
     Documento generado el {{ $generadoEn }}
-    &nbsp;&bull;&nbsp;
-    Registro mensual de la jornada de los trabajadores conforme al Real Decreto-ley 8/2019, de 8 de marzo, de medidas urgentes de protección social y de lucha contra la precariedad laboral en la jornada de trabajo
 </div>
 
 </body>
