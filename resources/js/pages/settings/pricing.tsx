@@ -2,6 +2,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { AlertCircle, CreditCard, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
+import TextLink from '@/components/text-link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -440,6 +441,38 @@ export default function PricingSettings({
                         {renderCard('monthly')}
                         {renderCard('yearly')}
                     </div>
+
+                    <Card className="border-slate-200/80 bg-slate-50/80 shadow-[0_24px_50px_-32px_rgba(15,23,42,0.2)]">
+                        <CardHeader className="space-y-2">
+                            <CardTitle className="text-lg text-slate-950">
+                                Documentación legal
+                            </CardTitle>
+                            <CardDescription className="text-sm text-slate-600">
+                                Consulta aquí la documentación legal aplicable a
+                                la suscripción y al uso del servicio.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-600">
+                                <TextLink href="/aviso-legal">Aviso legal</TextLink>
+                                <TextLink href="/politica-de-cookies">
+                                    Política de cookies
+                                </TextLink>
+                                <TextLink href="/terminos-y-condiciones">
+                                    Términos y condiciones
+                                </TextLink>
+                                <TextLink href="/politica-de-privacidad">
+                                    Política de privacidad
+                                </TextLink>
+                                <TextLink href="/encargo-del-tratamiento">
+                                    Encargo del tratamiento
+                                </TextLink>
+                                <TextLink href="/anexo-de-subencargados">
+                                    Anexo de subencargados
+                                </TextLink>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </SettingsLayout>
         </AppLayout>

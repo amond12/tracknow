@@ -15,6 +15,18 @@ Route::get('terminos-y-condiciones', fn () => Inertia::render('legal/terms'))
 Route::get('politica-de-privacidad', fn () => Inertia::render('legal/privacy'))
     ->name('legal.privacy');
 
+Route::get('aviso-legal', fn () => Inertia::render('legal/legal-notice'))
+    ->name('legal.notice');
+
+Route::get('politica-de-cookies', fn () => Inertia::render('legal/cookies'))
+    ->name('legal.cookies');
+
+Route::get('encargo-del-tratamiento', fn () => Inertia::render('legal/dpa'))
+    ->name('legal.dpa');
+
+Route::get('anexo-de-subencargados', fn () => Inertia::render('legal/subprocessors'))
+    ->name('legal.subprocessors');
+
 Route::middleware(['auth', EnsureSubscriptionAccess::class])->group(function () {
     Route::get('subscription-required', [SubscriptionRequiredController::class, 'show'])
         ->name('subscription.required');
